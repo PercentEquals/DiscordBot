@@ -122,7 +122,11 @@ export const Tiktok: Command = {
                 id = url.split('/')[url.split('/').length - 2];
             }
 
-            if (!url.includes('tiktok')) {
+            if (id === '') {
+                throw new Error('No id found');
+            }
+
+            if (!new URL(url).hostname.includes('tiktok')) {
                 throw new Error('Not a tiktok url');
             }
 
