@@ -18,7 +18,7 @@ async function convertVideo(id: string) {
         
         const process = ffmpeg(`cache/${id}.mp4`);
         process.videoCodec('libx264');
-        process.preset('veryfast');
+        process.addOption(["-preset", "ultrafast"]);
         process.output(`cache/${id}-ffmpeg.mp4`);
         process.on('end', (done: any) => {
             console.log('[ffmpeg] conversion done');
