@@ -9,27 +9,42 @@ import cheerio from "cheerio";
 
 ffmpeg.setFfmpegPath(ffmpegStatic as string);
 
+async function convertVideo(id: string) {
+    console.log('[ffmpeg] starting', ffmpegStatic);
+
+    return new Promise((resolve, reject) => {
+        ffmpeg(`cache/${id}.mp4`)
+            .videoCodec('libx264')
+            .output(`cache/${id}-ffmpeg.mp4`)
+            .on('end', (done: any) => {
+                console.log('[ffmpeg] done');
+                resolve(done)
+            })
+            .on('error', (err: any) => {
+                console.log('[ffmpeg] error', err);
+                reject(err)
+            })
+            .run();
+    })
+}
+
 async function downloadVideo(interaction: CommandInteraction, id: string, url: string, spoiler: boolean) {
     const result = await youtubedl(url, {
-        format: 'mp4',
-        output: `cache/${id}`
+        format: 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/mp4',
+        output: `cache/${id}.mp4`
     });
 
     console.log(result);
 
-    ffmpeg(`cache/${id}.mp4`)
-        .videoCodec('libx264')
-        .format('mp4')
-        .save(`cache/${id}-ffmpeg.mp4`);
-
-    while (fs.existsSync(`cache/${id}-ffmpeg.mp4`) === false) {}
+    await convertVideo(id);
 
     const file = new AttachmentBuilder(`cache/${id}-ffmpeg.mp4`);
     file.setName(`${id}.mp4`);
     file.setSpoiler(spoiler);
 
+    console.log('[discord] sending');
     await interaction.followUp({
-        ephemeral: true,
+        ephemeral: false,
         files: [file]
     });
 
@@ -40,16 +55,17 @@ async function downloadVideo(interaction: CommandInteraction, id: string, url: s
 async function downloadSlideshow(interaction: CommandInteraction, id: string, url: string, spoiler: boolean) {
     const response = await fetch(url);
     const body = await response.text();
-    
+
     const $ = cheerio.load(body);
     const files = [] as AttachmentBuilder[];
 
     const $script = $('#SIGI_STATE');
     const sigi_state = JSON.parse($script.html() as string);
 
-    const imagesData = sigi_state.ItemModule[id].imagePost.images;
+    const key = Object.keys(sigi_state.ItemModule)[0];
+    const imagesData = sigi_state.ItemModule[key].imagePost.images;
 
-    imagesData.forEach((image: { imageURL: { urlList: string[] }}, i: number) => {
+    imagesData.forEach((image: { imageURL: { urlList: string[] } }, i: number) => {
         const file = new AttachmentBuilder(image.imageURL.urlList[0]);
         file.setName(`${id}-${i}.jpg`);
         file.setSpoiler(spoiler);
@@ -57,29 +73,17 @@ async function downloadSlideshow(interaction: CommandInteraction, id: string, ur
         files.push(file);
     });
 
-    let shouldFollowUp = true;
-
-    const reply = (files: AttachmentBuilder[], shouldFollowUp: boolean) => {
-        if (shouldFollowUp) {
-            interaction.followUp({
-                ephemeral: true,
-                files
-            });
-
-            shouldFollowUp = false;
-        } else {
-            interaction.reply({
-                ephemeral: true,
-                files
-            });
-        }
-    }
-
     while (files.length > 10) {
-        const filesToSend = files.splice(0, 10);
-        reply(filesToSend, shouldFollowUp);
+        await interaction.followUp({
+            ephemeral: false,
+            files: files.splice(0, 10)
+        });
     }
-    reply(files, shouldFollowUp);
+
+    await interaction.followUp({
+        ephemeral: false,
+        files
+    });
 }
 
 export const Tiktok: Command = {
@@ -93,16 +97,20 @@ export const Tiktok: Command = {
     run: async (client: Client, interaction: CommandInteraction) => {
         try {
             //@ts-ignore
-            const url = interaction.options.getString('url', true);
+            const url: string = interaction.options.getString('url', true).split('?')[0];
             //@ts-ignore
             const spoiler = interaction.options.getBoolean('spoiler', false);
-            let id = url.split('/');
-            id = id[id.length - 1];
+
+            let id = url.split('/')[url.split('/').length - 1];
+            if (id === '') {
+                id = url.split('/')[url.split('/').length - 2];
+            }
 
             try {
                 await downloadSlideshow(interaction, id, url, spoiler);
             } catch (slideshowError) {
                 try {
+                    console.log(slideshowError);
                     await downloadVideo(interaction, id, url, spoiler);
                 } catch (videoError) {
                     throw new Error(`\nSlideshow error: ${slideshowError}\nVideo error: ${videoError}`);
@@ -112,7 +120,7 @@ export const Tiktok: Command = {
             console.error(e);
 
             await interaction.followUp({
-                ephemeral: true,
+                ephemeral: false,
                 content: `\n${e}`
             })
         }
