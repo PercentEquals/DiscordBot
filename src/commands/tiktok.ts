@@ -7,24 +7,32 @@ import ffmpegStatic from 'ffmpeg-static';
 import ffmpeg from 'fluent-ffmpeg';
 import cheerio from "cheerio";
 
+const DISCORD_LIMIT = 23 * 1024 * 1024; // ~25MB (23 to be sure)
+
 ffmpeg.setFfmpegPath(ffmpegStatic as string);
 
 async function convertVideo(id: string) {
-    console.log('[ffmpeg] starting', ffmpegStatic);
-
     return new Promise((resolve, reject) => {
-        ffmpeg(`cache/${id}.mp4`)
-            .videoCodec('libx264')
-            .output(`cache/${id}-ffmpeg.mp4`)
-            .on('end', (done: any) => {
-                console.log('[ffmpeg] done');
-                resolve(done)
-            })
-            .on('error', (err: any) => {
-                console.log('[ffmpeg] error', err);
-                reject(err)
-            })
-            .run();
+        console.log('[ffmpeg] converting', ffmpegStatic);
+        
+        const process = ffmpeg(`cache/${id}.mp4`);
+        process.videoCodec('libx264')
+        process.output(`cache/${id}-ffmpeg.mp4`)
+        process.on('end', (done: any) => {
+            console.log('[ffmpeg] conversion done');
+            resolve(done)
+        })
+        process.on('error', (err: any) => {
+            console.log('[ffmpeg] error', err);
+            reject(err)
+        })
+        
+        if (fs.statSync(`cache/${id}.mp4`).size > DISCORD_LIMIT) {
+            console.log('[ffmpeg] also compressing');
+            process.videoBitrate('200k');
+        }
+
+        process.run();
     })
 }
 
@@ -43,6 +51,13 @@ async function downloadVideo(interaction: CommandInteraction, id: string, url: s
     file.setSpoiler(spoiler);
 
     console.log('[discord] sending');
+
+    if (fs.statSync(`cache/${id}-ffmpeg.mp4`).size > DISCORD_LIMIT) {
+        console.log('[discord] file too big');
+        const size = fs.statSync(`cache/${id}-ffmpeg.mp4`).size / 1024 / 1024;
+        throw new Error(`File too big - ${size}MB / ${DISCORD_LIMIT / 1024 / 1024}MB - ${url}`);
+    }
+
     await interaction.followUp({
         ephemeral: false,
         files: [file]
@@ -110,7 +125,6 @@ export const Tiktok: Command = {
                 await downloadSlideshow(interaction, id, url, spoiler);
             } catch (slideshowError) {
                 try {
-                    console.log(slideshowError);
                     await downloadVideo(interaction, id, url, spoiler);
                 } catch (videoError) {
                     throw new Error(`\nSlideshow error: ${slideshowError}\nVideo error: ${videoError}`);
