@@ -39,7 +39,6 @@ async function convertVideo(id: string, audioOnly: boolean): Promise<string> {
 
         if (audioOnly) {
             process.noVideo();
-            process.audioCodec('copy');
             process.format('mp3');
         }
 
@@ -47,8 +46,17 @@ async function convertVideo(id: string, audioOnly: boolean): Promise<string> {
     })
 }
 
-async function downloadVideo(interaction: CommandInteraction, id: string, url: string, spoiler: boolean, audioOnly: boolean) {   
+async function downloadVideo(
+    interaction: CommandInteraction,
+    id: string,
+    url: string,
+    spoiler: boolean,
+    sigi_state: any,
+    audioOnly: boolean
+) {   
     const initialPath = `cache/${id}.mp4`;
+    const key = Object.keys(sigi_state.ItemModule)[0];
+    const imagesName = sigi_state.SEOState.metaParams.title;
 
     const result = await youtubedl(url, {
         output: initialPath
@@ -59,7 +67,7 @@ async function downloadVideo(interaction: CommandInteraction, id: string, url: s
     const finalPath = await convertVideo(id, audioOnly);
 
     const file = new AttachmentBuilder(finalPath);
-    file.setName(`${id}.${audioOnly ? 'mp3' : 'mp4'}`);
+    file.setName(`${imagesName}.${audioOnly ? 'mp3' : 'mp4'}`);
     file.setSpoiler(spoiler);
 
     console.log('[discord] sending');
@@ -79,27 +87,19 @@ async function downloadVideo(interaction: CommandInteraction, id: string, url: s
     fs.unlinkSync(finalPath);
 }
 
-async function downloadSlideshow(interaction: CommandInteraction, id: string, url: string, spoiler: boolean, audioOnly: boolean) {
-    const response = await fetch(url);
-    const body = await response.text();
-
-    const $ = cheerio.load(body);
-    const files = [] as AttachmentBuilder[];
-
-    const $script = $('#SIGI_STATE');
-    const sigi_state = JSON.parse($script.html() as string);
-
+async function downloadSlideshow(
+    interaction: CommandInteraction,
+    sigi_state: any,
+    spoiler: boolean
+) {
     const key = Object.keys(sigi_state.ItemModule)[0];
-
-    if (!sigi_state.ItemModule?.[key]?.imagePost?.images || audioOnly) {
-        return false;
-    }
-
     const imagesData = sigi_state.ItemModule[key].imagePost.images;
+    const imagesName = sigi_state.SEOState.metaParams.title;
+    const files = [] as AttachmentBuilder[];
 
     imagesData.forEach((image: { imageURL: { urlList: string[] } }, i: number) => {
         const file = new AttachmentBuilder(image.imageURL.urlList[0]);
-        file.setName(`${id}-${i}.jpg`);
+        file.setName(`${imagesName}-${i}.jpg`);
         file.setSpoiler(spoiler);
 
         files.push(file);
@@ -116,8 +116,6 @@ async function downloadSlideshow(interaction: CommandInteraction, id: string, ur
         ephemeral: false,
         files
     });
-
-    return true;
 }
 
 export const Tiktok: Command = {
@@ -136,7 +134,7 @@ export const Tiktok: Command = {
             //@ts-ignore
             const spoiler = interaction.options.getBoolean('spoiler', false);
             //@ts-ignore
-            const audio = interaction.options.getBoolean('audio', false);
+            const audioOnly = interaction.options.getBoolean('audio', false);
 
             let id = url.split('/')[url.split('/').length - 1];
             if (id === '') {
@@ -151,8 +149,19 @@ export const Tiktok: Command = {
                 throw new Error('Not a tiktok url');
             }
 
-            if (!await downloadSlideshow(interaction, id, url, spoiler, audio)) {
-                await downloadVideo(interaction, id, url, spoiler, audio);
+            const response = await fetch(url);
+            const body = await response.text();
+        
+            const $ = cheerio.load(body);        
+            const $script = $('#SIGI_STATE');
+            const sigi_state = JSON.parse($script.html() as string);
+            
+            const key = Object.keys(sigi_state.ItemModule ?? { "null": null })[0];
+            
+            if (sigi_state.ItemModule && key && !audioOnly && sigi_state.ItemModule?.[key]?.imagePost?.images) {
+                await downloadSlideshow(interaction, sigi_state, spoiler);
+            } else {
+                await downloadVideo(interaction, id, url, spoiler, sigi_state, audioOnly);
             }
         } catch (e) {
             console.error(e);
