@@ -10,26 +10,27 @@ import cheerio from "cheerio";
 const DISCORD_LIMIT = 23 * 1024 * 1024; // ~25MB (23 to be sure)
 
 ffmpeg.setFfmpegPath(ffmpegStatic as string);
+fs.mkdirSync('cache', { recursive: true });
 
 async function convertVideo(id: string) {
     return new Promise((resolve, reject) => {
         console.log('[ffmpeg] converting', ffmpegStatic);
         
         const process = ffmpeg(`cache/${id}.mp4`);
-        process.videoCodec('libx264')
-        process.output(`cache/${id}-ffmpeg.mp4`)
+        process.videoCodec('libx264');
+        process.output(`cache/${id}-ffmpeg.mp4`);
         process.on('end', (done: any) => {
             console.log('[ffmpeg] conversion done');
-            resolve(done)
+            resolve(done);
         })
         process.on('error', (err: any) => {
             console.log('[ffmpeg] error', err);
-            reject(err)
+            reject(err);
         })
         
         if (fs.statSync(`cache/${id}.mp4`).size > DISCORD_LIMIT) {
             console.log('[ffmpeg] also compressing');
-            process.videoBitrate('200k');
+            process.videoBitrate('300k');
         }
 
         process.run();
