@@ -6,6 +6,7 @@ import fs from "fs";
 import ffmpegStatic from "ffmpeg-static";
 import ffmpeg from "fluent-ffmpeg";
 import cheerio from "cheerio";
+import { ItemModuleChildren, TiktokApi, Image } from "types/tiktokApi";
 
 const DISCORD_LIMIT = 23 * 1024 * 1024; // ~25MB (23 to be sure)
 
@@ -51,12 +52,11 @@ async function downloadVideo(
     id: string,
     url: string,
     spoiler: boolean,
-    sigi_state: any,
+    sigi_state: TiktokApi,
     audioOnly: boolean
 ) {   
     const initialPath = `cache/${id}.mp4`;
-    const key = Object.keys(sigi_state.ItemModule)[0];
-    const imagesName = sigi_state.SEOState.metaParams.title;
+    const imagesName = getTitleFromTiktokApi(sigi_state);
 
     const result = await youtubedl(url, {
         output: initialPath
@@ -89,15 +89,14 @@ async function downloadVideo(
 
 async function downloadSlideshow(
     interaction: CommandInteraction,
-    sigi_state: any,
+    sigi_state: TiktokApi,
     spoiler: boolean
 ) {
-    const key = Object.keys(sigi_state.ItemModule)[0];
-    const imagesData = sigi_state.ItemModule[key].imagePost.images;
-    const imagesName = sigi_state.SEOState.metaParams.title;
+    const imagesData = getImageDataFromTiktokApi(sigi_state) as Image[];
+    const imagesName = getTitleFromTiktokApi(sigi_state);
     const files = [] as AttachmentBuilder[];
 
-    imagesData.forEach((image: { imageURL: { urlList: string[] } }, i: number) => {
+    imagesData.forEach((image, i: number) => {
         const file = new AttachmentBuilder(image.imageURL.urlList[0]);
         file.setName(`${imagesName}-${i}.jpg`);
         file.setSpoiler(spoiler);
@@ -116,6 +115,17 @@ async function downloadSlideshow(
         ephemeral: false,
         files
     });
+}
+
+function getImageDataFromTiktokApi(sigi_state: TiktokApi) {
+    if (!sigi_state.ItemModule) return null;
+
+    const key = Object.keys(sigi_state.ItemModule)[0] as keyof TiktokApi['ItemModule'];
+    return (sigi_state.ItemModule?.[key] as ItemModuleChildren)?.imagePost?.images;
+}
+
+function getTitleFromTiktokApi(sigi_state: TiktokApi) {
+    return sigi_state.SEOState.metaParams.title;
 }
 
 export const Tiktok: Command = {
@@ -141,7 +151,7 @@ export const Tiktok: Command = {
                 id = url.split('/')[url.split('/').length - 2];
             }
 
-            if (id === '') {
+            if (!id || id === '') {
                 throw new Error('No id found');
             }
 
@@ -154,11 +164,9 @@ export const Tiktok: Command = {
         
             const $ = cheerio.load(body);        
             const $script = $('#SIGI_STATE');
-            const sigi_state = JSON.parse($script.html() as string);
+            const sigi_state: TiktokApi = JSON.parse($script.html() as string);
             
-            const key = Object.keys(sigi_state.ItemModule ?? { "null": null })[0];
-            
-            if (sigi_state.ItemModule && key && !audioOnly && sigi_state.ItemModule?.[key]?.imagePost?.images) {
+            if (getImageDataFromTiktokApi(sigi_state) && !audioOnly) {
                 await downloadSlideshow(interaction, sigi_state, spoiler);
             } else {
                 await downloadVideo(interaction, id, url, spoiler, sigi_state, audioOnly);
