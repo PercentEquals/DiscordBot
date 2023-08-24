@@ -122,6 +122,10 @@ export const Tiktok: Command = {
                 id = url.split('/')[url.split('/').length - 2];
             }
 
+            if (!url.includes('tiktok')) {
+                throw new Error('Not a tiktok url');
+            }
+
             try {
                 await downloadSlideshow(interaction, id, url, spoiler);
             } catch (slideshowError) {
