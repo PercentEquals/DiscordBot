@@ -1,0 +1,1 @@
+export const DISCORD_LIMIT = 23 * 1024 * 1024; // ~25MB (23 to be sure)

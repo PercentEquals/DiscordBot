@@ -1,25 +1,22 @@
-import { ApplicationCommandType, AttachmentBuilder, Client, CommandInteraction, SlashCommandBooleanOption, SlashCommandStringOption, SlashCommandSubcommandGroupBuilder } from "discord.js";
+import { ApplicationCommandType, AttachmentBuilder, Client, CommandInteraction, SlashCommandBooleanOption, SlashCommandStringOption } from "discord.js";
 import { Command } from "../command";
 import youtubedl from "youtube-dl-exec";
 import fs from "fs";
-
-import ffmpegStatic from "ffmpeg-static";
 import ffmpeg from "fluent-ffmpeg";
 import cheerio from "cheerio";
 import { ItemModuleChildren, TiktokApi, Image } from "types/tiktokApi";
-
-const DISCORD_LIMIT = 23 * 1024 * 1024; // ~25MB (23 to be sure)
-
-ffmpeg.setFfmpegPath(ffmpegStatic as string);
-fs.mkdirSync('cache', { recursive: true });
+import { DISCORD_LIMIT } from "../constants/discordlimit";
+import { ALLOWED_YTD_HOSTS } from "../constants/allowedytdhosts";
+//@ts-ignore
+import tt from "twitter-dl";
 
 async function convertVideo(id: string, audioOnly: boolean): Promise<string> {
     return new Promise((resolve, reject) => {
         const initialPath = `cache/${id}.mp4`;
         const finalPath = `cache/${id}-ffmpeg.${audioOnly ? 'mp3' : 'mp4'}`;
 
-        console.log('[ffmpeg] converting', ffmpegStatic);
-        
+        console.log('[ffmpeg] converting');
+
         const process = ffmpeg(initialPath);
         process.videoCodec('libx264');
         process.addOption(["-preset", "ultrafast"]);
@@ -32,7 +29,7 @@ async function convertVideo(id: string, audioOnly: boolean): Promise<string> {
             console.log('[ffmpeg] error', err);
             reject(err);
         })
-        
+
         if (fs.statSync(initialPath).size > DISCORD_LIMIT) {
             console.log('[ffmpeg] also compressing');
             process.videoBitrate('300k');
@@ -52,11 +49,10 @@ async function downloadVideo(
     id: string,
     url: string,
     spoiler: boolean,
-    sigi_state: TiktokApi,
+    videoName: string,
     audioOnly: boolean
-) {   
+) {
     const initialPath = `cache/${id}.mp4`;
-    const imagesName = getTitleFromTiktokApi(sigi_state);
 
     const result = await youtubedl(url, {
         output: initialPath
@@ -67,7 +63,7 @@ async function downloadVideo(
     const finalPath = await convertVideo(id, audioOnly);
 
     const file = new AttachmentBuilder(finalPath);
-    file.setName(`${imagesName}.${audioOnly ? 'mp3' : 'mp4'}`);
+    file.setName(`${videoName}.${audioOnly ? 'mp3' : 'mp4'}`);
     file.setSpoiler(spoiler);
 
     console.log('[discord] sending');
@@ -89,11 +85,10 @@ async function downloadVideo(
 
 async function downloadSlideshow(
     interaction: CommandInteraction,
-    sigi_state: TiktokApi,
+    imagesData: Image[],
+    imagesName: string,
     spoiler: boolean
 ) {
-    const imagesData = getImageDataFromTiktokApi(sigi_state) as Image[];
-    const imagesName = getTitleFromTiktokApi(sigi_state);
     const files = [] as AttachmentBuilder[];
 
     imagesData.forEach((image, i: number) => {
@@ -118,19 +113,43 @@ async function downloadSlideshow(
 }
 
 function getImageDataFromTiktokApi(sigi_state: TiktokApi) {
-    if (!sigi_state.ItemModule) return null;
+    if (!sigi_state?.ItemModule) return null;
 
     const key = Object.keys(sigi_state.ItemModule)[0] as keyof TiktokApi['ItemModule'];
     return (sigi_state.ItemModule?.[key] as ItemModuleChildren)?.imagePost?.images;
 }
 
-function getTitleFromTiktokApi(sigi_state: TiktokApi) {
+function getTitleFromTiktokApi(sigi_state: TiktokApi, fallbackTitle: string) {
+    if (!sigi_state?.SEOState) return fallbackTitle;
+
     return sigi_state.SEOState.metaParams.title;
+}
+
+function getIdFromUrl(url: URL) {
+    if (!ALLOWED_YTD_HOSTS.includes(url.hostname)) {
+        throw new Error(`Not an allowed url ${JSON.stringify(ALLOWED_YTD_HOSTS)}`);
+    }
+
+    const urlNoParams = url.href.split('?')[0];
+    let id = urlNoParams.split('/')[urlNoParams.split('/').length - 1];
+    if (id === '') {
+        id = urlNoParams.split('/')[urlNoParams.split('/').length - 2];
+    }
+
+    if (!id && url.hostname.includes('youtube')) {
+        id = url.searchParams.get('v') as string;
+    }
+
+    if (!id) {
+        throw new Error('No id found');
+    }
+
+    return id;
 }
 
 export const Tiktok: Command = {
     name: "tiktok",
-    description: "Send tiktok video/slideshow via url",
+    description: "Send  video/slideshow via url",
     type: ApplicationCommandType.ChatInput,
     options: [
         new SlashCommandStringOption().setName('url').setDescription('Tiktok link').setRequired(true),
@@ -140,36 +159,29 @@ export const Tiktok: Command = {
     run: async (client: Client, interaction: CommandInteraction) => {
         try {
             //@ts-ignore
-            const url: string = interaction.options.getString('url', true).split('?')[0];
+            const url: string = interaction.options.getString('url', true);
             //@ts-ignore
             const spoiler = interaction.options.getBoolean('spoiler', false);
             //@ts-ignore
             const audioOnly = interaction.options.getBoolean('audio', false);
 
-            let id = url.split('/')[url.split('/').length - 1];
-            if (id === '') {
-                id = url.split('/')[url.split('/').length - 2];
-            }
-
-            if (!id || id === '') {
-                throw new Error('No id found');
-            }
-
-            if (!new URL(url).hostname.includes('tiktok')) {
-                throw new Error('Not a tiktok url');
-            }
+            const urlObject = new URL(url);
+            const id = getIdFromUrl(urlObject);
 
             const response = await fetch(url);
             const body = await response.text();
-        
-            const $ = cheerio.load(body);        
+
+            const $ = cheerio.load(body);
             const $script = $('#SIGI_STATE');
             const sigi_state: TiktokApi = JSON.parse($script.html() as string);
-            
+
             if (getImageDataFromTiktokApi(sigi_state) && !audioOnly) {
-                await downloadSlideshow(interaction, sigi_state, spoiler);
+                const imagesData = getImageDataFromTiktokApi(sigi_state) as Image[];
+                const imagesName = getTitleFromTiktokApi(sigi_state, id);
+                await downloadSlideshow(interaction, imagesData, imagesName, spoiler);
             } else {
-                await downloadVideo(interaction, id, url, spoiler, sigi_state, audioOnly);
+                const videoName = getTitleFromTiktokApi(sigi_state, id);
+                await downloadVideo(interaction, id, url, spoiler, videoName, audioOnly);
             }
         } catch (e) {
             console.error(e);

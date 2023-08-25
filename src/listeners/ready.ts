@@ -7,7 +7,7 @@ export default (client: Client): void => {
             return;
         }
 
-        console.log(`${client.user.username} is online`);
+        console.log(`[discord] ${client.user.username} is online`);
         await client.application.commands.set(Commands);
     });
 };
