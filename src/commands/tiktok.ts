@@ -1,93 +1,63 @@
 import { ApplicationCommandType, AttachmentBuilder, Client, CommandInteraction, SlashCommandBooleanOption, SlashCommandStringOption } from "discord.js";
 import { Command } from "../command";
-import youtubedl from "youtube-dl-exec";
-import fs from "fs";
-import ffmpeg from "fluent-ffmpeg";
+import youtubedl, { YtResponse } from "youtube-dl-exec";
 import cheerio from "cheerio";
 import { ItemModuleChildren, TiktokApi, Image } from "types/tiktokApi";
 import { DISCORD_LIMIT } from "../constants/discordlimit";
 import { ALLOWED_YTD_HOSTS } from "../constants/allowedytdhosts";
 
-async function convertVideo(id: string, compress: boolean, audioOnly: boolean): Promise<string> {
-    return new Promise((resolve, reject) => {
-        const initialPath = `cache/${id}.mp4`;
-        const finalPath = `cache/${id}-ffmpeg.${audioOnly ? 'mp3' : 'mp4'}`;
-
-        console.log('[ffmpeg] converting');
-
-        const process = ffmpeg(initialPath);
-        process.output(finalPath);
-        process.addOption(["-preset", "ultrafast"]);
-
-        if (compress) {
-            process.videoBitrate('1000k');
-            process.audioBitrate('128k');
-            process.addOption(["-vf", "scale=iw/2:ih/2"]);
-        }
-
-        if (audioOnly) {
-            process.noVideo();
-            process.format('mp3');
-        }
-
-        process.on('end', (done: any) => {
-            fs.unlinkSync(initialPath);
-            console.log('[ffmpeg] conversion done');
-            resolve(finalPath);
-        });
-
-        process.on('error', (err: any) => {
-            fs.unlinkSync(initialPath);
-            console.log('[ffmpeg] error', err);
-            reject(err);
-        });
-
-        process.run();
-    })
-}
-
 async function downloadVideo(
     interaction: CommandInteraction,
-    id: string,
     url: string,
     spoiler: boolean,
-    videoName: string,
     audioOnly: boolean
 ) {
-    let filePath = `cache/${id}.mp4`;
-
-    const result = await youtubedl(url, {
-        output: filePath
+    let videoData = await youtubedl(url, {
+        dumpSingleJson: true,
+        getFormat: true,
+        noWarnings: true,
     });
 
-    console.log(result);
+    //@ts-ignore
+    videoData = videoData.split('\n').slice(1).join('\n');
+    videoData = JSON.parse(videoData as any) as YtResponse;
 
-    if (fs.statSync(filePath).size > DISCORD_LIMIT && !audioOnly) {
-        console.log('[discord] initial file too big - converting');
-        filePath = await convertVideo(id, true, audioOnly);
-    } else {
-        filePath = await convertVideo(id, false, audioOnly);
+    let bestFormat: { url: string } | null = null;
+
+    if (new URL(url).hostname.includes('tiktok')) {
+        //@ts-ignore - tiktok slideshow audio edge case
+        const tiktokSlideshowAudio = videoData.requested_downloads?.[0];
+
+        const formatsNoWatermark = videoData.formats.filter((format) => format.format_note && format.format_note.includes('watermark'));
+        const formatsUnderLimit = formatsNoWatermark?.filter((format) => format.filesize && format.filesize < DISCORD_LIMIT);
+        const formatsH264 = formatsUnderLimit?.filter((format) => format.format.includes('h264'));
+
+        if (formatsH264.length === 0 && tiktokSlideshowAudio) {
+            formatsH264.push(tiktokSlideshowAudio);
+        }
+
+        bestFormat = formatsH264.sort((a, b) => a.filesize - b.filesize)?.[0];
+    } else if (new URL(url).hostname.includes('youtube')) {
+        //@ts-ignore
+        const formatsUnderLimit = videoData.formats.filter((format) => format.filesize < DISCORD_LIMIT || format.filesize_approx < DISCORD_LIMIT);
+        const formats = formatsUnderLimit.filter((format) => format.acodec && format.vcodec && format.acodec.includes('mp4a') && format.vcodec.includes('avc'));
+        bestFormat = formats.sort((a, b) => a.filesize - b.filesize)?.[0];
     }
 
-    const file = new AttachmentBuilder(filePath);
-    file.setName(`${videoName}.${audioOnly ? 'mp3' : 'mp4'}`);
+    if (!bestFormat) {
+        throw new Error(`No format found under ${DISCORD_LIMIT / 1024 / 1024}MB`);
+    }
+
+    const file = new AttachmentBuilder(bestFormat.url);
+    file.setName(`${videoData.title}.${audioOnly ? 'mp3' : 'mp4'}`);
     file.setSpoiler(spoiler);
 
     console.log('[discord] sending');
-
-    if (fs.statSync(filePath).size > DISCORD_LIMIT) {
-        console.log('[discord] file too big');
-        const size = fs.statSync(filePath).size / 1024 / 1024;
-        fs.unlinkSync(filePath);
-        throw new Error(`File too big - ${size.toFixed(2)}MB / ${(DISCORD_LIMIT / 1024 / 1024).toFixed(2)}MB - ${url}`);
-    }
 
     await interaction.followUp({
         ephemeral: false,
         files: [file]
     });
-
-    fs.unlinkSync(filePath);
 }
 
 async function downloadSlideshow(
@@ -126,13 +96,13 @@ function getImageDataFromTiktokApi(sigi_state: TiktokApi) {
     return (sigi_state.ItemModule?.[key] as ItemModuleChildren)?.imagePost?.images;
 }
 
-function getTitleFromTiktokApi(sigi_state: TiktokApi, fallbackTitle: string) {
-    if (!sigi_state?.SEOState) return fallbackTitle;
+function getTitleFromTiktokApi(sigi_state: TiktokApi) {
+    if (!sigi_state?.SEOState) return null;
 
     return sigi_state.SEOState.metaParams.title;
 }
 
-function getIdFromUrl(url: URL) {
+function validateUrl(url: URL) {
     if (!ALLOWED_YTD_HOSTS.includes(url.hostname)) {
         throw new Error(`Not an allowed url ${JSON.stringify(ALLOWED_YTD_HOSTS)}`);
     }
@@ -150,8 +120,6 @@ function getIdFromUrl(url: URL) {
     if (!id) {
         throw new Error('No id found');
     }
-
-    return id;
 }
 
 export const Tiktok: Command = {
@@ -172,8 +140,7 @@ export const Tiktok: Command = {
             //@ts-ignore
             const audioOnly = interaction.options.getBoolean('audio', false);
 
-            const urlObject = new URL(url);
-            const id = getIdFromUrl(urlObject);
+            validateUrl(new URL(url));
 
             const response = await fetch(url);
             const body = await response.text();
@@ -182,13 +149,16 @@ export const Tiktok: Command = {
             const $script = $('#SIGI_STATE');
             const sigi_state: TiktokApi = JSON.parse($script.html() as string);
 
+            if (response.status !== 200) {
+                throw new Error(`Video not found: ${response.status}`);
+            }
+
             if (getImageDataFromTiktokApi(sigi_state) && !audioOnly) {
                 const imagesData = getImageDataFromTiktokApi(sigi_state) as Image[];
-                const imagesName = getTitleFromTiktokApi(sigi_state, id);
+                const imagesName = getTitleFromTiktokApi(sigi_state) as string;
                 await downloadSlideshow(interaction, imagesData, imagesName, spoiler);
             } else {
-                const videoName = getTitleFromTiktokApi(sigi_state, id);
-                await downloadVideo(interaction, id, url, spoiler, videoName, audioOnly);
+                await downloadVideo(interaction, url, spoiler, audioOnly);
             }
         } catch (e) {
             console.error(e);
