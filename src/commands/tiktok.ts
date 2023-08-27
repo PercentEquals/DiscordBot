@@ -7,10 +7,8 @@ import cheerio from "cheerio";
 import { ItemModuleChildren, TiktokApi, Image } from "types/tiktokApi";
 import { DISCORD_LIMIT } from "../constants/discordlimit";
 import { ALLOWED_YTD_HOSTS } from "../constants/allowedytdhosts";
-//@ts-ignore
-import tt from "twitter-dl";
 
-async function convertVideo(id: string, audioOnly: boolean): Promise<string> {
+async function convertVideo(id: string, compress: boolean, audioOnly: boolean): Promise<string> {
     return new Promise((resolve, reject) => {
         const initialPath = `cache/${id}.mp4`;
         const finalPath = `cache/${id}-ffmpeg.${audioOnly ? 'mp3' : 'mp4'}`;
@@ -19,26 +17,31 @@ async function convertVideo(id: string, audioOnly: boolean): Promise<string> {
 
         const process = ffmpeg(initialPath);
         process.videoCodec('libx264');
-        process.addOption(["-preset", "ultrafast"]);
         process.output(finalPath);
-        process.on('end', (done: any) => {
-            console.log('[ffmpeg] conversion done');
-            resolve(finalPath);
-        })
-        process.on('error', (err: any) => {
-            console.log('[ffmpeg] error', err);
-            reject(err);
-        })
 
-        if (fs.statSync(initialPath).size > DISCORD_LIMIT) {
-            console.log('[ffmpeg] also compressing');
-            process.videoBitrate('300k');
+        if (compress) {
+            process.addOption(["-crf", "28"]);
+            process.size('50%');
+        } else {
+            process.addOption(["-preset", "ultrafast"]);
         }
 
         if (audioOnly) {
             process.noVideo();
             process.format('mp3');
         }
+
+        process.on('end', (done: any) => {
+            fs.unlinkSync(initialPath);
+            console.log('[ffmpeg] conversion done');
+            resolve(finalPath);
+        });
+
+        process.on('error', (err: any) => {
+            fs.unlinkSync(initialPath);
+            console.log('[ffmpeg] error', err);
+            reject(err);
+        });
 
         process.run();
     })
@@ -52,26 +55,32 @@ async function downloadVideo(
     videoName: string,
     audioOnly: boolean
 ) {
-    const initialPath = `cache/${id}.mp4`;
+    let filePath = `cache/${id}.mp4`;
 
     const result = await youtubedl(url, {
-        output: initialPath
+        output: filePath
     });
 
     console.log(result);
 
-    const finalPath = await convertVideo(id, audioOnly);
+    if (fs.statSync(filePath).size > DISCORD_LIMIT && !audioOnly) {
+        console.log('[discord] initial file too big - converting');
+        filePath = await convertVideo(id, true, audioOnly);
+    } else {
+        filePath = await convertVideo(id, false, audioOnly);
+    }
 
-    const file = new AttachmentBuilder(finalPath);
+    const file = new AttachmentBuilder(filePath);
     file.setName(`${videoName}.${audioOnly ? 'mp3' : 'mp4'}`);
     file.setSpoiler(spoiler);
 
     console.log('[discord] sending');
 
-    if (fs.statSync(finalPath).size > DISCORD_LIMIT) {
+    if (fs.statSync(filePath).size > DISCORD_LIMIT) {
         console.log('[discord] file too big');
-        const size = fs.statSync(finalPath).size / 1024 / 1024;
-        throw new Error(`File too big - ${size}MB / ${DISCORD_LIMIT / 1024 / 1024}MB - ${url}`);
+        const size = fs.statSync(filePath).size / 1024 / 1024;
+        fs.unlinkSync(filePath);
+        throw new Error(`File too big - ${size.toFixed(2)}MB / ${(DISCORD_LIMIT / 1024 / 1024).toFixed(2)}MB - ${url}`);
     }
 
     await interaction.followUp({
@@ -79,8 +88,7 @@ async function downloadVideo(
         files: [file]
     });
 
-    fs.unlinkSync(initialPath);
-    fs.unlinkSync(finalPath);
+    fs.unlinkSync(filePath);
 }
 
 async function downloadSlideshow(
