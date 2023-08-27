@@ -16,14 +16,13 @@ async function convertVideo(id: string, compress: boolean, audioOnly: boolean): 
         console.log('[ffmpeg] converting');
 
         const process = ffmpeg(initialPath);
-        process.videoCodec('libx264');
         process.output(finalPath);
+        process.addOption(["-preset", "ultrafast"]);
 
         if (compress) {
-            process.addOption(["-crf", "28"]);
-            process.size('50%');
-        } else {
-            process.addOption(["-preset", "ultrafast"]);
+            process.videoBitrate('1000k');
+            process.audioBitrate('128k');
+            process.addOption(["-vf", "scale=iw/2:ih/2"]);
         }
 
         if (audioOnly) {
