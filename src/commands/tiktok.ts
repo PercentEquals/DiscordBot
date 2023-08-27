@@ -28,7 +28,7 @@ async function downloadVideo(
         //@ts-ignore - tiktok slideshow audio edge case
         const tiktokSlideshowAudio = videoData.requested_downloads?.[0];
 
-        const formatsNoWatermark = videoData.formats.filter((format) => format.format_note && format.format_note.includes('watermark'));
+        const formatsNoWatermark = videoData.formats.filter((format) => format.format_note && !format.format_note.includes('watermark'));
         const formatsUnderLimit = formatsNoWatermark?.filter((format) => format.filesize && format.filesize < DISCORD_LIMIT);
         const formatsH264 = formatsUnderLimit?.filter((format) => format.format.includes('h264'));
 
