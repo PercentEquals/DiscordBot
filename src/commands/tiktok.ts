@@ -142,16 +142,23 @@ export const Tiktok: Command = {
 
             validateUrl(new URL(url));
 
-            const response = await fetch(url);
-            const body = await response.text();
+            let body = '';
+
+            try {
+                const response = await fetch(url);
+
+                if (response.status !== 200) {
+                    throw new Error(`Video not found: ${response.status}`);
+                }
+
+                body = await response.text();
+            } catch (e) {
+                console.error(e);
+            }
 
             const $ = cheerio.load(body);
             const $script = $('#SIGI_STATE');
             const sigi_state: TiktokApi = JSON.parse($script.html() as string);
-
-            if (response.status !== 200) {
-                throw new Error(`Video not found: ${response.status}`);
-            }
 
             if (getImageDataFromTiktokApi(sigi_state) && !audioOnly) {
                 const imagesData = getImageDataFromTiktokApi(sigi_state) as Image[];
