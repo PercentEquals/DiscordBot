@@ -5,6 +5,7 @@ import cheerio from "cheerio";
 import { ItemModuleChildren, TiktokApi, Image } from "types/tiktokApi";
 import { DISCORD_LIMIT } from "../constants/discordlimit";
 import { ALLOWED_YTD_HOSTS } from "../constants/allowedytdhosts";
+import { MAX_RETRIES } from "../constants/maxretries";
 
 async function downloadVideo(
     interaction: CommandInteraction,
@@ -52,12 +53,22 @@ async function downloadVideo(
     file.setName(`${videoData.title}.${audioOnly ? 'mp3' : 'mp4'}`);
     file.setSpoiler(spoiler);
 
-    console.log('[discord] sending');
+    console.log('[discord] sending video');
 
-    await interaction.followUp({
-        ephemeral: false,
-        files: [file]
-    });
+    try {
+        await interaction.followUp({
+            ephemeral: false,
+            files: [file]
+        });
+    } catch (e) {
+        console.error(e);
+
+        // Sometimes discord fails to send the video, so we try again
+        await interaction.followUp({
+            ephemeral: false,
+            files: [file]
+        });
+    }
 }
 
 async function downloadSlideshow(
@@ -75,6 +86,8 @@ async function downloadSlideshow(
 
         files.push(file);
     });
+
+    console.log('[discord] sending slideshow');
 
     while (files.length > 10) {
         await interaction.followUp({
@@ -122,6 +135,32 @@ function validateUrl(url: URL) {
     }
 }
 
+async function fetchWithRetries(url: string, retry = 0): Promise<Response> {
+    return new Promise(async (resolve, reject) => {
+        try {
+            const response = await fetch(url);
+
+            if (response.status === 200) {
+                return resolve(response);
+            }
+            
+            throw new Error(`Status code ${response.status}`);
+        } catch (e) {
+            console.error(e);
+
+            if (retry >= MAX_RETRIES) {
+                return reject(e);
+            }
+
+            console.log('retrying...');
+
+            return setTimeout(() => {
+                resolve(fetchWithRetries(url, retry + 1));
+            }, 2000);
+        }
+    });
+}
+
 export const Tiktok: Command = {
     name: "tiktok",
     description: "Send  video/slideshow via url",
@@ -142,19 +181,8 @@ export const Tiktok: Command = {
 
             validateUrl(new URL(url));
 
-            let body = '';
-
-            try {
-                const response = await fetch(url);
-
-                if (response.status !== 200) {
-                    throw new Error(`Video not found: ${response.status}`);
-                }
-
-                body = await response.text();
-            } catch (e) {
-                console.error(e);
-            }
+            const response = await fetchWithRetries(url);
+            const body = await response.text();
 
             const $ = cheerio.load(body);
             const $script = $('#SIGI_STATE');
