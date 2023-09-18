@@ -19,7 +19,7 @@ async function downloadVideo(
         noWarnings: true,
     });
 
-    //@ts-ignore
+    //@ts-ignore - youtube-dl-exec videoData contains useless first line
     videoData = videoData.split('\n').slice(1).join('\n');
     videoData = JSON.parse(videoData as any) as YtResponse;
 
@@ -39,7 +39,7 @@ async function downloadVideo(
 
         bestFormat = formatsH264.sort((a, b) => a.filesize - b.filesize)?.[0];
     } else if (new URL(url).hostname.includes('youtube')) {
-        //@ts-ignore
+        //@ts-ignore - youtube-dl-exec types don't include filesize_approx
         const formatsUnderLimit = videoData.formats.filter((format) => format.filesize < DISCORD_LIMIT || format.filesize_approx < DISCORD_LIMIT);
         const formats = formatsUnderLimit.filter((format) => format.acodec && format.vcodec && format.acodec.includes('mp4a') && format.vcodec.includes('avc'));
         bestFormat = formats.sort((a, b) => a.filesize - b.filesize)?.[0];
@@ -140,7 +140,7 @@ async function fetchWithRetries(url: string, retry = 0): Promise<Response> {
         try {
             const response = await fetch(url);
 
-            if (response.status === 200) {
+            if (response.ok) {
                 return resolve(response);
             }
             
@@ -152,7 +152,7 @@ async function fetchWithRetries(url: string, retry = 0): Promise<Response> {
                 return reject(e);
             }
 
-            console.log('retrying...');
+            console.log(`retrying... (${retry} / ${MAX_RETRIES})`);
 
             return setTimeout(() => {
                 resolve(fetchWithRetries(url, retry + 1));
@@ -161,9 +161,11 @@ async function fetchWithRetries(url: string, retry = 0): Promise<Response> {
     });
 }
 
+let runRetries = 0;
+
 export const Tiktok: Command = {
     name: "tiktok",
-    description: "Send  video/slideshow via url",
+    description: "Send video/slideshow via url",
     type: ApplicationCommandType.ChatInput,
     options: [
         new SlashCommandStringOption().setName('url').setDescription('Tiktok link').setRequired(true),
@@ -179,7 +181,9 @@ export const Tiktok: Command = {
             //@ts-ignore
             const audioOnly = interaction.options.getBoolean('audio', false);
 
-            validateUrl(new URL(url));
+            const urlObj = new URL(url);
+
+            validateUrl(urlObj);
 
             const response = await fetchWithRetries(url);
             const body = await response.text();
@@ -187,6 +191,22 @@ export const Tiktok: Command = {
             const $ = cheerio.load(body);
             const $script = $('#SIGI_STATE');
             const sigi_state: TiktokApi = JSON.parse($script.html() as string);
+
+            // Sometimes tiktok doesn't return the sigi_state, so we retry...
+            if (urlObj.hostname.includes('tiktok') && !sigi_state) {
+                console.log(`No sigi_state found. Retrying... (${runRetries} / ${MAX_RETRIES})`);
+
+                if (runRetries >= MAX_RETRIES) {
+                    runRetries = 0;
+                    throw new Error('No sigi_state found');
+                }
+                runRetries++;
+
+                return setTimeout(() => {
+                    Tiktok.run(client, interaction);
+                }, 1000);
+            }
+            runRetries = 0;
 
             if (getImageDataFromTiktokApi(sigi_state) && !audioOnly) {
                 const imagesData = getImageDataFromTiktokApi(sigi_state) as Image[];
