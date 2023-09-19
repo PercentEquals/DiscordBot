@@ -5,23 +5,42 @@ import cheerio from "cheerio";
 import { ItemModuleChildren, TiktokApi, Image } from "types/tiktokApi";
 import { DISCORD_LIMIT } from "../constants/discordlimit";
 import { ALLOWED_YTD_HOSTS } from "../constants/allowedytdhosts";
-import { MAX_RETRIES } from "../constants/maxretries";
+import { MAX_RETRIES, RETRY_TIMEOUT } from "../constants/maxretries";
+import fs from "fs";
 
 async function downloadVideo(
     interaction: CommandInteraction,
     url: string,
     spoiler: boolean,
-    audioOnly: boolean
+    audioOnly: boolean,
+    retry = 0
 ) {
-    let videoData = await youtubedl(url, {
-        dumpSingleJson: true,
-        getFormat: true,
-        noWarnings: true,
-    });
+    let videoData = null;
+    
+    try { 
+        videoData = await youtubedl(url, {
+            dumpSingleJson: true,
+            getFormat: true,
+            noWarnings: true,
+        });
+    } catch (e) {
+        console.error(e);
+
+        if (retry >= MAX_RETRIES) {
+            throw new Error(`Failed to download video - something went wrong with youtube-dl-exec: ${e}.`);
+        }
+
+        console.log(`retrying... (${retry} / ${MAX_RETRIES})`);
+        return setTimeout(() => {
+            downloadVideo(interaction, url, spoiler, audioOnly, retry + 1);
+        }, RETRY_TIMEOUT);
+    }
 
     //@ts-ignore - youtube-dl-exec videoData contains useless first line
     videoData = videoData.split('\n').slice(1).join('\n');
     videoData = JSON.parse(videoData as any) as YtResponse;
+
+    fs.writeFileSync('debug/videoData.json', JSON.stringify(videoData, null, 2));
 
     let bestFormat: { url: string } | null = null;
 
@@ -33,7 +52,7 @@ async function downloadVideo(
         const formatsUnderLimit = formatsNoWatermark?.filter((format) => format.filesize && format.filesize < DISCORD_LIMIT);
         const formatsH264 = formatsUnderLimit?.filter((format) => format.format.includes('h264'));
 
-        if (formatsH264.length === 0 && tiktokSlideshowAudio) {
+        if (formatsH264.length === 0 && tiktokSlideshowAudio && audioOnly) {
             formatsH264.push(tiktokSlideshowAudio);
         }
 
@@ -192,19 +211,21 @@ export const Tiktok: Command = {
             const $script = $('#SIGI_STATE');
             const sigi_state: TiktokApi = JSON.parse($script.html() as string);
 
+            fs.writeFileSync('debug/sigi_state.json', JSON.stringify(sigi_state, null, 2));
+
             // Sometimes tiktok doesn't return the sigi_state, so we retry...
             if (urlObj.hostname.includes('tiktok') && !sigi_state) {
                 console.log(`No sigi_state found. Retrying... (${runRetries} / ${MAX_RETRIES})`);
 
                 if (runRetries >= MAX_RETRIES) {
                     runRetries = 0;
-                    throw new Error('No sigi_state found');
+                    throw new Error('No sigi_state found. Please try again later.');
                 }
                 runRetries++;
 
                 return setTimeout(() => {
                     Tiktok.run(client, interaction);
-                }, 4000);
+                }, RETRY_TIMEOUT);
             }
             runRetries = 0;
 
