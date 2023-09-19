@@ -204,7 +204,7 @@ export const Tiktok: Command = {
 
                 return setTimeout(() => {
                     Tiktok.run(client, interaction);
-                }, 1000);
+                }, 4000);
             }
             runRetries = 0;
 
