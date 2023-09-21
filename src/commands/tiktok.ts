@@ -1,12 +1,18 @@
 import { ApplicationCommandType, AttachmentBuilder, Client, CommandInteraction, SlashCommandBooleanOption, SlashCommandStringOption } from "discord.js";
 import { Command } from "../command";
-import youtubedl, { YtResponse } from "youtube-dl-exec";
-import cheerio from "cheerio";
 import { ItemModuleChildren, TiktokApi, Image } from "types/tiktokApi";
 import { DISCORD_LIMIT } from "../constants/discordlimit";
 import { ALLOWED_YTD_HOSTS } from "../constants/allowedytdhosts";
 import { MAX_RETRIES, RETRY_TIMEOUT } from "../constants/maxretries";
+import { TiktokCommentsApi } from "types/tiktokCommentsApi";
+
+//@ts-ignore - tiktok-signature types not available
+import Signer from "tiktok-signature";
+
+import youtubedl, { YtResponse } from "youtube-dl-exec";
+import cheerio from "cheerio";
 import fs from "fs";
+import { TikTokSigner } from "types/tiktokSigner";
 
 async function downloadVideo(
     interaction: CommandInteraction,
@@ -121,11 +127,116 @@ async function downloadSlideshow(
     });
 }
 
+async function getCommentsFromTiktok(
+    interaction: CommandInteraction,
+    sigi_state: TiktokApi
+) {
+    const id = getTiktokIdFromTiktokApi(sigi_state);
+
+    const playUrl = new URL((sigi_state.ItemModule?.[id] as ItemModuleChildren)?.music.playUrl);
+    const aid = playUrl.searchParams.get('a');
+    
+    const url = `
+        https://www.tiktok.com/api/comment/list/?WebIdLastTime=1665241545
+        &aid=${aid}
+        &app_language=ja-JP
+        &app_name=tiktok_web
+        &aweme_id=${id}
+        &browser_language=en
+        &browser_name=Mozilla
+        &browser_online=true
+        &browser_platform=Win32
+        &browser_version=5.0%20%28Windows%20NT%2010.0%3B%20Win64%3B%20x64%29%20AppleWebKit%2F537.36%20%28KHTML%2C%20like%20Gecko%29%20Chrome%2F117.0.0.0%20Safari%2F537.36%20Edg%2F117.0.2045.31
+        &channel=tiktok_web
+        &cookie_enabled=true
+        &count=20
+        &current_region=JP
+        &cursor=20
+        &device_id=7152157914874201606
+        &device_platform=web_pc
+        &enter_from=tiktok_web
+        &focus_state=false
+        &fromWeb=1
+        &from_page=video
+        &history_len=3
+        &is_fullscreen=false
+        &is_non_personalized=false
+        &is_page_visible=true
+        &os=windows
+        &priority_region=PL
+        &referer=
+        &region=PL
+        &screen_height=1440
+        &screen_width=2560
+        &tz_name=Europe%2FWarsaw
+        &verifyFp=verify_l901uu00_aY6zusUQ_Fl2H_4jxP_AlGr_sX9lvUORNSWo
+        &webcast_language=en
+        &msToken=A_LEgirvqMF_5jIAz1AsDI5xQFapdE81nxNn1G8i1ysPq1KEouzL7mvw_JtZUKYml3PmpxRhZ1Gi0uEYEX8cynDCHbk5fv6a3Dl7hC3bHlTLak1u-uAHkcOJdf-HAz9rQGpDjGrNpZJyeOhO6w==
+    `;
+
+    const signer = new Signer();
+    await signer.init();
+    const signature = await signer.sign(url) as TikTokSigner.signature;
+    const navigator = await signer.navigator() as TikTokSigner.navigator;
+    await signer.close();
+
+    console.log(signature.signed_url);
+
+    fs.writeFileSync('debug/signature.json', JSON.stringify(signature, null, 2));
+    fs.writeFileSync('debug/navigator.json', JSON.stringify(navigator, null, 2));
+
+    const request = await fetch(
+        signature.signed_url,
+        {
+            headers: {
+                Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+                'Accept-Encoding': 'gzip, deflate, br',
+                'Accept-Language': 'en',
+                Dnt: '1',
+                'Sec-Ch-Ua': 'Microsoft Edge";v="117", "Not;A=Brand";v="8", "Chromium";v="117"',
+                'Sec-Ch-Ua-Mobile': '?0',
+                'Sec-Ch-Ua-Platform': '"Windows"',
+                'Sec-Fetch-Dest': 'document',
+                'Sec-Fetch-Mode': 'navigate',
+                'Sec-Fetch-Site': 'none',
+                'Sec-Fetch-User': '?1',
+                'Sec-Gpc': '1',
+                'Upgrade-Insecure-Requests': '1',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36 Edg/117.0.2045.31',
+            }
+        }
+    );
+
+    const commentsData: TiktokCommentsApi = await request.json();
+
+    fs.writeFileSync('debug/commentsData.json', JSON.stringify(commentsData, null, 2));
+
+    const commentsResponse = commentsData.comments.map((comment) => {
+        // Filter out @ mentions
+        if (comment.text.startsWith('@')) {
+            return null;
+        }
+
+        return '> *' + comment.user.nickname + '*: \n' + comment.text;
+    }).filter((comment) => comment !== null) as string[];
+
+    console.log('[discord] sending comments');
+
+    await interaction.followUp({
+        ephemeral: false,
+        content: commentsResponse.join('\n')
+    });
+}
+
+function getTiktokIdFromTiktokApi(sigi_state: TiktokApi) {
+    return Object.keys(sigi_state.ItemModule)[0] as keyof TiktokApi['ItemModule'];
+}
+
 function getImageDataFromTiktokApi(sigi_state: TiktokApi) {
     if (!sigi_state?.ItemModule) return null;
 
-    const key = Object.keys(sigi_state.ItemModule)[0] as keyof TiktokApi['ItemModule'];
-    return (sigi_state.ItemModule?.[key] as ItemModuleChildren)?.imagePost?.images;
+    const id = getTiktokIdFromTiktokApi(sigi_state);
+    return (sigi_state.ItemModule?.[id] as ItemModuleChildren)?.imagePost?.images;
 }
 
 function getTitleFromTiktokApi(sigi_state: TiktokApi) {
@@ -175,7 +286,7 @@ async function fetchWithRetries(url: string, retry = 0): Promise<Response> {
 
             return setTimeout(() => {
                 resolve(fetchWithRetries(url, retry + 1));
-            }, 2000);
+            }, RETRY_TIMEOUT);
         }
     });
 }
@@ -189,7 +300,8 @@ export const Tiktok: Command = {
     options: [
         new SlashCommandStringOption().setName('url').setDescription('Tiktok link').setRequired(true),
         new SlashCommandBooleanOption().setName('spoiler').setDescription('Should hide as spoiler?').setRequired(false),
-        new SlashCommandBooleanOption().setName('audio').setDescription('Should only download audio?').setRequired(false)
+        new SlashCommandBooleanOption().setName('audio').setDescription('Should only download audio?').setRequired(false),
+        new SlashCommandBooleanOption().setName('comments').setDescription('Should only send comments?').setRequired(false)
     ],
     run: async (client: Client, interaction: CommandInteraction) => {
         try {
@@ -199,12 +311,15 @@ export const Tiktok: Command = {
             const spoiler = interaction.options.getBoolean('spoiler', false);
             //@ts-ignore
             const audioOnly = interaction.options.getBoolean('audio', false);
+            //@ts-ignore
+            const commentsOnly = interaction.options.getBoolean('comments', false);
 
             const urlObj = new URL(url);
 
             validateUrl(urlObj);
 
             const response = await fetchWithRetries(url);
+            const headers = response.headers;
             const body = await response.text();
 
             const $ = cheerio.load(body);
@@ -229,7 +344,9 @@ export const Tiktok: Command = {
             }
             runRetries = 0;
 
-            if (getImageDataFromTiktokApi(sigi_state) && !audioOnly) {
+            if (commentsOnly) {
+                await getCommentsFromTiktok(interaction, sigi_state);
+            } else if (getImageDataFromTiktokApi(sigi_state) && !audioOnly) {
                 const imagesData = getImageDataFromTiktokApi(sigi_state) as Image[];
                 const imagesName = getTitleFromTiktokApi(sigi_state) as string;
                 await downloadSlideshow(interaction, imagesData, imagesName, spoiler);
