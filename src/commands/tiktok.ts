@@ -6,7 +6,7 @@ import { ALLOWED_YTD_HOSTS } from "../constants/allowedytdhosts";
 import { MAX_RETRIES, RETRY_TIMEOUT } from "../constants/maxretries";
 import { TiktokCommentsApi } from "types/tiktokCommentsApi";
 
-//@ts-ignore - tiktok-signature types not available
+//@ts-ignore - tiktok-signature types not available (https://github.com/carcabot/tiktok-signature)
 import Signer from "tiktok-signature";
 
 import youtubedl, { YtResponse } from "youtube-dl-exec";
@@ -132,77 +132,55 @@ async function getCommentsFromTiktok(
     sigi_state: TiktokApi
 ) {
     const id = getTiktokIdFromTiktokApi(sigi_state);
+    const itemModuleChildren = (sigi_state.ItemModule?.[id] as ItemModuleChildren);
+    const playUrl = new URL(itemModuleChildren.music.playUrl);
 
-    const playUrl = new URL((sigi_state.ItemModule?.[id] as ItemModuleChildren)?.music.playUrl);
-    const aid = playUrl.searchParams.get('a');
+    const USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.0.0 Safari/537.36 Edg/105.0.1343.53";
+    const MSTOKEN = "G1lr_8nRB3udnK_fFzgBD7sxvc0PK6Osokd1IJMaVPVcoB4mwSW-D6MQjTdoJ2o20PLt_MWNgtsAr095wVSShdmn_XVFS34bURvakVglDyWAHncoV_jVJCRdiJRdbJBi_E_KD_G8vpFF9-aOaJrk";
     
-    const url = `
-        https://www.tiktok.com/api/comment/list/?WebIdLastTime=1665241545
-        &aid=${aid}
-        &app_language=ja-JP
-        &app_name=tiktok_web
-        &aweme_id=${id}
-        &browser_language=en
-        &browser_name=Mozilla
-        &browser_online=true
-        &browser_platform=Win32
-        &browser_version=5.0%20%28Windows%20NT%2010.0%3B%20Win64%3B%20x64%29%20AppleWebKit%2F537.36%20%28KHTML%2C%20like%20Gecko%29%20Chrome%2F117.0.0.0%20Safari%2F537.36%20Edg%2F117.0.2045.31
-        &channel=tiktok_web
-        &cookie_enabled=true
-        &count=20
-        &current_region=JP
-        &cursor=20
-        &device_id=7152157914874201606
-        &device_platform=web_pc
-        &enter_from=tiktok_web
-        &focus_state=false
-        &fromWeb=1
-        &from_page=video
-        &history_len=3
-        &is_fullscreen=false
-        &is_non_personalized=false
-        &is_page_visible=true
-        &os=windows
-        &priority_region=PL
-        &referer=
-        &region=PL
-        &screen_height=1440
-        &screen_width=2560
-        &tz_name=Europe%2FWarsaw
-        &verifyFp=verify_l901uu00_aY6zusUQ_Fl2H_4jxP_AlGr_sX9lvUORNSWo
-        &webcast_language=en
-        &msToken=A_LEgirvqMF_5jIAz1AsDI5xQFapdE81nxNn1G8i1ysPq1KEouzL7mvw_JtZUKYml3PmpxRhZ1Gi0uEYEX8cynDCHbk5fv6a3Dl7hC3bHlTLak1u-uAHkcOJdf-HAz9rQGpDjGrNpZJyeOhO6w==
-    `;
+    const queryParams = {
+        aweme_id: id,
+        cursor: 0,
+        count: 20,
+        msToken: MSTOKEN,
+        aid: playUrl.searchParams.get('a'),
+        app_language: 'ja-JP',
+        app_name: 'tiktok_web',
+        battery_info: 1,
+        browser_language: 'en-US',
+        browser_name: 'Mozilla',
+        browser_online: true,
+        browser_platform: 'Win32',
+        browser_version: '5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36 Edg/110.0.1587.63',
+        channel: 'tiktok_web',
+        cookie_enabled: true,
+        current_region: 'JP',
+        device_id: '7165118680723998214',
+        device_platform: 'web_pc',
+        from_page: 'video',
+        os: 'windows',
+        priority_region: 'US',
+        referer: '',
+        region: 'US',
+        screen_height: 1440,
+        screen_width: 2560,
+        webcast_language: 'en',
+    } as any;
 
-    const signer = new Signer();
+    const url = new URL('https://www.tiktok.com/api/comment/list/?' + (new URLSearchParams(queryParams)).toString());
+
+    const signer = new Signer(null, USER_AGENT);
     await signer.init();
-    const signature = await signer.sign(url) as TikTokSigner.signature;
+    const signature = await signer.sign(url.toString()) as TikTokSigner.signature;
     const navigator = await signer.navigator() as TikTokSigner.navigator;
     await signer.close();
-
-    console.log(signature.signed_url);
-
-    fs.writeFileSync('debug/signature.json', JSON.stringify(signature, null, 2));
-    fs.writeFileSync('debug/navigator.json', JSON.stringify(navigator, null, 2));
 
     const request = await fetch(
         signature.signed_url,
         {
             headers: {
-                Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-                'Accept-Encoding': 'gzip, deflate, br',
-                'Accept-Language': 'en',
-                Dnt: '1',
-                'Sec-Ch-Ua': 'Microsoft Edge";v="117", "Not;A=Brand";v="8", "Chromium";v="117"',
-                'Sec-Ch-Ua-Mobile': '?0',
-                'Sec-Ch-Ua-Platform': '"Windows"',
-                'Sec-Fetch-Dest': 'document',
-                'Sec-Fetch-Mode': 'navigate',
-                'Sec-Fetch-Site': 'none',
-                'Sec-Fetch-User': '?1',
-                'Sec-Gpc': '1',
-                'Upgrade-Insecure-Requests': '1',
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36 Edg/117.0.2045.31',
+                'user-agent': navigator.user_agent,
+                'referer': sigi_state.SEOState.metaParams.canonicalHref,
             }
         }
     );
@@ -217,7 +195,12 @@ async function getCommentsFromTiktok(
             return null;
         }
 
-        return '> *' + comment.user.nickname + '*: \n' + comment.text;
+        // Filter out empty comments
+        if (comment.text.length <= 1) {
+            return null;
+        }
+
+        return '***' + comment.user.nickname + '***: \n> ' + comment.text;
     }).filter((comment) => comment !== null) as string[];
 
     console.log('[discord] sending comments');
