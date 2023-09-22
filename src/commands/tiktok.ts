@@ -1,9 +1,13 @@
 import { ApplicationCommandType, AttachmentBuilder, Client, CommandInteraction, SlashCommandBooleanOption, SlashCommandStringOption } from "discord.js";
 import { Command } from "../command";
-import { ItemModuleChildren, TiktokApi, Image } from "types/tiktokApi";
+
 import { DISCORD_LIMIT } from "../constants/discordlimit";
 import { ALLOWED_YTD_HOSTS } from "../constants/allowedytdhosts";
 import { MAX_RETRIES, RETRY_TIMEOUT } from "../constants/maxretries";
+import { TIKTOK_COMMENTS_COUNT, TIKTOK_COMMENTS_OFFSET } from "../constants/tiktokcommentscount";
+
+import { ItemModuleChildren, TiktokApi, Image } from "types/tiktokApi";
+import { TikTokSigner } from "types/tiktokSigner";
 import { TiktokCommentsApi } from "types/tiktokCommentsApi";
 
 //@ts-ignore - tiktok-signature types not available (https://github.com/carcabot/tiktok-signature)
@@ -12,7 +16,6 @@ import Signer from "tiktok-signature";
 import youtubedl, { YtResponse } from "youtube-dl-exec";
 import cheerio from "cheerio";
 import fs from "fs";
-import { TikTokSigner } from "types/tiktokSigner";
 
 async function downloadVideo(
     interaction: CommandInteraction,
@@ -140,10 +143,10 @@ async function getCommentsFromTiktok(
     
     const queryParams = {
         aweme_id: id,
-        cursor: 0,
-        count: 20,
+        cursor: TIKTOK_COMMENTS_OFFSET,
+        count: TIKTOK_COMMENTS_COUNT,
         msToken: MSTOKEN,
-        aid: playUrl.searchParams.get('a'),
+        aid: playUrl.searchParams.get('a') ?? '1988',
         app_language: 'ja-JP',
         app_name: 'tiktok_web',
         battery_info: 1,
@@ -204,6 +207,13 @@ async function getCommentsFromTiktok(
     }).filter((comment) => comment !== null) as string[];
 
     console.log('[discord] sending comments');
+
+    while (commentsResponse.length > 10) {
+        await interaction.followUp({
+            ephemeral: false,
+            content: commentsResponse.splice(0, 10).join('\n')
+        });
+    }
 
     await interaction.followUp({
         ephemeral: false,
