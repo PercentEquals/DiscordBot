@@ -338,6 +338,10 @@ export const Tiktok: Command = {
             runRetries = 0;
 
             if (commentsOnly) {
+                if (!urlObj.hostname.includes('tiktok')) {
+                    throw new Error('Comments only option is only available for tiktok links.');
+                }
+
                 await getCommentsFromTiktok(interaction, sigi_state);
             } else if (getImageDataFromTiktokApi(sigi_state) && !audioOnly) {
                 const imagesData = getImageDataFromTiktokApi(sigi_state) as Image[];
