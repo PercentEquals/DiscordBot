@@ -1,4 +1,4 @@
-import { Client } from 'discord.js';
+import { Client, IntentsBitField, Partials } from 'discord.js';
 import "dotenv/config.js";
 
 import fs from "fs";
@@ -9,7 +9,15 @@ console.log("[discord] Bot is starting...");
 fs.mkdirSync('debug', { recursive: true });
 
 const client = new Client({
-    intents: []
+    partials: [
+        Partials.Channel,
+        Partials.GuildMember,
+        Partials.Message
+    ],
+    intents: [
+        IntentsBitField.Flags.DirectMessageTyping,
+        IntentsBitField.Flags.DirectMessages
+    ]
 });
 
 ready(client);
