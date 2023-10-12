@@ -13,9 +13,91 @@ import { TiktokCommentsApi } from "types/tiktokCommentsApi";
 //@ts-ignore - tiktok-signature types not available (https://github.com/carcabot/tiktok-signature)
 import Signer from "tiktok-signature";
 
+import ffmpeg from "fluent-ffmpeg";
 import youtubedl, { YtResponse } from "youtube-dl-exec";
 import cheerio from "cheerio";
 import fs from "fs";
+
+async function convertVideo(id: string, audioOnly: boolean): Promise<string> {
+    return new Promise((resolve, reject) => {
+        const initialPath = `cache/${id}.mp4`;
+        const finalPath = `cache/${id}-ffmpeg.${audioOnly ? 'mp3' : 'mp4'}`;
+
+        console.log('[ffmpeg] converting');
+
+        const process = ffmpeg(initialPath);
+        process.output(finalPath);
+        process.addOption(["-preset", "veryfast"]);
+        process.addOption(["-c:a", "copy"]);
+        process.addOption(["-crf", "48"]);
+        process.addOption(["-s", "960x540"]);
+
+        process.on('end', (done: any) => {
+            fs.unlinkSync(initialPath);
+            console.log('[ffmpeg] conversion done');
+            resolve(finalPath);
+        });
+
+        process.on('error', (err: any) => {
+            fs.unlinkSync(initialPath);
+            console.log('[ffmpeg] error', err);
+            reject(err);
+        });
+
+        process.run();
+    })
+}
+
+async function downloadAndConvertVideo(
+    interaction: CommandInteraction,
+    url: string,
+    spoiler: boolean,
+    audioOnly: boolean,
+    title: string
+) {
+    const id = validateUrl(new URL(url));
+    let filePath = `cache/${id}.mp4`;
+
+    await youtubedl(url, {
+        noWarnings: true,
+        output: filePath,
+    });
+
+    if (!fs.existsSync(filePath)) {
+        throw new Error(`No format found under ${DISCORD_LIMIT / 1024 / 1024}MB`);
+    }
+
+    filePath = await convertVideo(id, audioOnly);
+    const file = new AttachmentBuilder(filePath);
+
+    if (fs.statSync(filePath).size > DISCORD_LIMIT) {
+        throw new Error(`No format found under ${DISCORD_LIMIT / 1024 / 1024}MB`);
+    }
+
+    file.setName(`${title}.${audioOnly ? 'mp3' : 'mp4'}`);
+    file.setSpoiler(spoiler);
+
+    console.log('[discord] sending converted video');
+
+    try {
+        await interaction.followUp({
+            ephemeral: false,
+            files: [file]
+        });
+    } catch (e) {
+        console.error(e);
+
+        // Sometimes discord fails to send the video, so we try again
+        await interaction.followUp({
+            ephemeral: false,
+            files: [file]
+        });
+    } finally {
+        if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+        }
+    }
+}
 
 async function downloadVideo(
     interaction: CommandInteraction,
@@ -25,8 +107,8 @@ async function downloadVideo(
     retry = 0
 ) {
     let videoData = null;
-    
-    try { 
+
+    try {
         videoData = await youtubedl(url, {
             dumpSingleJson: true,
             getFormat: true,
@@ -51,7 +133,7 @@ async function downloadVideo(
 
     fs.writeFileSync('debug/videoData.json', JSON.stringify(videoData, null, 2));
 
-    let bestFormat: { url: string } | null = null;
+    let bestFormat: { url: string, filesize: number } | null = null;
 
     if (new URL(url).hostname.includes('tiktok')) {
         //@ts-ignore - tiktok slideshow audio edge case
@@ -73,8 +155,8 @@ async function downloadVideo(
         bestFormat = formats.sort((a, b) => a.filesize - b.filesize)?.[0];
     }
 
-    if (!bestFormat) {
-        throw new Error(`No format found under ${DISCORD_LIMIT / 1024 / 1024}MB`);
+    if (!bestFormat || bestFormat.filesize > DISCORD_LIMIT) {
+        return downloadAndConvertVideo(interaction, url, spoiler, audioOnly, videoData.title);
     }
 
     const file = new AttachmentBuilder(bestFormat.url);
@@ -140,7 +222,7 @@ async function getCommentsFromTiktok(
 
     const USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.0.0 Safari/537.36 Edg/105.0.1343.53";
     const MSTOKEN = "G1lr_8nRB3udnK_fFzgBD7sxvc0PK6Osokd1IJMaVPVcoB4mwSW-D6MQjTdoJ2o20PLt_MWNgtsAr095wVSShdmn_XVFS34bURvakVglDyWAHncoV_jVJCRdiJRdbJBi_E_KD_G8vpFF9-aOaJrk";
-    
+
     const queryParams = {
         aweme_id: id,
         cursor: TIKTOK_COMMENTS_OFFSET,
@@ -256,6 +338,8 @@ function validateUrl(url: URL) {
     if (!id) {
         throw new Error('No id found');
     }
+
+    return id;
 }
 
 async function fetchWithRetries(url: string, retry = 0): Promise<Response> {
@@ -266,7 +350,7 @@ async function fetchWithRetries(url: string, retry = 0): Promise<Response> {
             if (response.ok) {
                 return resolve(response);
             }
-            
+
             throw new Error(`Status code ${response.status}`);
         } catch (e) {
             console.error(e);
@@ -312,7 +396,6 @@ export const Tiktok: Command = {
             validateUrl(urlObj);
 
             const response = await fetchWithRetries(url);
-            const headers = response.headers;
             const body = await response.text();
 
             const $ = cheerio.load(body);
