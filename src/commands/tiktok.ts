@@ -21,14 +21,13 @@ import fs from "fs";
 async function convertVideo(id: string, audioOnly: boolean): Promise<string> {
     return new Promise((resolve, reject) => {
         const initialPath = `cache/${id}.mp4`;
-        const finalPath = `cache/${id}-ffmpeg.${audioOnly ? 'mp3' : 'mp4'}`;
+        const finalPath = `cache/${id}-ffmpeg.mp4`;
 
         console.log('[ffmpeg] converting');
 
         const process = ffmpeg(initialPath);
         process.output(finalPath);
         process.addOption(["-preset", "veryfast"]);
-        process.addOption(["-c:a", "copy"]);
         process.addOption(["-crf", "48"]);
         process.addOption(["-s", "960x540"]);
 
