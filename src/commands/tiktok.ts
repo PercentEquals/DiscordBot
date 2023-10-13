@@ -18,11 +18,9 @@ import youtubedl, { YtResponse } from "youtube-dl-exec";
 import cheerio from "cheerio";
 import fs from "fs";
 
-async function convertVideo(id: string): Promise<string> {
+async function convertVideo(initialPath: string, id: string): Promise<string> {
     return new Promise((resolve, reject) => {
-        const initialPath = `cache/${id}.mp4`;
         const finalPath = `cache/${id}-ffmpeg.mp4`;
-
         const targetCrf = Math.ceil(fs.statSync(initialPath).size / DISCORD_LIMIT * 36);
 
         console.log('[ffmpeg] converting: CRF = ', targetCrf);
@@ -68,10 +66,11 @@ async function downloadAndConvertVideo(
         throw new Error(`No format found under ${DISCORD_LIMIT / 1024 / 1024}MB`);
     }
 
-    filePath = await convertVideo(id);
+    filePath = await convertVideo(filePath, id);
     const file = new AttachmentBuilder(filePath);
 
     if (fs.statSync(filePath).size > DISCORD_LIMIT) {
+        fs.unlinkSync(filePath);
         throw new Error(`No format found under ${DISCORD_LIMIT / 1024 / 1024}MB`);
     }
 
