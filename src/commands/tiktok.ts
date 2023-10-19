@@ -4,11 +4,13 @@ import { Command } from "../command";
 import { DISCORD_LIMIT } from "../constants/discordlimit";
 import { ALLOWED_YTD_HOSTS } from "../constants/allowedytdhosts";
 import { MAX_RETRIES, RETRY_TIMEOUT } from "../constants/maxretries";
-import { TIKTOK_COMMENTS_COUNT, TIKTOK_COMMENTS_OFFSET } from "../constants/tiktokcommentscount";
+import { TIKTOK_COMMENTS_COUNT, TIKTOK_COMMENTS_MAX_COUNT, TIKTOK_COMMENTS_OFFSET } from "../constants/tiktokcommentscount";
 
 import { ItemModuleChildren, TiktokApi, Image } from "types/tiktokApi";
 import { TikTokSigner } from "types/tiktokSigner";
 import { TiktokCommentsApi } from "types/tiktokCommentsApi";
+
+import { debugJson } from "../debug";
 
 //@ts-ignore - tiktok-signature types not available (https://github.com/carcabot/tiktok-signature)
 import Signer from "tiktok-signature";
@@ -131,7 +133,7 @@ async function downloadVideo(
     videoData = videoData.split('\n').slice(1).join('\n');
     videoData = JSON.parse(videoData as any) as YtResponse;
 
-    fs.writeFileSync('debug/videoData.json', JSON.stringify(videoData, null, 2));
+    debugJson('videoData', videoData);
 
     let bestFormat: { url: string, filesize: number } | null = null;
 
@@ -185,11 +187,16 @@ async function downloadSlideshow(
     interaction: CommandInteraction,
     imagesData: Image[],
     imagesName: string,
-    spoiler: boolean
+    spoiler: boolean,
+    ranges: number[] = []
 ) {
     const files = [] as AttachmentBuilder[];
 
     imagesData.forEach((image, i: number) => {
+        if (ranges.length > 0 && !ranges.includes(i + 1)) {
+            return;
+        }
+
         const file = new AttachmentBuilder(image.imageURL.urlList[0]);
         file.setName(`${imagesName}-${i}.jpg`);
         file.setSpoiler(spoiler);
@@ -214,7 +221,8 @@ async function downloadSlideshow(
 
 async function getCommentsFromTiktok(
     interaction: CommandInteraction,
-    sigi_state: TiktokApi
+    sigi_state: TiktokApi,
+    range: number[]
 ) {
     const id = getTiktokIdFromTiktokApi(sigi_state);
     const itemModuleChildren = (sigi_state.ItemModule?.[id] as ItemModuleChildren);
@@ -252,6 +260,15 @@ async function getCommentsFromTiktok(
         webcast_language: 'en',
     } as any;
 
+    if (range.length > 1) {
+        queryParams.cursor = Math.min(...range);
+        queryParams.count = Math.max(...range) - queryParams.cursor;
+
+        if (queryParams.count >= TIKTOK_COMMENTS_MAX_COUNT) {
+            queryParams.count = TIKTOK_COMMENTS_MAX_COUNT;
+        }
+    }
+
     const url = new URL('https://www.tiktok.com/api/comment/list/?' + (new URLSearchParams(queryParams)).toString());
 
     const signer = new Signer(null, USER_AGENT);
@@ -272,7 +289,7 @@ async function getCommentsFromTiktok(
 
     const commentsData: TiktokCommentsApi = await request.json();
 
-    fs.writeFileSync('debug/commentsData.json', JSON.stringify(commentsData, null, 2));
+    debugJson('commentsData', commentsData);
 
     const commentsResponse = commentsData.comments.map((comment) => {
         // Filter out @ mentions
@@ -284,6 +301,8 @@ async function getCommentsFromTiktok(
         if (comment.text.length <= 1) {
             return null;
         }
+
+        comment.text.replace(/\n/g, '\n> ');
 
         return '***' + comment.user.nickname + '***: \n> ' + comment.text;
     }).filter((comment) => comment !== null) as string[];
@@ -342,6 +361,28 @@ function validateUrl(url: URL) {
     return id;
 }
 
+function getRange(range: string | null) {
+    if (!range) return [];
+
+    const ranges = range.split(',');
+    const rangeArray = [] as number[];
+
+    ranges.forEach((range) => {
+        range = range.trim();
+
+        if (range.includes('-')) {
+            const [start, end] = range.split('-');
+            for (let i = parseInt(start); i <= parseInt(end); i++) {
+                rangeArray.push(i);
+            }
+        } else {
+            rangeArray.push(parseInt(range));
+        }
+    });
+
+    return rangeArray;
+}
+
 async function fetchWithRetries(url: string, retry = 0): Promise<Response> {
     return new Promise(async (resolve, reject) => {
         try {
@@ -378,7 +419,8 @@ export const Tiktok: Command = {
         new SlashCommandStringOption().setName('url').setDescription('Tiktok link').setRequired(true),
         new SlashCommandBooleanOption().setName('spoiler').setDescription('Should hide as spoiler?').setRequired(false),
         new SlashCommandBooleanOption().setName('audio').setDescription('Should only download audio?').setRequired(false),
-        new SlashCommandBooleanOption().setName('comments').setDescription('Should only send comments?').setRequired(false)
+        new SlashCommandBooleanOption().setName('comments').setDescription('Should only send comments?').setRequired(false),
+        new SlashCommandStringOption().setName('range').setDescription('Range of photos/comments').setRequired(false),
     ],
     run: async (client: Client, interaction: CommandInteraction) => {
         try {
@@ -390,6 +432,8 @@ export const Tiktok: Command = {
             const audioOnly = interaction.options.getBoolean('audio', false);
             //@ts-ignore
             const commentsOnly = interaction.options.getBoolean('comments', false);
+            //@ts-ignore
+            const range = interaction.options.getString('range', false);
 
             const urlObj = new URL(url);
 
@@ -402,7 +446,7 @@ export const Tiktok: Command = {
             const $script = $('#SIGI_STATE');
             const sigi_state: TiktokApi = JSON.parse($script.html() as string);
 
-            fs.writeFileSync('debug/sigi_state.json', JSON.stringify(sigi_state, null, 2));
+            debugJson('sigi_state', sigi_state);
 
             // Sometimes tiktok doesn't return the sigi_state, so we retry...
             if (urlObj.hostname.includes('tiktok') && !sigi_state) {
@@ -425,11 +469,11 @@ export const Tiktok: Command = {
                     throw new Error('Comments only option is only available for tiktok links.');
                 }
 
-                await getCommentsFromTiktok(interaction, sigi_state);
+                await getCommentsFromTiktok(interaction, sigi_state, getRange(range));
             } else if (getImageDataFromTiktokApi(sigi_state) && !audioOnly) {
                 const imagesData = getImageDataFromTiktokApi(sigi_state) as Image[];
                 const imagesName = getTitleFromTiktokApi(sigi_state) as string;
-                await downloadSlideshow(interaction, imagesData, imagesName, spoiler);
+                await downloadSlideshow(interaction, imagesData, imagesName, spoiler, getRange(range));
             } else {
                 await downloadVideo(interaction, url, spoiler, audioOnly);
             }
