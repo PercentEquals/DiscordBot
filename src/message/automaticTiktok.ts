@@ -5,7 +5,7 @@ import { ALLOWED_AUTO_LINK_HOSTS } from "../constants/allowedautolinkhosts";
 import { Attachment, Client, CommandInteraction, Message } from "discord.js";
 
 export default async function handleAutomaticTiktokLinks(client: Client, message: Message): Promise<void> {
-    if (getConfig().automaticTiktokLinks) {
+    if (!getConfig().automaticLinkDetection) {
         return;
     }
     

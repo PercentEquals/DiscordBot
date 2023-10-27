@@ -3,7 +3,7 @@
 ### automaticLinkDetection
 
 Type: `boolean`<br>
-Default: `false`
+Default: `true`
 
 Automatically detects links in channel messages and sends them as an attachment.  
 Requires MESSAGE CONTENT INTENT enabled in the Discord developer portal.  
