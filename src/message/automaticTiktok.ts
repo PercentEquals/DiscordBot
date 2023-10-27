@@ -29,13 +29,17 @@ export default async function handleAutomaticTiktokLinks(client: Client, message
                 return;
             }
 
-            await message.reply({
-                files,
-                allowedMentions: {
-                    repliedUser: false
-                }
-            });
-            await message.suppressEmbeds(true);
+            try {
+                await message.reply({
+                    files,
+                    allowedMentions: {
+                        repliedUser: false
+                    }
+                });
+                await message.suppressEmbeds(true);
+            } catch (e) {
+                console.error(e);
+            }
         },
     };
 
@@ -43,19 +47,31 @@ export default async function handleAutomaticTiktokLinks(client: Client, message
 }
 
 const handleMessageCommand = async (client: Client, interaction: CommandInteraction, message: Message): Promise<void> => {
-    for (var host of ALLOWED_AUTO_LINK_HOSTS) {
-        if (message.content.includes(host)) {
-            const slashCommand = Commands.find(c => c.name === 'tiktok');
-            if (!slashCommand) {
-                return;
+    try {
+        let found = false;
+        
+        for (var host of ALLOWED_AUTO_LINK_HOSTS) {
+            if (message.content.includes(host)) {
+                found = true;
             }
+        }
 
-            console.log('[discord] Automatic link found - Running command: ' + slashCommand.name);
-
-            await message.channel.sendTyping();
-            await slashCommand.run(client, interaction);
-
+        if (!found) {
             return;
         }
+
+        const slashCommand = Commands.find(c => c.name === 'tiktok');
+        if (!slashCommand) {
+            return;
+        }
+
+        console.log('[discord] Automatic link found - Running command: ' + slashCommand.name);
+
+        await message.channel.sendTyping();
+        await slashCommand.run(client, interaction);
+
+        return;
+    } catch (e) {
+        console.error(e);
     }
 };
