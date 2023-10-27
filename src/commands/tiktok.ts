@@ -391,6 +391,10 @@ async function fetchWithRetries(url: string, retry = 0): Promise<Response> {
             if (response.ok) {
                 return resolve(response);
             }
+            
+            if (response.status === 404) {
+                return reject(new Error('Not found'));
+            }
 
             throw new Error(`Status code ${response.status}`);
         } catch (e) {

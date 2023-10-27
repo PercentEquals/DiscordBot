@@ -7,14 +7,6 @@ export default (client: Client): void => {
             await handleSlashCommand(client, interaction);
         }
     });
-
-    client.on("messageCreate", async (message) => {
-        if (message.author.bot) {
-            return;
-        }
-
-        await message.reply('I\'m ready!');
-    });
 };
 
 const handleSlashCommand = async (client: Client, interaction: CommandInteraction): Promise<void> => {
@@ -26,5 +18,5 @@ const handleSlashCommand = async (client: Client, interaction: CommandInteractio
     await interaction.deferReply();
 
     console.log('[discord] Running command: ' + slashCommand.name);
-    slashCommand.run(client, interaction);
+    await slashCommand.run(client, interaction);
 };
