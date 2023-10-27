@@ -19,7 +19,7 @@ Simple bot that for now sends tiktok videos, slideshows and comments as attachme
 ### Config options
 
 You can change the config options in `config/config.json` to your liking.  
-List of available options with explainations can be found [here](https://github.com/PercentEquals/DiscordBot/tree/main/config/readme.md).
+List of available options with explainations can be found [here](https://github.com/PercentEquals/DiscordBot/blob/main/config/README.md).
 
 ### .env file setup:
 
