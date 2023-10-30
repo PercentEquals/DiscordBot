@@ -11,6 +11,7 @@ import { TikTokSigner } from "types/tiktokSigner";
 import { TiktokCommentsApi } from "types/tiktokCommentsApi";
 
 import { debugJson } from "../debug";
+import getConfig from "../setup/configSetup";
 
 //@ts-ignore - tiktok-signature types not available (https://github.com/carcabot/tiktok-signature)
 import Signer from "tiktok-signature";
@@ -31,7 +32,6 @@ async function convertVideo(initialPath: string, id: string): Promise<string> {
         process.output(finalPath);
         process.addOption(["-preset", "veryfast"]);
         process.addOption(["-crf", targetCrf.toFixed(0).toString()]);
-        process.addOption(["-s", "960x540"]);
 
         process.on('end', (done: any) => {
             fs.unlinkSync(initialPath);
@@ -65,6 +65,10 @@ async function downloadAndConvertVideo(
     });
 
     if (!fs.existsSync(filePath)) {
+        throw new Error(`No format found under ${DISCORD_LIMIT / 1024 / 1024}MB`);
+    }
+
+    if (!getConfig().allowCompressionOfLargeFiles) {
         throw new Error(`No format found under ${DISCORD_LIMIT / 1024 / 1024}MB`);
     }
 
@@ -124,9 +128,16 @@ async function downloadVideo(
         }
 
         console.log(`retrying... (${retry} / ${MAX_RETRIES})`);
-        return setTimeout(() => {
-            downloadVideo(interaction, url, spoiler, audioOnly, retry + 1);
-        }, RETRY_TIMEOUT);
+
+        return new Promise((resolve, reject) => {
+            setTimeout(() => {
+                try {
+                    resolve(downloadVideo(interaction, url, spoiler, audioOnly, retry + 1));
+                } catch (e) {
+                    reject(e);
+                }
+            }, RETRY_TIMEOUT);
+        });
     }
 
     //@ts-ignore - youtube-dl-exec videoData contains useless first line

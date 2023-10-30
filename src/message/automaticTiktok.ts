@@ -26,6 +26,15 @@ export default async function handleAutomaticTiktokLinks(client: Client, message
             files: Attachment[],
         }) => {
             if (!files) {
+                if (getConfig().automaticLinkDetectionErrorReply) {
+                    await message.reply({
+                        content,
+                        allowedMentions: {
+                            repliedUser: false
+                        }
+                    });
+                }
+
                 return;
             }
 

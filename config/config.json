@@ -1,3 +1,5 @@
 {
-    "automaticLinkDetection": true
+    "automaticLinkDetection": true,
+    "automaticLinkDetectionErrorReply": true,
+    "allowCompressionOfLargeFiles": true
 }
