@@ -3,9 +3,10 @@ import fs from "fs";
 let config = JSON.parse(fs.readFileSync(new URL("../../config/config.json", import.meta.url)).toString());
 
 export type Config = {
+    ffmpegPath: string,
     automaticLinkDetection: boolean,
     automaticLinkDetectionErrorReply: boolean,
-    allowCompressionOfLargeFiles: boolean
+    allowCompressionOfLargeFiles: boolean,
 }
 
 export default function getConfig(): Config {

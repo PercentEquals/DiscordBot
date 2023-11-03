@@ -56,6 +56,8 @@ const playAudio = async (url: string, interaction: CommandInteraction) => {
         throw new Error('No audio found!');
     }
 
+    const audioStream = getAudioStream(bestFormat.url) as any;
+
     return new Promise(async (resolve, reject) => {
         let isRejected = false;
 
@@ -88,7 +90,7 @@ const playAudio = async (url: string, interaction: CommandInteraction) => {
             },
         });
 
-        const resource = createAudioResource(getAudioStream(bestFormat.url) as any, {
+        const resource = createAudioResource(audioStream, {
             metadata: {
                 title: audioData.title,
             },

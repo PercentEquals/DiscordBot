@@ -1,4 +1,5 @@
 {
+    "ffmpegPath": "",
     "automaticLinkDetection": true,
     "automaticLinkDetectionErrorReply": true,
     "allowCompressionOfLargeFiles": true
