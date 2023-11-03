@@ -16,13 +16,14 @@ setupFfmpeg();
 const intents = [
     GatewayIntentBits.DirectMessages,
     GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.GuildVoiceStates,
 ];
 
 const partials = [
     Partials.Channel,
     Partials.GuildMember,
-    Partials.Message
+    Partials.Message,
 ];
 
 if (getConfig().automaticLinkDetection) {

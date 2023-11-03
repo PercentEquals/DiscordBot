@@ -25,16 +25,17 @@ export default async function handleAutomaticTiktokLinks(client: Client, message
             content: string,
             files: Attachment[],
         }) => {
-            if (!files) {
-                if (getConfig().automaticLinkDetectionErrorReply) {
-                    await message.reply({
-                        content,
-                        allowedMentions: {
-                            repliedUser: false
-                        }
-                    });
-                }
+            if (!files && getConfig().automaticLinkDetectionErrorReply) {
+                await message.reply({
+                    content,
+                    allowedMentions: {
+                        repliedUser: false
+                    }
+                });
+                return;
+            }
 
+            if (!files) {
                 return;
             }
 
@@ -47,7 +48,7 @@ export default async function handleAutomaticTiktokLinks(client: Client, message
                 });
                 await message.suppressEmbeds(true);
             } catch (e) {
-                console.error(e);
+                console.warn(e);
             }
         },
     };

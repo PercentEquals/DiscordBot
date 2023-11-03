@@ -2,13 +2,16 @@ import { ApplicationCommandType, AttachmentBuilder, Client, CommandInteraction, 
 import { Command } from "../command";
 
 import { DISCORD_LIMIT } from "../constants/discordlimit";
-import { ALLOWED_YTD_HOSTS } from "../constants/allowedytdhosts";
 import { MAX_RETRIES, RETRY_TIMEOUT } from "../constants/maxretries";
 import { TIKTOK_COMMENTS_COUNT, TIKTOK_COMMENTS_MAX_COUNT, TIKTOK_COMMENTS_OFFSET } from "../constants/tiktokcommentscount";
 
 import { TiktokApi, Image, ItemModuleChildren } from "types/tiktokApi";
 import { TikTokSigner } from "types/tiktokSigner";
 import { TiktokCommentsApi } from "types/tiktokCommentsApi";
+
+import { validateUrl } from "../common/validateUrl";
+import { getBestFormat } from "../common/formatFinder";
+import { getImageDataFromTiktokApi, getSigiState, getTiktokIdFromTiktokApi, getTitleFromTiktokApi } from "../common/sigiState";
 
 import { debugJson } from "../debug";
 import getConfig from "../setup/configSetup";
@@ -18,7 +21,6 @@ import Signer from "tiktok-signature";
 
 import ffmpeg from "fluent-ffmpeg";
 import youtubedl, { YtResponse } from "youtube-dl-exec";
-import cheerio from "cheerio";
 import fs from "fs";
 
 async function convertVideo(initialPath: string, id: string): Promise<string> {
@@ -146,27 +148,7 @@ async function downloadVideo(
 
     debugJson('videoData', videoData);
 
-    let bestFormat: { url: string, filesize: number } | null = null;
-
-    if (new URL(url).hostname.includes('tiktok')) {
-        //@ts-ignore - tiktok slideshow audio edge case
-        const tiktokSlideshowAudio = videoData.requested_downloads?.[0];
-
-        const formatsNoWatermark = videoData.formats.filter((format) => format.format_note && !format.format_note.includes('watermark'));
-        const formatsUnderLimit = formatsNoWatermark?.filter((format) => format.filesize && format.filesize < DISCORD_LIMIT);
-        const formatsH264 = formatsUnderLimit?.filter((format) => format.format.includes('h264'));
-
-        if (formatsH264.length === 0 && tiktokSlideshowAudio && audioOnly) {
-            formatsH264.push(tiktokSlideshowAudio);
-        }
-
-        bestFormat = formatsH264.sort((a, b) => a.filesize - b.filesize)?.[0];
-    } else if (new URL(url).hostname.includes('youtube')) {
-        //@ts-ignore - youtube-dl-exec types don't include filesize_approx
-        const formatsUnderLimit = videoData.formats.filter((format) => format.filesize < DISCORD_LIMIT || format.filesize_approx < DISCORD_LIMIT);
-        const formats = formatsUnderLimit.filter((format) => format.acodec && format.vcodec && format.acodec.includes('mp4a') && format.vcodec.includes('avc'));
-        bestFormat = formats.sort((a, b) => a.filesize - b.filesize)?.[0];
-    }
+    let bestFormat = getBestFormat(url, videoData, audioOnly);
 
     if (!bestFormat || bestFormat.filesize > DISCORD_LIMIT) {
         return downloadAndConvertVideo(interaction, url, spoiler, audioOnly, videoData.title);
@@ -333,45 +315,6 @@ async function getCommentsFromTiktok(
     });
 }
 
-function getTiktokIdFromTiktokApi(sigi_state: TiktokApi) {
-    return Object.keys(sigi_state.ItemModule)[0] as keyof TiktokApi['ItemModule'];
-}
-
-function getImageDataFromTiktokApi(sigi_state: TiktokApi) {
-    if (!sigi_state?.ItemModule) return null;
-
-    const id = getTiktokIdFromTiktokApi(sigi_state);
-    return (sigi_state.ItemModule?.[id] as ItemModuleChildren)?.imagePost?.images;
-}
-
-function getTitleFromTiktokApi(sigi_state: TiktokApi) {
-    if (!sigi_state?.SEOState) return null;
-
-    return sigi_state.SharingMetaState.value["og:description"];
-}
-
-function validateUrl(url: URL) {
-    if (!ALLOWED_YTD_HOSTS.includes(url.hostname)) {
-        throw new Error(`Not an allowed url ${JSON.stringify(ALLOWED_YTD_HOSTS)}`);
-    }
-
-    const urlNoParams = url.href.split('?')[0];
-    let id = urlNoParams.split('/')[urlNoParams.split('/').length - 1];
-    if (id === '') {
-        id = urlNoParams.split('/')[urlNoParams.split('/').length - 2];
-    }
-
-    if (!id && url.hostname.includes('youtube')) {
-        id = url.searchParams.get('v') as string;
-    }
-
-    if (!id) {
-        throw new Error('No id found');
-    }
-
-    return id;
-}
-
 function getRange(range: string | null) {
     if (!range) return [];
 
@@ -393,38 +336,6 @@ function getRange(range: string | null) {
 
     return rangeArray;
 }
-
-async function fetchWithRetries(url: string, retry = 0): Promise<Response> {
-    return new Promise(async (resolve, reject) => {
-        try {
-            const response = await fetch(url);
-
-            if (response.ok) {
-                return resolve(response);
-            }
-            
-            if (response.status === 404) {
-                return reject(new Error('Not found'));
-            }
-
-            throw new Error(`Status code ${response.status}`);
-        } catch (e) {
-            console.error(e);
-
-            if (retry >= MAX_RETRIES) {
-                return reject(e);
-            }
-
-            console.log(`retrying... (${retry} / ${MAX_RETRIES})`);
-
-            return setTimeout(() => {
-                resolve(fetchWithRetries(url, retry + 1));
-            }, RETRY_TIMEOUT);
-        }
-    });
-}
-
-let runRetries = 0;
 
 export const Tiktok: Command = {
     name: "tiktok",
@@ -451,33 +362,7 @@ export const Tiktok: Command = {
             const range = interaction.options.getString('range', false);
 
             const urlObj = new URL(url);
-
-            validateUrl(urlObj);
-
-            const response = await fetchWithRetries(url);
-            const body = await response.text();
-
-            const $ = cheerio.load(body);
-            const $script = $('#SIGI_STATE');
-            const sigi_state: TiktokApi = JSON.parse($script.html() as string);
-
-            debugJson('sigi_state', sigi_state);
-
-            // Sometimes tiktok doesn't return the sigi_state, so we retry...
-            if (urlObj.hostname.includes('tiktok') && !sigi_state) {
-                console.log(`No sigi_state found. Retrying... (${runRetries} / ${MAX_RETRIES})`);
-
-                if (runRetries >= MAX_RETRIES) {
-                    runRetries = 0;
-                    throw new Error('No sigi_state found. Please try again later.');
-                }
-                runRetries++;
-
-                return setTimeout(() => {
-                    Tiktok.run(client, interaction);
-                }, RETRY_TIMEOUT);
-            }
-            runRetries = 0;
+            const sigi_state = await getSigiState(url);
 
             if (commentsOnly) {
                 if (!urlObj.hostname.includes('tiktok')) {
