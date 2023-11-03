@@ -6,7 +6,7 @@ import { ALLOWED_YTD_HOSTS } from "../constants/allowedytdhosts";
 import { MAX_RETRIES, RETRY_TIMEOUT } from "../constants/maxretries";
 import { TIKTOK_COMMENTS_COUNT, TIKTOK_COMMENTS_MAX_COUNT, TIKTOK_COMMENTS_OFFSET } from "../constants/tiktokcommentscount";
 
-import { ItemModuleChildren, TiktokApi, Image } from "types/tiktokApi";
+import { TiktokApi, Image, ItemModuleChildren } from "types/tiktokApi";
 import { TikTokSigner } from "types/tiktokSigner";
 import { TiktokCommentsApi } from "types/tiktokCommentsApi";
 
@@ -293,7 +293,7 @@ async function getCommentsFromTiktok(
         {
             headers: {
                 'user-agent': navigator.user_agent,
-                'referer': sigi_state.SEOState.metaParams.canonicalHref,
+                'referer': sigi_state.SEOState.canonical
             }
         }
     );
@@ -347,7 +347,7 @@ function getImageDataFromTiktokApi(sigi_state: TiktokApi) {
 function getTitleFromTiktokApi(sigi_state: TiktokApi) {
     if (!sigi_state?.SEOState) return null;
 
-    return sigi_state.SEOState.metaParams.title;
+    return sigi_state.SharingMetaState.value["og:description"];
 }
 
 function validateUrl(url: URL) {
