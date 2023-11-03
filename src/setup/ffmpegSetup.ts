@@ -2,6 +2,7 @@ import ffmpegStatic from "ffmpeg-static";
 import ffmpeg from "fluent-ffmpeg";
 import fs from "fs";
 import getConfig from "./configSetup";
+import logger from "../logger";
 
 function isValidPath(path: string) {
     try {
@@ -16,15 +17,17 @@ export default async function setupFfmpeg() {
     fs.mkdirSync('cache', { recursive: true });
     ffmpeg.setFfmpegPath(ffmpegStatic as string);
 
-    const ffmpegPath = getConfig().ffmpegPath;
+    const ffmpegPath = getConfig().environmentOptions.ffmpegPath;
 
-    if (ffmpegPath && ffmpegPath.length !== 0) {
-        if (!isValidPath(ffmpegPath)) throw new Error('Invalid FFMPEG path');
-
+    if (ffmpegPath && ffmpegPath.length !== 0 && isValidPath(ffmpegPath)) {
         ffmpeg.setFfmpegPath(ffmpegPath);
-        console.log('[ffmpeg] Set path:', ffmpegPath);
+        logger.info(`[ffmpeg] set path: ${ffmpegPath}`);
     } else {
-        console.log('[ffmpeg] Using default path:', ffmpegStatic);
-        console.warn('[ffmpeg] Default FFMPEG path is not recommended - it will behave slower and might not work at all.');
+        if (ffmpegPath && ffmpegPath.length !== 0 && !isValidPath(ffmpegPath)) {
+            logger.error(`[ffmpeg] invalid FFMPEG path configured: ${ffmpegPath}`);
+        }
+
+        logger.info(`[ffmpeg] using default FFMPEG path: ${ffmpegStatic}`);
+        logger.warn(`[ffmpeg] default FFMPEG path is not recommended - it will behave slower and might not work at all.`);
     }
 }

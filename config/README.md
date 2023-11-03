@@ -1,18 +1,6 @@
 # Config options
 
-### ffmpegPath
-
-Type: `string`<br>
-Default: ``
-
-Path to the ffmpeg executable. If not set, the bot will use default one, which might be slower and not work on some systems.  
-It is recommended to set this option on Cloud systems, where the default ffmpeg might work incorrectly. Linux example:   
-```
-apt-get install ffmpeg
-which ffmpeg
-```
-
-And the result of `which ffmpeg` can be set as the `ffmpegPath` option.
+## Bot options
 
 ### automaticLinkDetection
 
@@ -36,3 +24,26 @@ Type: `boolean`<br>
 Default: `true`
 
 Allows compression of files larger than 25MB. Compression results may vary and might take a while to process.
+
+## Environment options
+
+### ffmpegPath
+
+Type: `string`<br>
+Default: ``
+
+Path to the ffmpeg executable. If not set, the bot will use default one, which might be slower and not work on some systems.  
+It is recommended to set this option on Cloud systems, where the default ffmpeg might work incorrectly. Linux example:   
+```
+apt-get install ffmpeg
+which ffmpeg
+```
+
+And the result of `which ffmpeg` can be set as the `ffmpegPath` option.
+
+### logToFile
+
+Type: `boolean`<br>
+Default: `false`
+
+Should the bot log to a file. Generated log file can be found in the `logs` folder.

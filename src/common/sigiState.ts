@@ -3,8 +3,9 @@ import { fetchWithRetries } from "./fetchWithReplies";
 import { validateUrl } from "./validateUrl";
 
 import cheerio from "cheerio";
-import { debugJson } from "../debug";
+
 import { MAX_RETRIES, RETRY_TIMEOUT } from "../constants/maxretries";
+import logger from "../logger";
 
 export async function getSigiState(url: string, runRetries = 0): Promise<TiktokApi> {
     const urlObj = new URL(url);
@@ -18,11 +19,9 @@ export async function getSigiState(url: string, runRetries = 0): Promise<TiktokA
     const $script = $('#SIGI_STATE');
     const sigi_state: TiktokApi = JSON.parse($script.html() as string);
 
-    debugJson('sigi_state', sigi_state);
-
     // Sometimes tiktok doesn't return the sigi_state, so we retry...
     if (urlObj.hostname.includes('tiktok') && !sigi_state) {
-        console.log(`[discord] No sigi_state found. Retrying... (${runRetries} / ${MAX_RETRIES})`);
+        logger.info(`[bot] no sigi_state found. Retrying... (${runRetries} / ${MAX_RETRIES})`);
 
         if (runRetries >= MAX_RETRIES) {
             throw new Error('No sigi_state found. Please try again later.');

@@ -1,11 +1,13 @@
 import { Commands } from "../commands";
 
-import getConfig from "../setup/configSetup";
-import { ALLOWED_AUTO_LINK_HOSTS } from "../constants/allowedautolinkhosts";
 import { Attachment, Client, CommandInteraction, Message } from "discord.js";
 
+import getConfig from "../setup/configSetup";
+import { ALLOWED_AUTO_LINK_HOSTS } from "../constants/allowedautolinkhosts";
+import logger from "../logger";
+
 export default async function handleAutomaticTiktokLinks(client: Client, message: Message): Promise<void> {
-    if (!getConfig().automaticLinkDetection) {
+    if (!getConfig().botOptions.automaticLinkDetection) {
         return;
     }
     
@@ -16,16 +18,12 @@ export default async function handleAutomaticTiktokLinks(client: Client, message
         }
     }
 
-    const messageInteraction = {
-        options: {
-            getString,
-            getBoolean: () => false,
-        },
-        followUp: async ({ content, files }: {
-            content: string,
-            files: Attachment[],
-        }) => {
-            if (!files && getConfig().automaticLinkDetectionErrorReply) {
+    const followUp = async ({ content, files }: {
+        content: string,
+        files: Attachment[],
+    }) => {
+        try {
+            if (!files && getConfig().botOptions.automaticLinkDetectionErrorReply) {
                 await message.reply({
                     content,
                     allowedMentions: {
@@ -39,18 +37,24 @@ export default async function handleAutomaticTiktokLinks(client: Client, message
                 return;
             }
 
-            try {
-                await message.reply({
-                    files,
-                    allowedMentions: {
-                        repliedUser: false
-                    }
-                });
-                await message.suppressEmbeds(true);
-            } catch (e) {
-                console.warn(e);
-            }
+            await message.reply({
+                files,
+                allowedMentions: {
+                    repliedUser: false
+                }
+            });
+            await message.suppressEmbeds(true);
+        } catch (e) {
+            logger.warn(e);
+        }
+    };
+
+    const messageInteraction = {
+        options: {
+            getString,
+            getBoolean: () => false,
         },
+        followUp,
     };
 
     await handleMessageCommand(client, messageInteraction as any, message);
@@ -75,13 +79,13 @@ const handleMessageCommand = async (client: Client, interaction: CommandInteract
             return;
         }
 
-        console.log('[discord] Automatic link found - Running command: ' + slashCommand.name);
+        logger.info('[bot] automatic link found - running command: ' + slashCommand.name);
 
         await message.channel.sendTyping();
         await slashCommand.run(client, interaction);
 
         return;
     } catch (e) {
-        console.error(e);
+        logger.error(e);
     }
 };

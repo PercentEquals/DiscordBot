@@ -1,5 +1,6 @@
 import { Client, CommandInteraction, Interaction } from "discord.js";
 import { Commands } from "../commands";
+import logger from "../logger";
 
 export default (client: Client): void => {
     client.on("interactionCreate", async (interaction: Interaction) => {
@@ -17,6 +18,6 @@ const handleSlashCommand = async (client: Client, interaction: CommandInteractio
 
     await interaction.deferReply();
 
-    console.log('[discord] Running command: ' + slashCommand.name);
+    logger.info('[bot] running command: ' + slashCommand.name);
     await slashCommand.run(client, interaction);
 };

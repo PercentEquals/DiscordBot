@@ -1,6 +1,11 @@
 {
-    "ffmpegPath": "",
-    "automaticLinkDetection": true,
-    "automaticLinkDetectionErrorReply": true,
-    "allowCompressionOfLargeFiles": true
+    "botOptions": {
+        "automaticLinkDetection": true,
+        "automaticLinkDetectionErrorReply": true,
+        "allowCompressionOfLargeFiles": true
+    },
+    "environmentOptions": {
+        "ffmpegPath": "",
+        "logToFile": false
+    }
 }

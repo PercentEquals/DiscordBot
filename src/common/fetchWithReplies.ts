@@ -1,3 +1,4 @@
+import logger from "../logger";
 import { MAX_RETRIES, RETRY_TIMEOUT } from "../constants/maxretries";
 
 export async function fetchWithRetries(url: string, retry = 0): Promise<Response> {
@@ -15,13 +16,13 @@ export async function fetchWithRetries(url: string, retry = 0): Promise<Response
 
             throw new Error(`Status code ${response.status}`);
         } catch (e) {
-            console.error(e);
+            logger.error(e);
 
             if (retry >= MAX_RETRIES) {
                 return reject(e);
             }
 
-            console.log(`retrying... (${retry} / ${MAX_RETRIES})`);
+            logger.info(`retrying fetch... (${retry} / ${MAX_RETRIES})`);
 
             return setTimeout(() => {
                 resolve(fetchWithRetries(url, retry + 1));

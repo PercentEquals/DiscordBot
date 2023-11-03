@@ -2,17 +2,17 @@ import { ApplicationCommandType, Client, CommandInteraction, InternalDiscordGate
 import { AudioPlayerStatus, NoSubscriberBehavior, createAudioPlayer, createAudioResource, joinVoiceChannel } from "@discordjs/voice";
 
 import { Command } from "../command";
-import { debugJson } from "../debug";
 import { getBestFormat } from "../common/formatFinder";
 
 import ffmpeg from "fluent-ffmpeg";
 import youtubedl, { YtResponse } from "youtube-dl-exec";
 import { PassThrough } from "stream";
+import logger from "../logger";
 
 // https://github.com/discordjs/voice/issues/117
 // https://github.com/discordjs/voice/issues/150
 function getAudioStream(url: string) {
-    console.log('[ffmpeg] downloading audio stream');
+    logger.info('[ffmpeg] downloading audio stream');
 
     const FFMPEG_OPUS_ARGUMENTS = [
         '-analyzeduration',
@@ -48,8 +48,6 @@ const playAudio = async (url: string, interaction: CommandInteraction) => {
     audioData = audioData.split('\n').slice(1).join('\n');
     audioData = JSON.parse(audioData as any) as YtResponse;
 
-    debugJson('audioData', audioData);
-
     const bestFormat = getBestFormat(url, audioData, true);
 
     if (!bestFormat) {
@@ -59,84 +57,86 @@ const playAudio = async (url: string, interaction: CommandInteraction) => {
     const audioStream = getAudioStream(bestFormat.url) as any;
 
     return new Promise(async (resolve, reject) => {
-        let isRejected = false;
+        try {
+            let isRejected = false;
 
-        //@ts-ignore - CommandInteraction contains member with voice
-        const channelId = interaction.member?.voice?.channelId
-        const guildId = interaction.guildId
-        const adapterCreator = interaction.guild?.voiceAdapterCreator
+            //@ts-ignore - CommandInteraction contains member with voice
+            const channelId = interaction.member?.voice?.channelId
+            const guildId = interaction.guildId
+            const adapterCreator = interaction.guild?.voiceAdapterCreator
 
-        if (!channelId || !guildId || !adapterCreator) {
-            throw new Error('No voice channel found - join one or check permissions!');
-        }
-
-        const connection = joinVoiceChannel({
-            channelId: channelId as string,
-            guildId: guildId as string,
-            adapterCreator: adapterCreator as InternalDiscordGatewayAdapterCreator
-        });
-
-        connection.on('error', error => {
-            if (isRejected) return;
-
-            connection.destroy();
-            reject(error);
-            isRejected = true;
-        });
-
-        const player = createAudioPlayer({
-            behaviors: {
-                noSubscriber: NoSubscriberBehavior.Play,
-            },
-        });
-
-        const resource = createAudioResource(audioStream, {
-            metadata: {
-                title: audioData.title,
-            },
-        });
-
-        player.on('error', error => {
-            if (isRejected) return;
-
-            player.stop();
-            reject(error);
-            isRejected = true;
-        });
-
-        player.on(AudioPlayerStatus.Idle, async (from, to) => {
-            if (isRejected) return;
-
-            if (!(from.status === AudioPlayerStatus.Playing && to.status === AudioPlayerStatus.Idle)) {
-                return;
+            if (!channelId || !guildId || !adapterCreator) {
+                reject('No voice channel found - join one or check permissions!');
             }
 
-            try {
-                const msg = await interaction.editReply({
-                    content: `\nFinished playing audio: ${url} !`,
-                });
+            const connection = joinVoiceChannel({
+                channelId: channelId as string,
+                guildId: guildId as string,
+                adapterCreator: adapterCreator as InternalDiscordGatewayAdapterCreator
+            });
+
+            connection.on('error', error => {
+                if (isRejected) return;
 
                 connection.destroy();
-                msg.suppressEmbeds(true);
-            } catch (e) {
-                console.warn(e);
-            }
+                reject(error);
+                isRejected = true;
+            });
 
-            resolve(true);
-        });
+            const player = createAudioPlayer({
+                behaviors: {
+                    noSubscriber: NoSubscriberBehavior.Play,
+                },
+            });
 
-        connection.subscribe(player);
-        player.play(resource);
+            const resource = createAudioResource(audioStream, {
+                metadata: {
+                    title: audioData.title,
+                },
+            });
 
-        const msg = await interaction.followUp({
-            ephemeral: false,
-            content: `\nPlaying audio: ${url}`
-        });
+            player.on('error', error => {
+                if (isRejected) return;
 
-        try {
+                player.stop();
+                reject(error);
+                isRejected = true;
+            });
+
+            player.on(AudioPlayerStatus.Idle, async (from, to) => {
+                try {
+                    if (isRejected) {
+                        return;
+                    }
+
+                    if (!(from.status === AudioPlayerStatus.Playing && to.status === AudioPlayerStatus.Idle)) {
+                        return;
+                    }
+
+                    const msg = await interaction.editReply({
+                        content: `:white_check_mark: Finished playing audio: ${url}`,
+                    });
+
+                    connection.destroy();
+                    msg.suppressEmbeds(true);
+
+                    resolve(true);
+                } catch (e) {
+                    reject(e);
+                }
+            });
+
+            connection.subscribe(player);
+            player.play(resource);
+
+            const msg = await interaction.followUp({
+                ephemeral: false,
+                content: `:speaker: Playing audio: ${url}`
+            });
+
             msg.suppressEmbeds(true);
         } catch (e) {
-            console.warn(e);
+            reject(e);
         }
     });
 }
@@ -155,11 +155,11 @@ export const Play: Command = {
 
             await playAudio(url, interaction);
         } catch (e) {
-            console.error(e);
+            logger.error(e);
 
             await interaction.followUp({
                 ephemeral: false,
-                content: `\n${e}`
+                content: `:x: ${e}`
             })
         }
     }

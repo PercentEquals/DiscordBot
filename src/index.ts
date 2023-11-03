@@ -1,15 +1,14 @@
 import { Client, GatewayIntentBits, Partials } from 'discord.js';
 import "dotenv/config.js";
 
-import fs from "fs";
 import ready from "./listeners/ready";
 import interactionCreate from "./listeners/interactionCreate";
 import messageCreate from './listeners/messageCreate';
 import setupFfmpeg from './setup/ffmpegSetup';
 import getConfig from './setup/configSetup';
+import logger from './logger';
 
-console.log("[discord] Bot is starting...");
-fs.mkdirSync('debug', { recursive: true });
+logger.info(`[bot] starting bot...`);
 
 setupFfmpeg();
 
@@ -26,8 +25,8 @@ const partials = [
     Partials.Message,
 ];
 
-if (getConfig().automaticLinkDetection) {
-    console.warn("[discord] Automatic link detection is enabled, to ensure this works, please enable the MESSAGE CONTENT INTENT in your bot settings.");
+if (getConfig().botOptions.automaticLinkDetection) {
+    logger.warn(`[bot] automatic link detection is enabled, to ensure this works, please enable the MESSAGE CONTENT INTENT in your bot settings.`);
     intents.push(GatewayIntentBits.MessageContent);
 }
 

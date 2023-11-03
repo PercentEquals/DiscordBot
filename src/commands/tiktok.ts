@@ -13,8 +13,8 @@ import { validateUrl } from "../common/validateUrl";
 import { getBestFormat } from "../common/formatFinder";
 import { getImageDataFromTiktokApi, getSigiState, getTiktokIdFromTiktokApi, getTitleFromTiktokApi } from "../common/sigiState";
 
-import { debugJson } from "../debug";
 import getConfig from "../setup/configSetup";
+import logger from "../logger";
 
 //@ts-ignore - tiktok-signature types not available (https://github.com/carcabot/tiktok-signature)
 import Signer from "tiktok-signature";
@@ -25,29 +25,33 @@ import fs from "fs";
 
 async function convertVideo(initialPath: string, id: string): Promise<string> {
     return new Promise((resolve, reject) => {
-        const finalPath = `cache/${id}-ffmpeg.mp4`;
-        const targetCrf = Math.ceil(fs.statSync(initialPath).size / DISCORD_LIMIT * 36);
+        try {
+            const finalPath = `cache/${id}-ffmpeg.mp4`;
+            const targetCrf = Math.ceil(fs.statSync(initialPath).size / DISCORD_LIMIT * 36);
 
-        console.log('[ffmpeg] converting: CRF = ', targetCrf);
+            logger.info(`[ffmpeg] converting: CRF = ${targetCrf}`);
 
-        const process = ffmpeg(initialPath);
-        process.output(finalPath);
-        process.addOption(["-preset", "veryfast"]);
-        process.addOption(["-crf", targetCrf.toFixed(0).toString()]);
+            const process = ffmpeg(initialPath);
+            process.output(finalPath);
+            process.addOption(["-preset", "veryfast"]);
+            process.addOption(["-crf", targetCrf.toFixed(0).toString()]);
 
-        process.on('end', (done: any) => {
-            fs.unlinkSync(initialPath);
-            console.log('[ffmpeg] conversion done');
-            resolve(finalPath);
-        });
+            process.on('end', (done: any) => {
+                fs.unlinkSync(initialPath);
+                logger.info('[ffmpeg] conversion done');
+                resolve(finalPath);
+            });
 
-        process.on('error', (err: any) => {
-            fs.unlinkSync(initialPath);
-            console.log('[ffmpeg] error', err);
-            reject(err);
-        });
+            process.on('error', (err: any) => {
+                fs.unlinkSync(initialPath);
+                logger.info('[ffmpeg] error', err);
+                reject(err);
+            });
 
-        process.run();
+            process.run();
+        } catch (e) {
+            reject(e);
+        }
     })
 }
 
@@ -70,7 +74,7 @@ async function downloadAndConvertVideo(
         throw new Error(`No format found under ${DISCORD_LIMIT / 1024 / 1024}MB`);
     }
 
-    if (!getConfig().allowCompressionOfLargeFiles) {
+    if (!getConfig().botOptions.allowCompressionOfLargeFiles) {
         throw new Error(`No format found under ${DISCORD_LIMIT / 1024 / 1024}MB`);
     }
 
@@ -85,7 +89,7 @@ async function downloadAndConvertVideo(
     file.setName(`${title}.${audioOnly ? 'mp3' : 'mp4'}`);
     file.setSpoiler(spoiler);
 
-    console.log('[discord] sending converted video');
+    logger.info('[bot] sending converted video');
 
     try {
         await interaction.followUp({
@@ -93,7 +97,7 @@ async function downloadAndConvertVideo(
             files: [file]
         });
     } catch (e) {
-        console.error(e);
+        logger.error(e);
 
         // Sometimes discord fails to send the video, so we try again
         await interaction.followUp({
@@ -123,13 +127,12 @@ async function downloadVideo(
             noWarnings: true,
         });
     } catch (e) {
-        console.error(e);
-
         if (retry >= MAX_RETRIES) {
-            throw new Error(`Failed to download video - something went wrong with youtube-dl-exec: ${e}.`);
+            logger.error(`[youtube-dl]: ${e}.`);
+            throw e;
         }
 
-        console.log(`retrying... (${retry} / ${MAX_RETRIES})`);
+        logger.info(`[bot] retrying video download... (${retry} / ${MAX_RETRIES})`);
 
         return new Promise((resolve, reject) => {
             setTimeout(() => {
@@ -146,8 +149,6 @@ async function downloadVideo(
     videoData = videoData.split('\n').slice(1).join('\n');
     videoData = JSON.parse(videoData as any) as YtResponse;
 
-    debugJson('videoData', videoData);
-
     let bestFormat = getBestFormat(url, videoData, audioOnly);
 
     if (!bestFormat || bestFormat.filesize > DISCORD_LIMIT) {
@@ -158,7 +159,7 @@ async function downloadVideo(
     file.setName(`${videoData.title}.${audioOnly ? 'mp3' : 'mp4'}`);
     file.setSpoiler(spoiler);
 
-    console.log('[discord] sending video');
+    logger.info('[bot] sending video');
 
     try {
         await interaction.followUp({
@@ -166,7 +167,7 @@ async function downloadVideo(
             files: [file]
         });
     } catch (e) {
-        console.error(e);
+        logger.error(e);
 
         // Sometimes discord fails to send the video, so we try again
         await interaction.followUp({
@@ -197,7 +198,7 @@ async function downloadSlideshow(
         files.push(file);
     });
 
-    console.log('[discord] sending slideshow');
+    logger.info('[bot] sending slideshow');
 
     while (files.length > 10) {
         await interaction.followUp({
@@ -282,8 +283,6 @@ async function getCommentsFromTiktok(
 
     const commentsData: TiktokCommentsApi = await request.json();
 
-    debugJson('commentsData', commentsData);
-
     const commentsResponse = commentsData.comments.map((comment) => {
         // Filter out @ mentions
         if (comment.text.startsWith('@')) {
@@ -300,7 +299,7 @@ async function getCommentsFromTiktok(
         return '***' + comment.user.nickname + '***: \n> ' + comment.text;
     }).filter((comment) => comment !== null) as string[];
 
-    console.log('[discord] sending comments');
+    logger.info('[bot] sending comments');
 
     while (commentsResponse.length > 10) {
         await interaction.followUp({
@@ -366,7 +365,7 @@ export const Tiktok: Command = {
 
             if (commentsOnly) {
                 if (!urlObj.hostname.includes('tiktok')) {
-                    throw new Error('Comments only option is only available for tiktok links.');
+                    throw new Error('Comments only option is available only for tiktok links.');
                 }
 
                 await getCommentsFromTiktok(interaction, sigi_state, getRange(range));
@@ -378,11 +377,11 @@ export const Tiktok: Command = {
                 await downloadVideo(interaction, url, spoiler, audioOnly);
             }
         } catch (e) {
-            console.error(e);
+            logger.error(e);
 
             await interaction.followUp({
                 ephemeral: false,
-                content: `\n${e}`
+                content: `:x: ${e}`
             })
         }
     }
