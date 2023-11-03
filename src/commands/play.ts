@@ -111,11 +111,11 @@ const playAudio = async (url: string, interaction: CommandInteraction) => {
                 return;
             }
 
-            const msg = await interaction.editReply({
-                content: `\nFinished playing audio: ${url} !`,
-            });
-
             try {
+                const msg = await interaction.editReply({
+                    content: `\nFinished playing audio: ${url} !`,
+                });
+
                 connection.destroy();
                 msg.suppressEmbeds(true);
             } catch (e) {
