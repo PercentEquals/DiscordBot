@@ -5,7 +5,37 @@ import { Command } from "../command";
 import { debugJson } from "../debug";
 import { getBestFormat } from "../common/formatFinder";
 
+import ffmpeg from "fluent-ffmpeg";
 import youtubedl, { YtResponse } from "youtube-dl-exec";
+import { PassThrough } from "stream";
+
+// https://github.com/discordjs/voice/issues/117
+// https://github.com/discordjs/voice/issues/150
+function getAudioStream(url: string) {
+    console.log('[ffmpeg] downloading audio stream');
+
+    const FFMPEG_OPUS_ARGUMENTS = [
+        '-analyzeduration',
+        '0',
+        '-loglevel',
+        '0',
+        '-acodec',
+        'libopus',
+        '-f',
+        'opus',
+        '-ar',
+        '48000',
+        '-ac',
+        '2',
+    ];
+
+    const process = ffmpeg(url, { timeout: 0 });
+    process.addOptions(FFMPEG_OPUS_ARGUMENTS);
+
+    return process.pipe(new PassThrough({
+        highWaterMark: 96000 / 8 * 30
+    }));
+}
 
 const playAudio = async (url: string, interaction: CommandInteraction) => {
     let audioData = await youtubedl(url, {
@@ -23,7 +53,7 @@ const playAudio = async (url: string, interaction: CommandInteraction) => {
     const bestFormat = getBestFormat(url, audioData, true);
 
     if (!bestFormat) {
-        throw new Error('No audio found');
+        throw new Error('No audio found!');
     }
 
     return new Promise(async (resolve, reject) => {
@@ -35,7 +65,7 @@ const playAudio = async (url: string, interaction: CommandInteraction) => {
         const adapterCreator = interaction.guild?.voiceAdapterCreator
 
         if (!channelId || !guildId || !adapterCreator) {
-            throw new Error('No voice channel found - join one or check permissions');
+            throw new Error('No voice channel found - join one or check permissions!');
         }
 
         const connection = joinVoiceChannel({
@@ -54,18 +84,15 @@ const playAudio = async (url: string, interaction: CommandInteraction) => {
 
         const player = createAudioPlayer({
             behaviors: {
-                noSubscriber: NoSubscriberBehavior.Pause,
+                noSubscriber: NoSubscriberBehavior.Play,
             },
         });
 
-        const resource = createAudioResource(bestFormat.url, {
+        const resource = createAudioResource(getAudioStream(bestFormat.url) as any, {
             metadata: {
                 title: audioData.title,
             },
         });
-
-        player.play(resource);
-        connection.subscribe(player);
 
         player.on('error', error => {
             if (isRejected) return;
@@ -74,9 +101,13 @@ const playAudio = async (url: string, interaction: CommandInteraction) => {
             reject(error);
             isRejected = true;
         });
-        
-        player.on(AudioPlayerStatus.Idle, async () => {
+
+        player.on(AudioPlayerStatus.Idle, async (from, to) => {
             if (isRejected) return;
+
+            if (!(from.status === AudioPlayerStatus.Playing && to.status === AudioPlayerStatus.Idle)) {
+                return;
+            }
 
             const msg = await interaction.editReply({
                 content: `\nFinished playing audio: ${url} !`,
@@ -91,6 +122,9 @@ const playAudio = async (url: string, interaction: CommandInteraction) => {
 
             resolve(true);
         });
+
+        connection.subscribe(player);
+        player.play(resource);
 
         const msg = await interaction.followUp({
             ephemeral: false,
