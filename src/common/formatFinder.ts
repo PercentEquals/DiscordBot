@@ -22,6 +22,8 @@ export function getBestFormat(url: string, ytResponse: YtResponse, audioOnly: bo
         const formatsUnderLimit = ytResponse.formats.filter((format) => format.filesize < DISCORD_LIMIT || format.filesize_approx < DISCORD_LIMIT);
         const formats = formatsUnderLimit.filter((format) => format.acodec && format.vcodec && format.acodec.includes('mp4a') && format.vcodec.includes('avc'));
         bestFormat = formats.sort((a, b) => a.filesize - b.filesize)?.[0];
+    } else if (new URL(url).hostname.includes('discordapp')) {
+        bestFormat = ytResponse.formats[0];
     }
 
     return bestFormat;

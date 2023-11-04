@@ -1,6 +1,7 @@
 # DiscordBot
 
-Simple bot that for now sends tiktok videos, slideshows and comments as attachments.
+Simple bot that sends tiktok videos, slideshows and comments as attachments.  
+Can also play audio from tiktok videos and supports youtube videos and discordapp links.  
 
 ### Environment:
 

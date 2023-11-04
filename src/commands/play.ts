@@ -3,15 +3,16 @@ import { AudioPlayerStatus, NoSubscriberBehavior, createAudioPlayer, createAudio
 
 import { Command } from "../command";
 import { getBestFormat } from "../common/formatFinder";
+import { validateUrl } from "../common/validateUrl";
+import logger from "../logger";
 
 import ffmpeg from "fluent-ffmpeg";
 import youtubedl, { YtResponse } from "youtube-dl-exec";
 import { PassThrough } from "stream";
-import logger from "../logger";
 
 // https://github.com/discordjs/voice/issues/117
 // https://github.com/discordjs/voice/issues/150
-function getAudioStream(url: string) {
+function getAudioStream(url: string, reject: (reason?: any) => void) {
     logger.info('[ffmpeg] downloading audio stream');
 
     const FFMPEG_OPUS_ARGUMENTS = [
@@ -31,6 +32,10 @@ function getAudioStream(url: string) {
 
     const process = ffmpeg(url, { timeout: 0 });
     process.addOptions(FFMPEG_OPUS_ARGUMENTS);
+
+    process.on('error', (error) => {
+        reject(error);
+    });
 
     return process.pipe(new PassThrough({
         highWaterMark: 96000 / 8 * 30
@@ -53,10 +58,10 @@ const playAudio = async (url: string, interaction: CommandInteraction) => {
     if (!bestFormat) {
         throw new Error('No audio found!');
     }
-
-    const audioStream = getAudioStream(bestFormat.url) as any;
-
+    
     return new Promise(async (resolve, reject) => {
+        const audioStream = getAudioStream(bestFormat.url, reject) as any;
+        
         try {
             let isRejected = false;
 
@@ -103,6 +108,10 @@ const playAudio = async (url: string, interaction: CommandInteraction) => {
                 isRejected = true;
             });
 
+            const duration = new Date(0);
+            duration.setSeconds(audioData.duration ?? 0);
+            const durationString = audioData.duration ? duration.toISOString().substr(11, 8) : '??:??:??';
+
             player.on(AudioPlayerStatus.Idle, async (from, to) => {
                 try {
                     if (isRejected) {
@@ -114,10 +123,9 @@ const playAudio = async (url: string, interaction: CommandInteraction) => {
                     }
 
                     const msg = await interaction.editReply({
-                        content: `:white_check_mark: Finished playing audio: ${url}`,
+                        content: `:white_check_mark: Finished playing audio: ${audioData.title} - ${audioData.uploader ?? "unknown"} | ${durationString}`,
                     });
 
-                    connection.destroy();
                     msg.suppressEmbeds(true);
 
                     resolve(true);
@@ -131,7 +139,7 @@ const playAudio = async (url: string, interaction: CommandInteraction) => {
 
             const msg = await interaction.followUp({
                 ephemeral: false,
-                content: `:speaker: Playing audio: ${url}`
+                content: `:loud_sound: Playing audio: ${audioData.title} - ${audioData.uploader ?? "unknown"} | ${durationString}`
             });
 
             msg.suppressEmbeds(true);
@@ -153,6 +161,8 @@ export const Play: Command = {
             //@ts-ignore
             const url: string = interaction.options.getString('url', true);
 
+            validateUrl(new URL(url));
+
             await playAudio(url, interaction);
         } catch (e) {
             logger.error(e);
@@ -160,7 +170,7 @@ export const Play: Command = {
             await interaction.followUp({
                 ephemeral: false,
                 content: `:x: ${e}`
-            })
+            });
         }
     }
 };
