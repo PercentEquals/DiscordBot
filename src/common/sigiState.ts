@@ -55,5 +55,7 @@ export function getImageDataFromTiktokApi(sigi_state: TiktokApi) {
 export function getTitleFromTiktokApi(sigi_state: TiktokApi) {
     if (!sigi_state?.SEOState) return null;
 
-    return sigi_state.SharingMetaState.value["og:description"];
+    const title = sigi_state.SharingMetaState.value["og:description"];
+    
+    return title.substring(0, 100);
 }
