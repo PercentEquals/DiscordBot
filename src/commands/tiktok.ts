@@ -37,13 +37,17 @@ async function convertVideo(initialPath: string, id: string): Promise<string> {
             process.addOption(["-crf", targetCrf.toFixed(0).toString()]);
 
             process.on('end', (done: any) => {
-                fs.unlinkSync(initialPath);
+                if (fs.existsSync(initialPath)) {
+                    fs.unlinkSync(initialPath);
+                }
                 logger.info('[ffmpeg] conversion done');
                 resolve(finalPath);
             });
 
             process.on('error', (err: any) => {
-                fs.unlinkSync(initialPath);
+                if (fs.existsSync(initialPath)) {
+                    fs.unlinkSync(initialPath);
+                }
                 logger.info('[ffmpeg] error', err);
                 reject(err);
             });
@@ -82,7 +86,9 @@ async function downloadAndConvertVideo(
     const file = new AttachmentBuilder(filePath);
 
     if (fs.statSync(filePath).size > DISCORD_LIMIT) {
-        fs.unlinkSync(filePath);
+        if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+        }
         throw new Error(`No format found under ${DISCORD_LIMIT / 1024 / 1024}MB`);
     }
 
