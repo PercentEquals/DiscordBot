@@ -2,10 +2,30 @@ import { ItemModule, ItemModuleChildren, TiktokApi } from "types/tiktokApi";
 import { fetchWithRetries } from "./fetchWithReplies";
 import { validateUrl } from "./validateUrl";
 
+import { chromium } from "playwright";
 import cheerio from "cheerio";
 
 import { MAX_RETRIES, RETRY_TIMEOUT } from "../constants/maxretries";
 import logger from "../logger";
+
+export async function alternativeGetSigiState(url: string) {
+    logger.info('[bot] no sigi_state found. Trying alternative method...');
+
+    const browser = await chromium.launch();
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    await page.goto(url);
+    await page.waitForTimeout(2000);
+
+    const body = await page.content();
+    const $ = cheerio.load(body);
+    const $script = $('#SIGI_STATE');
+
+    await browser.close();
+
+    const sigi_state: TiktokApi = JSON.parse($script.html() as string);
+    return sigi_state;
+}
 
 export async function getSigiState(url: string, runRetries = 0): Promise<TiktokApi> {
     const urlObj = new URL(url);
@@ -23,7 +43,12 @@ export async function getSigiState(url: string, runRetries = 0): Promise<TiktokA
         logger.info(`[bot] no sigi_state found. Retrying... (${runRetries} / ${MAX_RETRIES})`);
 
         if (runRetries >= MAX_RETRIES) {
-            throw new Error('No sigi_state found - bot could be rate limited for now. Please try again later.');
+            try {
+                return await alternativeGetSigiState(url);
+            } catch (e) {
+                logger.error(e);
+                throw new Error('No sigi_state found - bot could be rate limited for now. Please try again later.');
+            }
         }
 
         return new Promise((resolve, reject) => {
@@ -60,13 +85,9 @@ export async function getTiktokIdFromTiktokUrl(url: string) {
 }
 
 export async function getImageDataFromTiktokApi(url: string) {
-    try {
-        const sigi_state = await getSigiState(url);
-        if (!sigi_state?.ItemModule) return null;
+    const sigi_state = await getSigiState(url);
+    if (!sigi_state?.ItemModule) return null;
 
-        const id = await getTiktokIdFromTiktokUrl(url);
-        return (sigi_state.ItemModule?.[id as keyof ItemModule] as ItemModuleChildren)?.imagePost?.images;
-    } catch (e) {
-        return null;
-    }
+    const id = await getTiktokIdFromTiktokUrl(url);
+    return (sigi_state.ItemModule?.[id as keyof ItemModule] as ItemModuleChildren)?.imagePost?.images;
 }
