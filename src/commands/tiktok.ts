@@ -27,6 +27,8 @@ import { Readable } from "stream";
 import { finished } from "stream/promises";
 
 async function convertSlideshowToVideo(url: string, imagesData: Image[], id: string): Promise<string> {
+    const resultFilePath = `cache/${id}-slideshow.mp4`;
+
     return new Promise(async (resolve, reject) => {
         try {
             const process = ffmpeg();
@@ -35,52 +37,59 @@ async function convertSlideshowToVideo(url: string, imagesData: Image[], id: str
                 reject(err);
             });
 
-            process.addOption('-r 20');
-
-            for (let i = 0; i < imagesData.length; i++) {
-                const { body } = await fetch(imagesData[i].imageURL.urlList[0]);
-                const stream = fs.createWriteStream(`cache/${id}-${i}.jpg`);
-                await finished(Readable.fromWeb(body as any).pipe(stream));
-
-                process.addInput(`cache/${id}-${i}.jpg`);
-            }
-
-            process.addOption('-b:v', '20M');
-
-            // let audioData = await youtubedl(url, {
-            //     noWarnings: true,
-            //     dumpSingleJson: true,
-            //     getFormat: true, 
-            // });
-
-            // //@ts-ignore - youtube-dl-exec audioData contains useless first line
-            // audioData = audioData.split('\n').slice(1).join('\n');
-            // audioData = JSON.parse(audioData as any) as YtResponse;
-
-            // const bestFormat = getBestFormat(url, audioData, true);
-
-            // process.addOption('-i', bestFormat?.url as string);
-
             process.on('end', () => {
                 for (let i = 0; i < imagesData.length; i++) {
                     if (fs.existsSync(`cache/${id}-${i}.jpg`)) {
                         fs.unlinkSync(`cache/${id}-${i}.jpg`);
                     }
                 }
-
-                resolve(`cache/${id}-slideshow.mp4`);
+                resolve(resultFilePath);
             });
 
-            process.output(`cache/${id}-slideshow.mp4`);
+            for (let i = 0; i < imagesData.length; i++) {
+                const { body } = await fetch(imagesData[i].imageURL.urlList[0]);
+                const stream = fs.createWriteStream(`cache/${id}-${i}.jpg`);
+                await finished(Readable.fromWeb(body as any).pipe(stream));
+            }
+
+            let audioData = await youtubedl(url, {
+                noWarnings: true,
+                dumpSingleJson: true,
+                getFormat: true, 
+            });
+
+            //@ts-ignore - youtube-dl-exec audioData contains useless first line
+            audioData = audioData.split('\n').slice(1).join('\n');
+            audioData = JSON.parse(audioData as any) as YtResponse;
+
+            const bestFormat = getBestFormat(url, audioData, true);
+
+            process.addOption(`-framerate 1`);
+            process.addOption(`-r 6`);
+            process.addOption(`-loop 1`);
+            process.addOption(`-t 4`);
+            process.addOption(`-i cache/${id}-%d.jpg`);
+            process.addOption('-i', bestFormat?.url as string);
+            process.addOption('-c:v libx264');
+            process.addOption('-pix_fmt yuv420p');
+            process.addOption('-c:a aac');
+            process.addOption('-b:a 192k');
+            process.addOption('-shortest');
+
+            process.output(resultFilePath);
             process.run();
         } catch (e) {
-            reject(e);
-        } finally {
             for (let i = 0; i < imagesData.length; i++) {
                 if (fs.existsSync(`cache/${id}-${i}.jpg`)) {
                     fs.unlinkSync(`cache/${id}-${i}.jpg`);
                 }
+
+                if (fs.existsSync(resultFilePath)) {
+                    fs.unlinkSync(resultFilePath);
+                }
             }
+
+            reject(e);
         }
     });
 }
@@ -282,6 +291,8 @@ async function downloadSlideshow(
         if (fs.existsSync(slideshowFile)) {
             fs.unlinkSync(slideshowFile);
         }
+
+        return;
     }
 
     logger.info('[bot] sending slideshow');
