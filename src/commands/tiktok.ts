@@ -367,7 +367,13 @@ export const Tiktok: Command = {
             const range = interaction.options.getString('range', false);
 
             const urlObj = new URL(url);
-            const sigi_state = await getSigiState(url);
+            let sigi_state = null;
+
+            try {
+                sigi_state = await getSigiState(url);
+            } catch (e) {
+                return await downloadVideo(interaction, url, spoiler, audioOnly);
+            }
 
             if (commentsOnly) {
                 if (!urlObj.hostname.includes('tiktok')) {
