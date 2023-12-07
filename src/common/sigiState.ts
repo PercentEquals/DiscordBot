@@ -28,9 +28,9 @@ export async function getSigiState(url: string, runRetries = 0): Promise<TiktokA
         }
 
         return new Promise((resolve, reject) => {
-            setTimeout(() => {
+            setTimeout(async () => {
                 try {
-                    resolve(getSigiState(url, runRetries++));
+                    resolve(await getSigiState(url, runRetries+1));
                 } catch (e) {
                     reject(e);
                 }
