@@ -372,7 +372,25 @@ export const Tiktok: Command = {
             try {
                 sigi_state = await getSigiState(url);
             } catch (e) {
-                return await downloadVideo(interaction, url, spoiler, audioOnly);
+                const originalException = e;
+
+                if (commentsOnly) {
+                    throw originalException;
+                }
+
+                try {
+                    return await downloadVideo(interaction, url, spoiler, audioOnly);
+                } catch (e) {
+                    const vxUrl = new URL(url);
+                    vxUrl.hostname = 'vxtiktok.com';
+
+                    await interaction.followUp({
+                        ephemeral: false,
+                        content: `Could not download slideshow. Using: ${vxUrl} as fallback.`
+                    });
+                }
+
+                return;
             }
 
             if (commentsOnly) {

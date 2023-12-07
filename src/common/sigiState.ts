@@ -24,7 +24,7 @@ export async function getSigiState(url: string, runRetries = 0): Promise<TiktokA
         logger.info(`[bot] no sigi_state found. Retrying... (${runRetries} / ${MAX_RETRIES})`);
 
         if (runRetries >= MAX_RETRIES) {
-            throw new Error('No sigi_state found. Please try again later.');
+            throw new Error('No sigi_state found - bot could be rate limited for now. Please try again later.');
         }
 
         return new Promise((resolve, reject) => {
