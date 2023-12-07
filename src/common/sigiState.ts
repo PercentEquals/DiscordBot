@@ -1,4 +1,4 @@
-import { ItemModuleChildren, TiktokApi } from "types/tiktokApi";
+import { ItemModule, ItemModuleChildren, TiktokApi } from "types/tiktokApi";
 import { fetchWithRetries } from "./fetchWithReplies";
 import { validateUrl } from "./validateUrl";
 
@@ -9,7 +9,6 @@ import logger from "../logger";
 
 export async function getSigiState(url: string, runRetries = 0): Promise<TiktokApi> {
     const urlObj = new URL(url);
-
     validateUrl(urlObj);
 
     const response = await fetchWithRetries(url);
@@ -41,21 +40,33 @@ export async function getSigiState(url: string, runRetries = 0): Promise<TiktokA
     return sigi_state;
 }
 
-export function getTiktokIdFromTiktokApi(sigi_state: TiktokApi) {
-    return Object.keys(sigi_state.ItemModule)[0] as keyof TiktokApi['ItemModule'];
+export async function getTiktokIdFromTiktokUrl(url: string) {
+    const urlObj = new URL(url);
+    const fallbackId = validateUrl(urlObj);
+
+    try {
+        const response = await fetchWithRetries(url);
+        const body = await response.text();
+
+        const $ = cheerio.load(body);
+        const $ogUrl = $('meta[property="og:url"]');
+
+        const ogUrl = $ogUrl.attr('content') as string;
+        const id = ogUrl.match(/video\/(\d+)/)?.[1] as string;
+        return id;
+    } catch (e) {
+        return fallbackId;
+    }
 }
 
-export function getImageDataFromTiktokApi(sigi_state: TiktokApi) {
-    if (!sigi_state?.ItemModule) return null;
+export async function getImageDataFromTiktokApi(url: string) {
+    try {
+        const sigi_state = await getSigiState(url);
+        if (!sigi_state?.ItemModule) return null;
 
-    const id = getTiktokIdFromTiktokApi(sigi_state);
-    return (sigi_state.ItemModule?.[id] as ItemModuleChildren)?.imagePost?.images;
-}
-
-export function getTitleFromTiktokApi(sigi_state: TiktokApi) {
-    if (!sigi_state?.SEOState) return null;
-
-    const title = sigi_state.SharingMetaState.value["og:description"];
-    
-    return title.substring(0, 100);
+        const id = await getTiktokIdFromTiktokUrl(url);
+        return (sigi_state.ItemModule?.[id as keyof ItemModule] as ItemModuleChildren)?.imagePost?.images;
+    } catch (e) {
+        return null;
+    }
 }

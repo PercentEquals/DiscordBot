@@ -5,13 +5,14 @@ import { DISCORD_LIMIT } from "../constants/discordlimit";
 import { MAX_RETRIES, RETRY_TIMEOUT } from "../constants/maxretries";
 import { TIKTOK_COMMENTS_COUNT, TIKTOK_COMMENTS_MAX_COUNT, TIKTOK_COMMENTS_OFFSET } from "../constants/tiktokcommentscount";
 
-import { TiktokApi, Image, ItemModuleChildren } from "types/tiktokApi";
+import { Image } from "types/tiktokApi";
 import { TikTokSigner } from "types/tiktokSigner";
 import { TiktokCommentsApi } from "types/tiktokCommentsApi";
 
 import { validateUrl } from "../common/validateUrl";
 import { getBestFormat } from "../common/formatFinder";
-import { getImageDataFromTiktokApi, getSigiState, getTiktokIdFromTiktokApi, getTitleFromTiktokApi } from "../common/sigiState";
+import { getImageDataFromTiktokApi, getTiktokIdFromTiktokUrl } from "../common/sigiState";
+import { getRange } from "../common/getRange";
 
 import getConfig from "../setup/configSetup";
 import logger from "../logger";
@@ -22,6 +23,67 @@ import Signer from "tiktok-signature";
 import ffmpeg from "fluent-ffmpeg";
 import youtubedl, { YtResponse } from "youtube-dl-exec";
 import fs from "fs";
+import { Readable } from "stream";
+import { finished } from "stream/promises";
+
+async function convertSlideshowToVideo(url: string, imagesData: Image[], id: string): Promise<string> {
+    return new Promise(async (resolve, reject) => {
+        try {
+            const process = ffmpeg();
+
+            process.on('error', (err: any) => {
+                reject(err);
+            });
+
+            process.addOption('-r 20');
+
+            for (let i = 0; i < imagesData.length; i++) {
+                const { body } = await fetch(imagesData[i].imageURL.urlList[0]);
+                const stream = fs.createWriteStream(`cache/${id}-${i}.jpg`);
+                await finished(Readable.fromWeb(body as any).pipe(stream));
+
+                process.addInput(`cache/${id}-${i}.jpg`);
+            }
+
+            process.addOption('-b:v', '20M');
+
+            // let audioData = await youtubedl(url, {
+            //     noWarnings: true,
+            //     dumpSingleJson: true,
+            //     getFormat: true, 
+            // });
+
+            // //@ts-ignore - youtube-dl-exec audioData contains useless first line
+            // audioData = audioData.split('\n').slice(1).join('\n');
+            // audioData = JSON.parse(audioData as any) as YtResponse;
+
+            // const bestFormat = getBestFormat(url, audioData, true);
+
+            // process.addOption('-i', bestFormat?.url as string);
+
+            process.on('end', () => {
+                for (let i = 0; i < imagesData.length; i++) {
+                    if (fs.existsSync(`cache/${id}-${i}.jpg`)) {
+                        fs.unlinkSync(`cache/${id}-${i}.jpg`);
+                    }
+                }
+
+                resolve(`cache/${id}-slideshow.mp4`);
+            });
+
+            process.output(`cache/${id}-slideshow.mp4`);
+            process.run();
+        } catch (e) {
+            reject(e);
+        } finally {
+            for (let i = 0; i < imagesData.length; i++) {
+                if (fs.existsSync(`cache/${id}-${i}.jpg`)) {
+                    fs.unlinkSync(`cache/${id}-${i}.jpg`);
+                }
+            }
+        }
+    });
+}
 
 async function convertVideo(initialPath: string, id: string): Promise<string> {
     return new Promise((resolve, reject) => {
@@ -185,11 +247,13 @@ async function downloadVideo(
 
 async function downloadSlideshow(
     interaction: CommandInteraction,
+    url: string,
     imagesData: Image[],
-    imagesName: string,
+    slideshowAsVideo: boolean,
     spoiler: boolean,
     ranges: number[] = []
 ) {
+    const tiktokId = await getTiktokIdFromTiktokUrl(url);
     const files = [] as AttachmentBuilder[];
 
     imagesData.forEach((image, i: number) => {
@@ -198,11 +262,27 @@ async function downloadSlideshow(
         }
 
         const file = new AttachmentBuilder(image.imageURL.urlList[0]);
-        file.setName(`${imagesName}-${i}.jpg`);
+        file.setName(`${tiktokId}-${i}.jpg`);
         file.setSpoiler(spoiler);
 
         files.push(file);
     });
+
+    if (slideshowAsVideo) {
+        const slideshowFile = await convertSlideshowToVideo(url, imagesData, tiktokId);
+        const slideshowVideo = new AttachmentBuilder(slideshowFile);
+        slideshowVideo.setName(`${tiktokId}.mp4`);
+        slideshowVideo.setSpoiler(spoiler);
+
+        await interaction.followUp({
+            ephemeral: false,
+            files: [slideshowVideo]
+        });
+
+        if (fs.existsSync(slideshowFile)) {
+            fs.unlinkSync(slideshowFile);
+        }
+    }
 
     logger.info('[bot] sending slideshow');
 
@@ -221,13 +301,14 @@ async function downloadSlideshow(
 
 async function getCommentsFromTiktok(
     interaction: CommandInteraction,
-    sigi_state: TiktokApi,
+    url: string,
     range: number[]
 ) {
-    const id = getTiktokIdFromTiktokApi(sigi_state);
-    const itemModuleChildren = (sigi_state.ItemModule?.[id] as ItemModuleChildren);
-    const playUrl = new URL(itemModuleChildren.music.playUrl);
+    if (!new URL(url).hostname.includes('tiktok')) {
+        throw new Error('Comments only option is available for tiktok links only.');
+    }
 
+    const id = await getTiktokIdFromTiktokUrl(url);
     const USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.0.0 Safari/537.36 Edg/105.0.1343.53";
     const MSTOKEN = "G1lr_8nRB3udnK_fFzgBD7sxvc0PK6Osokd1IJMaVPVcoB4mwSW-D6MQjTdoJ2o20PLt_MWNgtsAr095wVSShdmn_XVFS34bURvakVglDyWAHncoV_jVJCRdiJRdbJBi_E_KD_G8vpFF9-aOaJrk";
 
@@ -236,7 +317,7 @@ async function getCommentsFromTiktok(
         cursor: TIKTOK_COMMENTS_OFFSET,
         count: TIKTOK_COMMENTS_COUNT,
         msToken: MSTOKEN,
-        aid: playUrl.searchParams.get('a') ?? '1988',
+        aid: '1988',
         app_language: 'ja-JP',
         app_name: 'tiktok_web',
         battery_info: 1,
@@ -269,11 +350,11 @@ async function getCommentsFromTiktok(
         }
     }
 
-    const url = new URL('https://www.tiktok.com/api/comment/list/?' + (new URLSearchParams(queryParams)).toString());
+    const commentsApi = new URL('https://www.tiktok.com/api/comment/list/?' + (new URLSearchParams(queryParams)).toString());
 
     const signer = new Signer(null, USER_AGENT);
     await signer.init();
-    const signature = await signer.sign(url.toString()) as TikTokSigner.signature;
+    const signature = await signer.sign(commentsApi.toString()) as TikTokSigner.signature;
     const navigator = await signer.navigator() as TikTokSigner.navigator;
     await signer.close();
 
@@ -282,7 +363,7 @@ async function getCommentsFromTiktok(
         {
             headers: {
                 'user-agent': navigator.user_agent,
-                'referer': sigi_state.SEOState.canonical
+                'referer': url
             }
         }
     );
@@ -320,28 +401,6 @@ async function getCommentsFromTiktok(
     });
 }
 
-function getRange(range: string | null) {
-    if (!range) return [];
-
-    const ranges = range.split(',');
-    const rangeArray = [] as number[];
-
-    ranges.forEach((range) => {
-        range = range.trim();
-
-        if (range.includes('-')) {
-            const [start, end] = range.split('-');
-            for (let i = parseInt(start); i <= parseInt(end); i++) {
-                rangeArray.push(i);
-            }
-        } else {
-            rangeArray.push(parseInt(range));
-        }
-    });
-
-    return rangeArray;
-}
-
 export const Tiktok: Command = {
     name: "tiktok",
     description: "Send video/slideshow via url",
@@ -349,6 +408,7 @@ export const Tiktok: Command = {
     options: [
         new SlashCommandStringOption().setName('url').setDescription('Tiktok link').setRequired(true),
         new SlashCommandBooleanOption().setName('spoiler').setDescription('Should hide as spoiler?').setRequired(false),
+        new SlashCommandBooleanOption().setName('video').setDescription('Should send as video? This options exists to force slideshow into video').setRequired(false),
         new SlashCommandBooleanOption().setName('audio').setDescription('Should only download audio?').setRequired(false),
         new SlashCommandBooleanOption().setName('comments').setDescription('Should only send comments?').setRequired(false),
         new SlashCommandStringOption().setName('range').setDescription('Range of photos/comments').setRequired(false),
@@ -359,6 +419,8 @@ export const Tiktok: Command = {
         //@ts-ignore
         const spoiler = interaction.options.getBoolean('spoiler', false);
         //@ts-ignore
+        const slideshowAsVideo = interaction.options.getBoolean('video', false);
+        //@ts-ignore
         const audioOnly = interaction.options.getBoolean('audio', false);
         //@ts-ignore
         const commentsOnly = interaction.options.getBoolean('comments', false);
@@ -366,29 +428,12 @@ export const Tiktok: Command = {
         const range = interaction.options.getString('range', false);
 
         try {
-            const urlObj = new URL(url);
-            let sigi_state = null;
-
-            try {
-                sigi_state = await getSigiState(url);
-            } catch (e) {
-                try {
-                    return await downloadVideo(interaction, url, spoiler, audioOnly);
-                } catch (_) {
-                    throw e;
-                }
-            }
+            const imagesData = await getImageDataFromTiktokApi(url) as Image[];
 
             if (commentsOnly) {
-                if (!urlObj.hostname.includes('tiktok')) {
-                    throw new Error('Comments only option is available for tiktok links only.');
-                }
-
-                await getCommentsFromTiktok(interaction, sigi_state, getRange(range));
-            } else if (getImageDataFromTiktokApi(sigi_state) && !audioOnly) {
-                const imagesData = getImageDataFromTiktokApi(sigi_state) as Image[];
-                const imagesName = getTitleFromTiktokApi(sigi_state) as string;
-                await downloadSlideshow(interaction, imagesData, imagesName, spoiler, getRange(range));
+                await getCommentsFromTiktok(interaction, url, getRange(range));
+            } else if (imagesData && !audioOnly) {
+                await downloadSlideshow(interaction, url, imagesData, slideshowAsVideo, spoiler, getRange(range));
             } else {
                 await downloadVideo(interaction, url, spoiler, audioOnly);
             }
