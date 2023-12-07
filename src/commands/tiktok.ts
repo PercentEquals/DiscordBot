@@ -79,11 +79,10 @@ async function convertSlideshowToVideo(url: string, imagesData: Image[], id: str
             const bestFormat = getBestFormat(url, audioData, true);
             
             process.addOption('-i', bestFormat?.url as string);
-            process.addOption('-c:v libx264');
             process.addOption('-pix_fmt yuv420p');
-            process.addOption('-c:a aac');
-            process.addOption('-b:a 192k');
+            process.addOption('-c:a copy');
             process.addOption('-shortest');
+            process.addOption('-preset ultrafast');
 
             process.output(resultFilePath);
             process.run();
