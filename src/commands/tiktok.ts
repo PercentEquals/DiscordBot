@@ -382,7 +382,7 @@ export const Tiktok: Command = {
                     return await downloadVideo(interaction, url, spoiler, audioOnly);
                 } catch (e) {
                     const vxUrl = new URL(url);
-                    vxUrl.hostname = 'vxtiktok.com';
+                    vxUrl.hostname = vxUrl.hostname.replace('tiktok', 'vxtiktok');
 
                     await interaction.followUp({
                         ephemeral: false,
