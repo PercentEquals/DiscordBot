@@ -16,41 +16,56 @@ import { getRange } from "../common/getRange";
 
 import getConfig from "../setup/configSetup";
 import logger from "../logger";
+import fs from "fs";
 
 //@ts-ignore - tiktok-signature types not available (https://github.com/carcabot/tiktok-signature)
 import Signer from "tiktok-signature";
 
 import ffmpeg from "fluent-ffmpeg";
 import youtubedl, { YtResponse } from "youtube-dl-exec";
-import fs from "fs";
 import { Readable } from "stream";
 import { finished } from "stream/promises";
 
 async function convertSlideshowToVideo(url: string, imagesData: Image[], id: string): Promise<string> {
     const resultFilePath = `cache/${id}-slideshow.mp4`;
 
+    const clearCache = (clearResult: boolean) => {
+        for (let i = 0; i < imagesData.length; i++) {
+            if (fs.existsSync(`cache/${id}-${i}.webp`)) {
+                fs.unlinkSync(`cache/${id}-${i}.webp`);
+            }
+        }
+
+        if (clearResult && fs.existsSync(resultFilePath)) {
+            fs.unlinkSync(resultFilePath);
+        }
+    }
+
     return new Promise(async (resolve, reject) => {
         try {
+            logger.info('[ffmpeg] converting slideshow to video');
+            
             const process = ffmpeg();
-
             process.on('error', (err: any) => {
+                clearCache(true);
                 reject(err);
             });
-
             process.on('end', () => {
-                for (let i = 0; i < imagesData.length; i++) {
-                    if (fs.existsSync(`cache/${id}-${i}.jpg`)) {
-                        fs.unlinkSync(`cache/${id}-${i}.jpg`);
-                    }
-                }
+                clearCache(false);
                 resolve(resultFilePath);
             });
 
             for (let i = 0; i < imagesData.length; i++) {
                 const { body } = await fetch(imagesData[i].display_image.url_list[0]);
-                const stream = fs.createWriteStream(`cache/${id}-${i}.jpg`);
+                const stream = fs.createWriteStream(`cache/${id}-${i}.webp`);
                 await finished(Readable.fromWeb(body as any).pipe(stream));
             }
+
+            process.addOption(`-framerate 1`);
+            process.addOption(`-r 6`);
+            process.addOption(`-loop 1`);
+            process.addOption(`-t 4`);
+            process.addOption(`-i cache/${id}-%d.webp`);
 
             let audioData = await youtubedl(url, {
                 noWarnings: true,
@@ -61,14 +76,8 @@ async function convertSlideshowToVideo(url: string, imagesData: Image[], id: str
             //@ts-ignore - youtube-dl-exec audioData contains useless first line
             audioData = audioData.split('\n').slice(1).join('\n');
             audioData = JSON.parse(audioData as any) as YtResponse;
-
             const bestFormat = getBestFormat(url, audioData, true);
-
-            process.addOption(`-framerate 1`);
-            process.addOption(`-r 6`);
-            process.addOption(`-loop 1`);
-            process.addOption(`-t 4`);
-            process.addOption(`-i cache/${id}-%d.jpg`);
+            
             process.addOption('-i', bestFormat?.url as string);
             process.addOption('-c:v libx264');
             process.addOption('-pix_fmt yuv420p');
@@ -79,16 +88,7 @@ async function convertSlideshowToVideo(url: string, imagesData: Image[], id: str
             process.output(resultFilePath);
             process.run();
         } catch (e) {
-            for (let i = 0; i < imagesData.length; i++) {
-                if (fs.existsSync(`cache/${id}-${i}.jpg`)) {
-                    fs.unlinkSync(`cache/${id}-${i}.jpg`);
-                }
-
-                if (fs.existsSync(resultFilePath)) {
-                    fs.unlinkSync(resultFilePath);
-                }
-            }
-
+            clearCache(true);
             reject(e);
         }
     });
