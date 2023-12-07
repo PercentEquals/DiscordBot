@@ -11,7 +11,7 @@ import { TiktokCommentsApi } from "types/tiktokCommentsApi";
 
 import { validateUrl } from "../common/validateUrl";
 import { getBestFormat } from "../common/formatFinder";
-import { getImageDataFromTiktokApi, getTiktokIdFromTiktokUrl } from "../common/sigiState";
+import { getSlideshowDataFromTiktokApi, getTiktokIdFromTiktokUrl } from "../common/sigiState";
 import { getRange } from "../common/getRange";
 
 import getConfig from "../setup/configSetup";
@@ -47,7 +47,7 @@ async function convertSlideshowToVideo(url: string, imagesData: Image[], id: str
             });
 
             for (let i = 0; i < imagesData.length; i++) {
-                const { body } = await fetch(imagesData[i].imageURL.urlList[0]);
+                const { body } = await fetch(imagesData[i].display_image.url_list[0]);
                 const stream = fs.createWriteStream(`cache/${id}-${i}.jpg`);
                 await finished(Readable.fromWeb(body as any).pipe(stream));
             }
@@ -270,7 +270,7 @@ async function downloadSlideshow(
             return;
         }
 
-        const file = new AttachmentBuilder(image.imageURL.urlList[0]);
+        const file = new AttachmentBuilder(image.display_image.url_list[0]);
         file.setName(`${tiktokId}-${i}.jpg`);
         file.setSpoiler(spoiler);
 
@@ -439,12 +439,12 @@ export const Tiktok: Command = {
         const range = interaction.options.getString('range', false);
 
         try {
-            const imagesData = await getImageDataFromTiktokApi(url) as Image[];
+            const slideshowData = await getSlideshowDataFromTiktokApi(url);
 
             if (commentsOnly) {
                 await getCommentsFromTiktok(interaction, url, getRange(range));
-            } else if (imagesData && !audioOnly) {
-                await downloadSlideshow(interaction, url, imagesData, slideshowAsVideo, spoiler, getRange(range));
+            } else if (slideshowData && !audioOnly) {
+                await downloadSlideshow(interaction, url, slideshowData, slideshowAsVideo, spoiler, getRange(range));
             } else {
                 await downloadVideo(interaction, url, spoiler, audioOnly);
             }

@@ -1,1285 +1,1027 @@
 export interface TiktokApi {
-  AppContext: AppContext
-  BizContext: BizContext
-  SEOState: Seostate
-  ItemList: ItemList
-  ItemModule: ItemModule
-  UserModule: UserModule
-  VideoPage: VideoPage
-  SharingMetaState: SharingMetaState
-}
-
-export interface AppContext {
-  appContext: AppContext2
-  initialized: boolean
-  lang: string
-  sideNavActive: boolean
-}
-
-export interface AppContext2 {
-  language: string
-  region: string
-  appId: number
-  appType: string
-  wid: string
-  webIdCreatedTime: string
-  odinId: string
-  nonce: string
-  botType: string
-  requestId: string
-  clusterRegion: string
-  abTestVersion: AbTestVersion
-  csrfToken: string
-  userAgent: string
-  encryptedWebid: string
-  host: string
-}
-
-export interface AbTestVersion {
-  versionName: string
-  parameters: Parameters
-}
-
-export interface Parameters {
-  has_system_notification_inbox: HasSystemNotificationInbox
-  should_highlight_hashtag: ShouldHighlightHashtag
-  login_modal_ui_revamp: LoginModalUiRevamp
-  video_feed_redesign: VideoFeedRedesign
-  use_follow_v2: UseFollowV2
-  creator_center_connect: CreatorCenterConnect
-  one_column_player_size: OneColumnPlayerSize
-  mobile_consumption_limit_non_logged_in: MobileConsumptionLimitNonLoggedIn
-  enable_odin_id: EnableOdinId
-  qr_sso_popup: QrSsoPopup
-  webapp_login_email_phone: WebappLoginEmailPhone
-  xgplayer_preload_config: XgplayerPreloadConfig
-  use_inbox_notice_count_api: UseInboxNoticeCountApi
-  mobile_search_test: MobileSearchTest
-  browser_mode_creator_tab_3: BrowserModeCreatorTab3
-  xg_volume_test: XgVolumeTest
-  has_system_notification_inbox_mobile: HasSystemNotificationInboxMobile
-  seo_footer_navigation: SeoFooterNavigation
-  mobile_vodkit: MobileVodkit
-  sign_up_webapp_region_change: SignUpWebappRegionChange
-  browser_login_redirect: BrowserLoginRedirect
-  periodic_login_popup_interval: PeriodicLoginPopupInterval
-  confirm_logout: ConfirmLogout
-  volume_normalize: VolumeNormalize
-  webapp_switch_account: WebappSwitchAccount
-  browser_mode_encourage_login: BrowserModeEncourageLogin
-  login_option_order_by_metrics: LoginOptionOrderByMetrics
-  studio_web_eh_entrance: StudioWebEhEntrance
-  search_video: SearchVideo
-  mobile_consumption_limit_logged_in: MobileConsumptionLimitLoggedIn
-  webapp_guest_mode: WebappGuestMode
-  profile_ui_opt: ProfileUiOpt
-  share_button_part1_test: ShareButtonPart1Test
-  seo_navigation_switch: SeoNavigationSwitch
-  video_serverpush: VideoServerpush
-  enable_ml_model: EnableMlModel
-  video_bitrate_adapt: VideoBitrateAdapt
-  mobile_consumption_limit_v2: MobileConsumptionLimitV2
-  add_info_card: AddInfoCard
-  add_kap_entry: AddKapEntry
-  browse_mode_autoplay_test: BrowseModeAutoplayTest
-  comment_refactor_test: CommentRefactorTest
-  creator_center_connect_global: CreatorCenterConnectGlobal
-  creator_center_test: CreatorCenterTest
-  desktop_ui_opt: DesktopUiOpt
-  desktop_ui_reply: DesktopUiReply
-  enable_fb_sdk: EnableFbSdk
-  enable_profile_pinned_video: EnableProfilePinnedVideo
-  enhance_video_consumption_test: EnhanceVideoConsumptionTest
-  explore_test: ExploreTest
-  favorite_test: FavoriteTest
-  fix_tea_session: FixTeaSession
-  increase_detail_page_cover_quantity_test: IncreaseDetailPageCoverQuantityTest
-  kep_new_ui_login: KepNewUiLogin
-  kep_video_sort_ctr_exp: KepVideoSortCtrExp
-  kep_videos: KepVideos
-  live_abr_version: LiveAbrVersion
-  live_end_improved_metrics: LiveEndImprovedMetrics
-  live_feed_style: LiveFeedStyle
-  live_golive_entrance: LiveGoliveEntrance
-  live_lcp_perf_optimize: LiveLcpPerfOptimize
-  live_player_h265: LivePlayerH265
-  live_player_handler: LivePlayerHandler
-  live_player_icon: LivePlayerIcon
-  live_player_mute_text: LivePlayerMuteText
-  live_player_switch_button: LivePlayerSwitchButton
-  live_preview_web: LivePreviewWeb
-  live_pro_show: LiveProShow
-  live_public_screen_skeleton: LivePublicScreenSkeleton
-  live_recharge_by_amount: LiveRechargeByAmount
-  live_recharge_login: LiveRechargeLogin
-  live_room_age_restriction: LiveRoomAgeRestriction
-  live_room_gift_version: LiveRoomGiftVersion
-  live_studio_download_refactor_pc: LiveStudioDownloadRefactorPc
-  live_top_viewers: LiveTopViewers
-  muse_pc_web: MusePcWeb
-  muse_web: MuseWeb
-  non_personalized_feeds_web: NonPersonalizedFeedsWeb
-  oeac_aa: OeacAa
-  optimise_browser_mode: OptimiseBrowserMode
-  pc_video_playlist_test: PcVideoPlaylistTest
-  photo_test: PhotoTest
-  profile_follow_info: ProfileFollowInfo
-  search_add_live: SearchAddLive
-  search_add_non_personalized_switch: SearchAddNonPersonalizedSwitch
-  search_add_related_search: SearchAddRelatedSearch
-  search_bar_style_opt: SearchBarStyleOpt
-  search_entry_comment_top: SearchEntryCommentTop
-  search_entry_comment_word: SearchEntryCommentWord
-  search_entry_search_bar: SearchEntrySearchBar
-  search_keep_sug_show: SearchKeepSugShow
-  search_transfer_history: SearchTransferHistory
-  search_video_lab: SearchVideoLab
-  seo_breadcrumb_detail: SeoBreadcrumbDetail
-  sidenav_test: SidenavTest
-  tiktok: Tiktok
-  ttlive_broadcast_topic_version_two: TtliveBroadcastTopicVersionTwo
-  ui_layout_alignment: UiLayoutAlignment
-  use_error_boundary: UseErrorBoundary
-  video_detail_search_bar: VideoDetailSearchBar
-  webapp_explore_category: WebappExploreCategory
-  webapp_preview_cover: WebappPreviewCover
-  webapp_recommend_language: WebappRecommendLanguage
-  webapp_video_detail_page_related_mask: WebappVideoDetailPageRelatedMask
-  webcast: Webcast
-}
-
-export interface HasSystemNotificationInbox {
-  vid: string
-}
-
-export interface ShouldHighlightHashtag {
-  vid: string
-}
-
-export interface LoginModalUiRevamp {
-  vid: string
-}
-
-export interface VideoFeedRedesign {
-  vid: string
-}
-
-export interface UseFollowV2 {
-  vid: string
-}
-
-export interface CreatorCenterConnect {
-  vid: string
-}
-
-export interface OneColumnPlayerSize {
-  vid: string
-}
-
-export interface MobileConsumptionLimitNonLoggedIn {
-  vid: string
-}
-
-export interface EnableOdinId {
-  vid: string
-}
-
-export interface QrSsoPopup {
-  vid: string
-}
-
-export interface WebappLoginEmailPhone {
-  vid: string
-}
-
-export interface XgplayerPreloadConfig {
-  vid: string
-}
-
-export interface UseInboxNoticeCountApi {
-  vid: string
-}
-
-export interface MobileSearchTest {
-  vid: string
-}
-
-export interface BrowserModeCreatorTab3 {
-  vid: string
-}
-
-export interface XgVolumeTest {
-  vid: string
-}
-
-export interface HasSystemNotificationInboxMobile {
-  vid: string
-}
-
-export interface SeoFooterNavigation {
-  vid: string
-}
-
-export interface MobileVodkit {
-  vid: string
-}
-
-export interface SignUpWebappRegionChange {
-  vid: string
-}
-
-export interface BrowserLoginRedirect {
-  vid: string
-}
-
-export interface PeriodicLoginPopupInterval {
-  vid: string
-}
-
-export interface ConfirmLogout {
-  vid: string
-}
-
-export interface VolumeNormalize {
-  vid: string
-}
-
-export interface WebappSwitchAccount {
-  vid: string
-}
-
-export interface BrowserModeEncourageLogin {
-  vid: string
-}
-
-export interface LoginOptionOrderByMetrics {
-  vid: string
-}
-
-export interface StudioWebEhEntrance {
-  vid: string
-}
-
-export interface SearchVideo {
-  vid: string
-}
-
-export interface MobileConsumptionLimitLoggedIn {
-  vid: string
-}
-
-export interface WebappGuestMode {
-  vid: string
-}
-
-export interface ProfileUiOpt {
-  vid: string
-}
-
-export interface ShareButtonPart1Test {
-  vid: string
-}
-
-export interface SeoNavigationSwitch {
-  vid: string
-}
-
-export interface VideoServerpush {
-  vid: string
-}
-
-export interface EnableMlModel {
-  vid: string
-}
-
-export interface VideoBitrateAdapt {
-  vid: string
-}
-
-export interface MobileConsumptionLimitV2 {
-  vid: string
-}
-
-export interface AddInfoCard {
-  vid: string
-}
-
-export interface AddKapEntry {
-  vid: string
-}
-
-export interface BrowseModeAutoplayTest {
-  vid: string
-}
-
-export interface CommentRefactorTest {
-  vid: string
-}
-
-export interface CreatorCenterConnectGlobal {
-  vid: string
-}
-
-export interface CreatorCenterTest {
-  vid: string
-}
-
-export interface DesktopUiOpt {
-  vid: string
-}
-
-export interface DesktopUiReply {
-  vid: string
-}
-
-export interface EnableFbSdk {
-  vid: string
-}
-
-export interface EnableProfilePinnedVideo {
-  vid: string
-}
-
-export interface EnhanceVideoConsumptionTest {
-  vid: string
-}
-
-export interface ExploreTest {
-  vid: string
-}
-
-export interface FavoriteTest {
-  vid: string
-}
-
-export interface FixTeaSession {
-  vid: string
-}
-
-export interface IncreaseDetailPageCoverQuantityTest {
-  vid: string
-}
-
-export interface KepNewUiLogin {
-  vid: string
-}
-
-export interface KepVideoSortCtrExp {
-  vid: string
-}
-
-export interface KepVideos {
-  predict_params: PredictParams
-}
-
-export interface PredictParams {
-  consts: Consts
-  formulas: Formulas
-  dump_params_allowlist: DumpParamsAllowlist
-}
-
-export interface Consts {
-  kep_search_score_final: string
-  kep_search_score_ctr: string
-}
-
-export interface Formulas {
-  root: string
-}
-
-export interface DumpParamsAllowlist {
-  ab_vt_allowlist: AbVtAllowlist
-}
-
-export interface AbVtAllowlist {
-  kep_ctr_params: string[]
-}
-
-export interface LiveAbrVersion {
-  vid: string
-}
-
-export interface LiveEndImprovedMetrics {
-  vid: string
-}
-
-export interface LiveFeedStyle {
-  vid: string
-}
-
-export interface LiveGoliveEntrance {
-  vid: string
-}
-
-export interface LiveLcpPerfOptimize {
-  vid: string
-}
-
-export interface LivePlayerH265 {
-  vid: string
-}
-
-export interface LivePlayerHandler {
-  vid: string
-}
-
-export interface LivePlayerIcon {
-  vid: string
-}
-
-export interface LivePlayerMuteText {
-  vid: string
-}
-
-export interface LivePlayerSwitchButton {
-  vid: string
-}
-
-export interface LivePreviewWeb {
-  vid: string
-}
-
-export interface LiveProShow {
-  vid: string
-}
-
-export interface LivePublicScreenSkeleton {
-  vid: string
-}
-
-export interface LiveRechargeByAmount {
-  vid: string
-}
-
-export interface LiveRechargeLogin {
-  vid: string
-}
-
-export interface LiveRoomAgeRestriction {
-  vid: string
-}
-
-export interface LiveRoomGiftVersion {
-  vid: string
-}
-
-export interface LiveStudioDownloadRefactorPc {
-  vid: string
-}
-
-export interface LiveTopViewers {
-  vid: string
-}
-
-export interface MusePcWeb {
-  predict_params: PredictParams2
-}
-
-export interface PredictParams2 {
-  consts: Consts2
-  formulas: Formulas2
-}
-
-export interface Consts2 {
-  group_like_count: string
-  group_comment_count: string
-  group_follow_cnt: string
-}
-
-export interface Formulas2 {
-  combine_score: string
-  ab_slot_1: string
-}
-
-export interface MuseWeb {
-  predict_params: PredictParams3
-}
-
-export interface PredictParams3 {
-  consts: Consts3
-  formulas: Formulas3
-}
-
-export interface Consts3 {
-  group_like_count: string
-  group_comment_count: string
-  group_follow_cnt: string
-}
-
-export interface Formulas3 {
-  combine_score: string
-  ab_slot_1: string
-}
-
-export interface NonPersonalizedFeedsWeb {
-  vid: string
-}
-
-export interface OeacAa {
-  vid: string
-}
-
-export interface OptimiseBrowserMode {
-  vid: string
-}
-
-export interface PcVideoPlaylistTest {
-  vid: string
-}
-
-export interface PhotoTest {
-  vid: string
-}
-
-export interface ProfileFollowInfo {
-  vid: string
-}
-
-export interface SearchAddLive {
-  vid: string
-}
-
-export interface SearchAddNonPersonalizedSwitch {
-  vid: string
-}
-
-export interface SearchAddRelatedSearch {
-  vid: string
-}
-
-export interface SearchBarStyleOpt {
-  vid: string
-}
-
-export interface SearchEntryCommentTop {
-  vid: string
-}
-
-export interface SearchEntryCommentWord {
-  vid: string
-}
-
-export interface SearchEntrySearchBar {
-  vid: string
-}
-
-export interface SearchKeepSugShow {
-  vid: string
-}
-
-export interface SearchTransferHistory {
-  vid: string
-}
-
-export interface SearchVideoLab {
-  vid: string
-}
-
-export interface SeoBreadcrumbDetail {
-  vid: string
-}
-
-export interface SidenavTest {
-  vid: string
-}
-
-export interface Tiktok {
-  private_account_prompt_for_u18: number
-}
-
-export interface TtliveBroadcastTopicVersionTwo {
-  vid: string
-}
-
-export interface UiLayoutAlignment {
-  vid: string
-}
-
-export interface UseErrorBoundary {
-  vid: string
-}
-
-export interface VideoDetailSearchBar {
-  vid: string
-}
-
-export interface WebappExploreCategory {
-  vid: string
-}
-
-export interface WebappPreviewCover {
-  vid: string
-}
-
-export interface WebappRecommendLanguage {
-  vid: string
-}
-
-export interface WebappVideoDetailPageRelatedMask {
-  vid: string
-}
-
-export interface Webcast {
-  web_follow_guide_strategy_group: number
-}
-
-export interface BizContext {
-  bizContext: BizContext2
-  initialized: boolean
-}
-
-export interface BizContext2 {
-  os: string
-  isMobile: boolean
-  isAndroid: boolean
-  isIOS: boolean
-  jumpType: string
-  navList: NavList[]
-  kapLinks: KapLink[]
-  config: Config
-  domains: Domains
-  downloadLink: DownloadLink
-  deviceLimitRegisterExpired: boolean
-  subdivisions: string[]
-  geo: string[]
-  geoCity: GeoCity
-  isGoogleBot: boolean
-  isBingBot: boolean
-  isBot: boolean
-  isSearchEngineBot: boolean
-  isTTP: boolean
-  dateFmtLocale: DateFmtLocale
-  videoPlayerConfig: VideoPlayerConfig
-  playbackNormalizePath: PlaybackNormalizePath
-  bitrateConfig: BitrateConfig
-  searchVideoForLoggedin: boolean
-  studioDownloadEntrance: StudioDownloadEntrance
-  liveSuggestConfig: LiveSuggestConfig
-  liveAnchorEntrance: LiveAnchorEntrance
-  liveStudioEnable: boolean
-  xgplayerInitHost: XgplayerInitHost
-  videoOrder: VideoOrder
-  searchLiveForLoggedin: boolean
-  canUseQuery: boolean
-  bitrateSelectorConfigs: BitrateSelectorConfigs
-  idc: string
-  videoCoverSettings: VideoCoverSettings
-  hevcRobustness: HevcRobustness
-  apiKeys: ApiKeys
-}
-
-export interface NavList {
-  title: string
-  children: Children[]
-}
-
-export interface Children {
-  title: string
-  href: string
-  key?: string
-}
-
-export interface KapLink {
-  title: string
-  children: Children2[]
-}
-
-export interface Children2 {
-  lang: string[]
-  links: Link[]
-}
-
-export interface Link {
-  title: string
-  href: string
-}
-
-export interface Config {
-  featureFlags: FeatureFlags
-  desktopAppDownloadLink: DesktopAppDownloadLink
-  signUpOpen: boolean
-  cookieBanner: CookieBanner
-  isGrayFilter: boolean
-  nickNameControlDay: string
-  desktopAppSurveyLink: DesktopAppSurveyLink
-}
-
-export interface FeatureFlags {
-  feature_bar: boolean
-  business_account_open: boolean
-  feature_tt4b_ads: boolean
-  support_multiline_desc: boolean
-  pc_video_playlist: boolean
-  feature_mobile_ui_opt_stage2: boolean
-  add_recipe_card: boolean
-}
-
-export interface DesktopAppDownloadLink {
-  mac: string
-  win: string
-}
-
-export interface CookieBanner {
-  load_dynamically: boolean
-  decline_btn_staged_rollout_area: string[]
-  resource: Resource
-  i18n: I18n
-}
-
-export interface Resource {
-  prefix: string
-  themes: string[]
-  esm: string
-  nomodule: string
-  version: string
-}
-
-export interface I18n {
-  cookieBannerTitle: string
-  cookieBannerTitleNew: string
-  cookieBannerSubTitle: string
-  cookieBannerSubTitleNew: string
-  cookieBannerSubTitleV2: string
-  cookieBannerBtnManage: string
-  cookieBannerBtnAccept: string
-  cookieBannerBtnDecline: string
-  cookiesBannerDetails: string
-  cookiesBannerCookiesPolicy: string
-  cookiesBannerAccept: string
-  webDoNotSellSettingsSavedToast: string
-  cookieSettingManageYourCookieTitle: string
-  cookieSettingSave: string
-  cookieSettingAnalyticsAndMarketing: string
-  cookieSettingNecessary: string
-  cookieSettingNecessarySubtitle: string
-  cookieSettingNecessaryV2: string
-  cookieSettingNecessarySubtitleV2: string
-  cookieSettingAnalyticsAndMarketingSubtitle: string
-  cookieSettingAnalyticsAndMarketingSubtitleV2: string
-  cookieManageTip: string
-}
-
-export interface DesktopAppSurveyLink {
-  default: string
-  vn: string
-}
-
-export interface Domains {
-  kind: string
-  captcha: string
-  imApi: string
-  imFrontier: string
-  mTApi: string
-  rootApi: string
-  secSDK: string
-  slardar: string
-  starling: string
-  tea: string
-  libraWebSDK: string
-  webcastApi: string
-  webcastRootApi: string
-  pipoApi: string
-  tcc: string
-  aweme: string
-  locationApi: string
-}
-
-export interface DownloadLink {
-  microsoft: Microsoft
-  apple: Apple
-  amazon: Amazon
-  google: Google
-}
-
-export interface Microsoft {
-  visible: boolean
-  normal: string
-}
-
-export interface Apple {
-  visible: boolean
-  normal: string
-}
-
-export interface Amazon {
-  visible: boolean
-  normal: string
-}
-
-export interface Google {
-  visible: boolean
-  normal: string
-}
-
-export interface GeoCity {
-  City: string
-  Subdivisions: string
-  OriginalSubdivisions: OriginalSubdivision[]
-  SubdivisionsArr: string[]
-}
-
-export interface OriginalSubdivision {
-  GeoNameID: string
-  ASCIName: string
-  Name: string
-  LocalID: string
-}
-
-export interface DateFmtLocale {
-  name: string
-  months: string[]
-  monthsShort: string[]
-  weekdays: string[]
-  weekdaysShort: string[]
-  weekdaysMin: string[]
-  longDateFormat: LongDateFormat
-  meridiem: Meridiem
-}
-
-export interface LongDateFormat {
-  LT: string
-  LTS: string
-  L: string
-  LL: string
-  LLL: string
-  LLLL: string
-  l: string
-  ll: string
-  lll: string
-  llll: string
-  "LL-Y": string
-}
-
-export interface Meridiem {
-  am: string
-  pm: string
-  AM: string
-  PM: string
-}
-
-export interface VideoPlayerConfig {
-  fallback: boolean
-}
-
-export interface PlaybackNormalizePath {
-  path: string[]
-}
-
-export interface BitrateConfig {
-  bitrateLower: number
-  bitrateRange: number[]
-  bitrateUpper: number
-  mode: string
-  paramBf: number
-  paramBp: number
-  paramLower: number
-  paramUpper: number
-  paramUpperBl: number
-  paramVl1: number
-  paramVl2: number
-  paramVlLower: number
-  paramVlUpper: number
-  slidingWindowCountThreshold: number
-  slidingWindowExtraction: string
-  slidingWindowType: string
-  slidingWindowWeight: string
-  slidingWindowWeightThreshold: number
-}
-
-export interface StudioDownloadEntrance {
-  regions: string[]
-  userRegions: string[]
-  allRegions: boolean
-}
-
-export interface LiveSuggestConfig {
-  isBlockedArea: boolean
-  isRiskArea: boolean
-}
-
-export interface LiveAnchorEntrance {
-  liveCenter: boolean
-  creatorHub: boolean
-  liveStudio: boolean
-}
-
-export interface XgplayerInitHost {
-  group1: string[]
-  group2: string[]
-}
-
-export interface VideoOrder {
-  videoOrder: VideoOrder2[]
-}
-
-export interface VideoOrder2 {
-  property: string
-  detail?: number[]
-  order?: string
-}
-
-export interface BitrateSelectorConfigs {
-  configs: Config2[]
-}
-
-export interface Config2 {
-  paramBf: number
-  paramBp: number
-  paramUpper: number
-  paramLower: number
-  paramUpperBl: number
-  paramVl1: number
-  paramVl2: number
-  paramVlUpper: number
-  paramVlLower: number
-  bitrateUpper: number
-  bitrateLower: number
-  slidingWindowType: string
-  slidingWindowWeight: string
-  slidingWindowWeightThreshold: number
-  slidingWindowCountThreshold: number
-  slidingWindowExtraction: string
-  bitrateRange: number[]
-  mode: string
-  quality_filter: QualityFilter
-  white_list: any[]
-  autoBitrateParams: AutoBitrateParams
-  defaultBitrate: number
-}
-
-export interface QualityFilter {}
-
-export interface AutoBitrateParams {
-  paramA: number
-  paramB: number
-  paramC: number
-  paramD: number
-  minBitrate: number
-}
-
-export interface VideoCoverSettings {
-  format: number
-  acceptHeader: string
-  _ssrCount: number
-}
-
-export interface HevcRobustness {
-  useHevcRobustTest: boolean
-  forceRobustTest: string[]
-}
-
-export interface ApiKeys {
-  firebase: string
-}
-
-export interface Seostate {
-  abtest: Abtest
-  loading: boolean
-  canonical: string
-  pageType: number
-  launchMode: string
-  trafficType: string
-}
-
-export interface Abtest {
-  canonical: string
-  pageId: string
-  vidList: any[]
-  parameters: Parameters2
-}
-
-export interface Parameters2 {
-  video_non_tdk_phase2: VideoNonTdkPhase2
-  video_page_serp_compliance: VideoPageSerpCompliance
-  video_tdk_phase2: VideoTdkPhase2
-}
-
-export interface VideoNonTdkPhase2 {
-  vid: string
-}
-
-export interface VideoPageSerpCompliance {
-  vid: string
-}
-
-export interface VideoTdkPhase2 {
-  vid: string
-}
-
-export interface ItemList {
-  video: Video
-}
-
-export interface Video {
-  list: string[]
-  browserList: string[]
-  loading: boolean
-  statusCode: number
-  hasMore: boolean
-  cursor: string
-  preloadList: PreloadList[]
-  keyword: string
-}
-
-export interface PreloadList {
-  url: string
-  id: string
-}
-
-export interface ItemModule {
-  [key as string]: ItemModuleChildren
-}
-
-export interface ItemModuleChildren {
-  id: string
+  status_code: number
+  min_cursor: number
+  max_cursor: number
+  has_more: number
+  aweme_list: AwemeList[]
+  home_model: number
+  refresh_clear: number
+  extra: Extra
+  log_pb: LogPb
+  preload_ads: any[]
+  preload_awemes: any
+  log_info: LogInfo2
+}
+
+export interface AwemeList {
+  aweme_id: string
   desc: string
-  createTime: string
-  scheduleTime: number
-  video: Video2
-  author: string
+  create_time: number
+  author: Author
   music: Music
-  challenges: Challenge[]
-  stats: Stats
-  warnInfo: any[]
-  originalItem: boolean
-  officalItem: boolean
-  textExtra: TextExtra[]
-  secret: boolean
-  forFriend: boolean
-  digged: boolean
-  itemCommentStatus: number
-  takeDown: number
-  effectStickers: any[]
-  privateItem: boolean
-  stickersOnItem: any[]
-  shareEnabled: boolean
-  comments: any[]
-  duetDisplay: number
-  stitchDisplay: number
-  indexEnabled: boolean
-  imagePost: ImagePost
-  locationCreated: string
-  suggestedWords: string[]
-  contents: Content[]
-  collected: boolean
-  channelTags: any[]
+  cha_list: ChaList[]
+  video: Video
+  share_url: string
+  user_digged: number
+  statistics: Statistics
+  status: Status
+  rate: number
+  text_extra: TextExtra[]
+  is_top: number
+  label_top: LabelTop
+  share_info: ShareInfo3
+  distance: string
+  video_labels: any[]
+  is_vr: boolean
+  is_ads: boolean
+  aweme_type: number
+  cmt_swt: boolean
+  image_infos: any
+  risk_infos: RiskInfos
+  is_relieve: boolean
+  sort_label: string
+  position: any
+  uniqid_position: any
+  author_user_id: number
+  bodydance_score: number
+  geofencing: any
+  is_hash_tag: number
+  is_pgcshow: boolean
+  region: string
+  video_text: any[]
+  collect_stat: number
+  label_top_text: any
+  group_id: string
+  prevent_download: boolean
+  nickname_position: any
+  challenge_position: any
+  item_comment_settings: number
+  with_promotional_music: boolean
+  long_video: any
+  item_duet: number
+  item_react: number
+  desc_language: string
+  interaction_stickers?: InteractionSticker[]
+  misc_info: string
+  origin_comment_ids: any
+  commerce_config_data: any
+  distribute_type: number
+  video_control: VideoControl
+  has_vs_entry: boolean
+  commerce_info: CommerceInfo
+  need_vs_entry: boolean
+  anchors: any
+  hybrid_label: any
+  with_survey: boolean
+  geofencing_regions: any
+  aweme_acl: AwemeAcl
+  cover_labels: any
+  mask_infos: any[]
+  search_highlight: any
+  playlist_blocked: boolean
+  green_screen_materials: any
+  interact_permission: InteractPermission
+  question_list: any
+  content_desc: string
+  content_desc_extra: ContentDescExtra[]
+  products_info: any
+  follow_up_publish_from_id: number
+  disable_search_trending_bar: boolean
+  image_post_info?: ImagePostInfo
+  music_begin_time_in_ms: number
+  item_distribute_source: string
+  item_source_category: number
+  branded_content_accounts: any
+  is_description_translatable: boolean
+  follow_up_item_id_groups: string
+  is_text_sticker_translatable: boolean
+  text_sticker_major_lang: string
+  original_client_text: OriginalClientText
+  music_selected_from: string
+  tts_voice_ids: any
+  reference_tts_voice_ids: any
+  voice_filter_ids: any
+  reference_voice_filter_ids: any
+  music_title_style: number
+  comment_config: CommentConfig
+  added_sound_music_info: AddedSoundMusicInfo
+  origin_volume: string
+  music_volume: string
+  support_danmaku: boolean
+  has_danmaku: boolean
+  muf_comment_info_v2: any
+  behind_the_song_music_ids: any
+  behind_the_song_video_music_ids: any
+  content_original_type: number
+  shoot_tab_name: string
+  content_type: string
+  content_size_type: number
+  operator_boost_info: any
+  log_info: LogInfo
+  main_arch_common: string
+  aigc_info: AigcInfo
+  banners: any
+  picked_users: any
+  comment_topbar_info: any
+  music_end_time_in_ms?: number
+  playlist_info?: PlaylistInfo
+  follow_up_first_item_id?: string
+}
+
+export interface Author {
+  uid: string
+  short_id: string
   nickname: string
-  authorId: string
-  authorSecId: string
-  avatarThumb: string
-  downloadSetting: number
-  authorPrivate: boolean
-  capcutAnchorsOriginal: any[]
-  capcutAnchors: any[]
+  signature: string
+  avatar_thumb: AvatarThumb
+  avatar_medium: AvatarMedium
+  follow_status: number
+  is_block: boolean
+  custom_verify: string
+  unique_id: string
+  room_id: number
+  authority_status: number
+  verify_info: string
+  share_info: ShareInfo
+  with_commerce_entry: boolean
+  verification_type: number
+  enterprise_verify_reason: string
+  is_ad_fake: boolean
+  followers_detail: any
+  region: string
+  commerce_user_level: number
+  platform_sync_info: any
+  is_discipline_member: boolean
+  secret: number
+  prevent_download: boolean
+  geofencing: any
+  video_icon: VideoIcon
+  follower_status: number
+  comment_setting: number
+  duet_setting: number
+  download_setting: number
+  cover_url: CoverUrl[]
+  language: string
+  item_list: any
+  is_star: boolean
+  type_label: any[]
+  ad_cover_url: any
+  comment_filter_status: number
+  avatar_168x168: Avatar168x168
+  avatar_300x300: Avatar300x300
+  relative_users: any
+  cha_list: any
+  sec_uid: string
+  need_points: any
+  homepage_bottom_toast: any
+  can_set_geofencing: any
+  white_cover_url: any
+  user_tags: any
+  bold_fields: any
+  search_highlight: any
+  mutual_relation_avatars: any
+  events: any
+  matched_friend: MatchedFriend
+  advance_feature_item_order: any
+  advanced_feature_info: any
+  user_profile_guide: any
+  shield_edit_field_info: any
+  can_message_follow_status_list: any
+  account_labels: any
+  social_info?: string
+  qa_status?: number
 }
 
-export interface Video2 {
-  id: string
-  height: number
+export interface AvatarThumb {
+  uri: string
+  url_list: string[]
   width: number
-  duration: number
-  ratio: string
-  cover: string
-  originCover: string
-  dynamicCover: string
-  playAddr: string
-  downloadAddr: string
-  shareCover: string[]
-  reflowCover: string
-  zoomCover: ZoomCover
+  height: number
+  url_prefix: any
 }
 
-export interface ZoomCover {
-  "240": string
-  "480": string
-  "720": string
-  "960": string
+export interface AvatarMedium {
+  uri: string
+  url_list: string[]
+  width: number
+  height: number
+  url_prefix: any
+}
+
+export interface ShareInfo {
+  share_url: string
+  share_desc: string
+  share_title: string
+  share_qrcode_url: ShareQrcodeUrl
+  share_title_myself: string
+  share_title_other: string
+  share_desc_info: string
+  now_invitation_card_image_urls: any
+}
+
+export interface ShareQrcodeUrl {
+  uri: string
+  url_list: any[]
+  width: number
+  height: number
+  url_prefix: any
+}
+
+export interface VideoIcon {
+  uri: string
+  url_list: string[]
+  width: number
+  height: number
+  url_prefix: any
+}
+
+export interface CoverUrl {
+  uri: string
+  url_list: string[]
+  width: number
+  height: number
+  url_prefix: any
+}
+
+export interface Avatar168x168 {
+  uri: string
+  url_list: string[]
+  width: number
+  height: number
+  url_prefix: any
+}
+
+export interface Avatar300x300 {
+  uri: string
+  url_list: string[]
+  width: number
+  height: number
+  url_prefix: any
+}
+
+export interface MatchedFriend {
+  video_items: any
 }
 
 export interface Music {
-  id: string
+  id: number
+  id_str: string
   title: string
-  playUrl: string
-  coverLarge: string
-  coverMedium: string
-  coverThumb: string
-  authorName: string
-  original: boolean
-  duration: number
+  author: string
   album: string
-  scheduleSearchTime: number
-  collected: boolean
-  preciseDuration: PreciseDuration
+  cover_large: CoverLarge
+  cover_medium: CoverMedium
+  cover_thumb: CoverThumb
+  play_url: PlayUrl
+  source_platform: number
+  duration: number
+  extra: string
+  user_count: number
+  position: any
+  collect_stat: number
+  status: number
+  offline_desc: string
+  owner_id?: string
+  owner_nickname: string
+  is_original: boolean
+  mid: string
+  binded_challenge_id: number
+  author_deleted: boolean
+  owner_handle: string
+  author_position: any
+  prevent_download: boolean
+  strong_beat_url?: StrongBeatUrl
+  external_song_info: any[]
+  sec_uid?: string
+  avatar_thumb?: AvatarThumb2
+  avatar_medium?: AvatarMedium2
+  preview_start_time: number
+  preview_end_time: number
+  is_commerce_music: boolean
+  is_original_sound: boolean
+  artists: any
+  lyric_short_position: any
+  mute_share: boolean
+  tag_list: any
+  is_author_artist: boolean
+  is_pgc: boolean
+  matched_pgc_sound?: MatchedPgcSound
+  search_highlight: any
+  multi_bit_rate_play_info: any
+  tt_to_dsp_song_infos: any
+  recommend_status: number
 }
 
-export interface PreciseDuration {
-  preciseDuration: number
-  preciseShootDuration: number
-  preciseAuditionDuration: number
-  preciseVideoDuration: number
+export interface CoverLarge {
+  uri: string
+  url_list: string[]
+  width: number
+  height: number
+  url_prefix: any
 }
 
-export interface Challenge {
-  id: string
+export interface CoverMedium {
+  uri: string
+  url_list: string[]
+  width: number
+  height: number
+  url_prefix: any
+}
+
+export interface CoverThumb {
+  uri: string
+  url_list: string[]
+  width: number
+  height: number
+  url_prefix: any
+}
+
+export interface PlayUrl {
+  uri: string
+  url_list: string[]
+  width: number
+  height: number
+  url_prefix: any
+}
+
+export interface StrongBeatUrl {
+  uri: string
+  url_list: string[]
+  width: number
+  height: number
+  url_prefix: any
+}
+
+export interface AvatarThumb2 {
+  uri: string
+  url_list: string[]
+  width: number
+  height: number
+  url_prefix: any
+}
+
+export interface AvatarMedium2 {
+  uri: string
+  url_list: string[]
+  width: number
+  height: number
+  url_prefix: any
+}
+
+export interface MatchedPgcSound {
+  author: string
   title: string
+  mixed_title: string
+  mixed_author: string
+  artist_infos: any
+}
+
+export interface ChaList {
+  cid: string
+  cha_name: string
   desc: string
-  profileLarger: string
-  profileMedium: string
-  profileThumb: string
-  coverLarger: string
-  coverMedium: string
-  coverThumb: string
-}
-
-export interface Stats {
-  diggCount: number
-  shareCount: number
-  commentCount: number
-  playCount: number
-  collectCount: string
-}
-
-export interface TextExtra {
-  awemeId: string
-  start: number
-  end: number
-  hashtagId?: string
-  hashtagName: string
+  schema: string
+  author: Author2
+  user_count: number
+  share_info: ShareInfo2
+  connect_music: any[]
   type: number
-  subType: number
-  isCommerce: boolean
-  userId?: string
-  userUniqueId?: string
-  secUid?: string
+  sub_type: number
+  is_pgcshow: boolean
+  collect_stat: number
+  is_challenge: number
+  view_count: number
+  is_commerce: boolean
+  hashtag_profile: string
+  cha_attrs: any
+  banner_list: any
+  show_items: any
+  search_highlight: any
 }
 
-export interface ImagePost {
-  images: Image[]
+export interface Author2 {
+  followers_detail: any
+  platform_sync_info: any
+  geofencing: any
+  cover_url: any
+  item_list: any
+  type_label: any
+  ad_cover_url: any
+  relative_users: any
+  cha_list: any
+  need_points: any
+  homepage_bottom_toast: any
+  can_set_geofencing: any
+  white_cover_url: any
+  user_tags: any
+  bold_fields: any
+  search_highlight: any
+  mutual_relation_avatars: any
+  events: any
+  advance_feature_item_order: any
+  advanced_feature_info: any
+  user_profile_guide: any
+  shield_edit_field_info: any
+  can_message_follow_status_list: any
+  account_labels: any
+}
+
+export interface ShareInfo2 {
+  share_url: string
+  share_desc: string
+  share_title: string
+  bool_persist: number
+  share_title_myself: string
+  share_title_other: string
+  share_signature_url: string
+  share_signature_desc: string
+  share_quote: string
+  share_desc_info: string
+  now_invitation_card_image_urls: any
+}
+
+export interface Video {
+  play_addr: PlayAddr
   cover: Cover
-  shareCover: ShareCover
-  title: string
+  height: number
+  width: number
+  dynamic_cover: DynamicCover
+  origin_cover: OriginCover
+  ratio: string
+  download_addr: DownloadAddr
+  has_watermark: boolean
+  bit_rate: BitRate[]
+  duration: number
+  cdn_url_expired: number
+  need_set_token: boolean
+  CoverTsp: number
+  tags: any
+  big_thumbs: any
+  is_bytevc1: number
+  meta: string
+  bit_rate_audio: any[]
+  play_addr_h264?: PlayAddrH264
+  misc_download_addrs?: string
+  play_addr_bytevc1?: PlayAddrBytevc1
+  cover_is_custom?: boolean
+  cla_info?: ClaInfo
+  source_HDR_type?: number
 }
 
-export interface Image {
-  imageURL: ImageUrl
-  imageWidth: number
-  imageHeight: number
-}
-
-export interface ImageUrl {
-  urlList: string[]
+export interface PlayAddr {
+  uri: string
+  url_list: string[]
+  width: number
+  height: number
+  url_key: string
+  url_prefix: any
+  data_size?: number
+  file_hash?: string
 }
 
 export interface Cover {
-  imageURL: ImageUrl2
-  imageWidth: number
-  imageHeight: number
+  uri: string
+  url_list: string[]
+  width: number
+  height: number
+  url_prefix: any
 }
 
-export interface ImageUrl2 {
-  urlList: string[]
+export interface DynamicCover {
+  uri: string
+  url_list: string[]
+  width: number
+  height: number
+  url_prefix: any
 }
 
-export interface ShareCover {
-  imageURL: ImageUrl3
-  imageWidth: number
-  imageHeight: number
+export interface OriginCover {
+  uri: string
+  url_list: string[]
+  width: number
+  height: number
+  url_prefix: any
 }
 
-export interface ImageUrl3 {
-  urlList: string[]
+export interface DownloadAddr {
+  uri: string
+  url_list: string[]
+  width: number
+  height: number
+  url_prefix: any
+  data_size?: number
 }
 
-export interface Content {
-  desc: string
-  textExtra: TextExtra2[]
+export interface BitRate {
+  gear_name: string
+  quality_type: number
+  bit_rate: number
+  play_addr: PlayAddr2
+  is_bytevc1: number
+  dub_infos: any
+  HDR_type: string
+  HDR_bit: string
+}
+
+export interface PlayAddr2 {
+  uri: string
+  url_list: string[]
+  width: number
+  height: number
+  url_key: string
+  data_size: number
+  file_hash: string
+  url_prefix: any
+}
+
+export interface PlayAddrH264 {
+  uri: string
+  url_list: string[]
+  width: number
+  height: number
+  url_key: string
+  data_size: number
+  file_hash: string
+  url_prefix: any
+}
+
+export interface PlayAddrBytevc1 {
+  uri: string
+  url_list: string[]
+  width: number
+  height: number
+  url_key: string
+  data_size: number
+  file_hash: string
+  url_prefix: any
+}
+
+export interface ClaInfo {
+  has_original_audio: number
+  enable_auto_caption: number
+  original_language_info: OriginalLanguageInfo
+  caption_infos: CaptionInfo[]
+  creator_edited_caption_id: number
+  vertical_positions: any
+  hide_original_caption: boolean
+  captions_type: number
+  no_caption_reason: number
+}
+
+export interface OriginalLanguageInfo {
+  lang: string
+  language_id: number
+  language_code: string
+  can_translate_realtime: boolean
+  original_caption_type: number
+  is_burnin_caption: boolean
+  can_translate_realtime_skip_translation_lang_check: boolean
+}
+
+export interface CaptionInfo {
+  lang: string
+  language_id: number
+  url: string
+  expire: number
+  caption_format: string
+  complaint_id: number
+  is_auto_generated: boolean
+  sub_id: number
+  sub_version: string
+  cla_subtitle_id: number
+  translator_id: number
+  language_code: string
+  is_original_caption: boolean
+  url_list: string[]
+  caption_length: number
+}
+
+export interface Statistics {
+  aweme_id: string
+  comment_count: number
+  digg_count: number
+  download_count: number
+  play_count: number
+  share_count: number
+  forward_count: number
+  lose_count: number
+  lose_comment_count: number
+  whatsapp_share_count: number
+  collect_count: number
+}
+
+export interface Status {
+  aweme_id: string
+  is_delete: boolean
+  allow_share: boolean
+  allow_comment: boolean
+  is_private: boolean
+  with_goods: boolean
+  private_status: number
+  in_reviewing: boolean
+  reviewed: number
+  self_see: boolean
+  is_prohibited: boolean
+  download_status: number
+}
+
+export interface TextExtra {
+  start: number
+  end: number
+  user_id: string
+  type: number
+  hashtag_name?: string
+  hashtag_id?: string
+  is_commerce?: boolean
+  sec_uid: string
+}
+
+export interface LabelTop {
+  uri: string
+  url_list: string[]
+  width: number
+  height: number
+  url_prefix: any
+}
+
+export interface ShareInfo3 {
+  share_url: string
+  share_desc: string
+  share_title: string
+  bool_persist: number
+  share_title_myself: string
+  share_title_other: string
+  share_link_desc: string
+  share_signature_url: string
+  share_signature_desc: string
+  share_quote: string
+  whatsapp_desc: string
+  share_desc_info: string
+  now_invitation_card_image_urls: any
+  share_button_display_mode: number
+  button_display_stratege_source?: string
+}
+
+export interface RiskInfos {
+  vote: boolean
+  warn: boolean
+  risk_sink: boolean
+  type: number
+  content: string
+}
+
+export interface InteractionSticker {
+  type: number
+  index: number
+  track_info: string
+  attr: string
+  text_info: string
+  text_sticker_info: TextStickerInfo
+}
+
+export interface TextStickerInfo {
+  text_size: number
+  text_color: string
+  bg_color: string
+  text_language: string
+  alignment: number
+  source_width: number
+  source_height: number
+}
+
+export interface VideoControl {
+  allow_download: boolean
+  share_type: number
+  show_progress_bar: number
+  draft_progress_bar: number
+  allow_duet: boolean
+  allow_react: boolean
+  prevent_download_type: number
+  allow_dynamic_wallpaper: boolean
+  timer_status: number
+  allow_music: boolean
+  allow_stitch: boolean
+}
+
+export interface CommerceInfo {
+  adv_promotable: boolean
+  branded_content_type: number
+}
+
+export interface AwemeAcl {
+  download_general: DownloadGeneral
+  download_mask_panel: DownloadMaskPanel
+  share_list_status: number
+  share_general: ShareGeneral
+  platform_list: any
+  share_action_list: any
+  press_action_list: any
+}
+
+export interface DownloadGeneral {
+  code: number
+  show_type: number
+  extra?: string
+  transcode: number
+  mute: boolean
+}
+
+export interface DownloadMaskPanel {
+  code: number
+  show_type: number
+  extra?: string
+  transcode: number
+  mute: boolean
+}
+
+export interface ShareGeneral {
+  code: number
+  show_type: number
+  extra?: string
+  transcode: number
+  mute: boolean
+}
+
+export interface InteractPermission {
+  duet: number
+  stitch: number
+  duet_privacy_setting: number
+  stitch_privacy_setting: number
+  upvote: number
+  allow_adding_to_story: number
+  allow_create_sticker: AllowCreateSticker
+}
+
+export interface AllowCreateSticker {
+  status: number
+}
+
+export interface ContentDescExtra {
+  start: number
+  end: number
+  type: number
+  hashtag_name: string
+  hashtag_id: string
+  is_commerce: boolean
+  line_idx: number
+}
+
+export interface ImagePostInfo {
+  images: Image[]
+  image_post_cover: ImagePostCover
+  post_extra: string
+}
+
+export interface Image {
+  display_image: DisplayImage
+  owner_watermark_image: OwnerWatermarkImage
+  user_watermark_image: UserWatermarkImage
+  thumbnail: Thumbnail
+  bitrate_images: BitrateImage[]
+}
+
+export interface DisplayImage {
+  uri: string
+  url_list: string[]
+  width: number
+  height: number
+  url_prefix: any
+}
+
+export interface OwnerWatermarkImage {
+  uri: string
+  url_list: string[]
+  width: number
+  height: number
+  url_prefix: any
+}
+
+export interface UserWatermarkImage {
+  uri: string
+  url_list: string[]
+  width: number
+  height: number
+  url_prefix: any
+}
+
+export interface Thumbnail {
+  uri: string
+  url_list: string[]
+  width: number
+  height: number
+  url_prefix: any
+}
+
+export interface BitrateImage {
+  name: string
+  bitrate_image: BitrateImage2
+}
+
+export interface BitrateImage2 {
+  uri: string
+  url_list: string[]
+  width: number
+  height: number
+  url_prefix: any
+}
+
+export interface ImagePostCover {
+  display_image: DisplayImage2
+  owner_watermark_image: OwnerWatermarkImage2
+  user_watermark_image: UserWatermarkImage2
+  thumbnail: Thumbnail2
+  bitrate_images: any
+}
+
+export interface DisplayImage2 {
+  uri: string
+  url_list: string[]
+  width: number
+  height: number
+  url_prefix: any
+}
+
+export interface OwnerWatermarkImage2 {
+  uri: string
+  url_list: string[]
+  width: number
+  height: number
+  url_prefix: any
+}
+
+export interface UserWatermarkImage2 {
+  uri: string
+  url_list: string[]
+  width: number
+  height: number
+  url_prefix: any
+}
+
+export interface Thumbnail2 {
+  uri: string
+  url_list: string[]
+  width: number
+  height: number
+  url_prefix: any
+}
+
+export interface OriginalClientText {
+  markup_text: string
+  text_extra: TextExtra2[]
 }
 
 export interface TextExtra2 {
-  awemeId: string
-  start: number
-  end: number
-  hashtagId?: string
-  hashtagName: string
   type: number
-  subType: number
-  isCommerce: boolean
-  userId?: string
-  userUniqueId?: string
-  secUid?: string
+  hashtag_name?: string
+  sub_type: number
+  tag_id: string
+  is_commerce?: boolean
+  user_id?: string
+  sec_uid?: string
 }
 
-export interface UserModule {
-  users: Users
-  stats: Stats2
+export interface CommentConfig {
+  emoji_recommend_list: any
 }
 
-export interface Users {
-  kralkek: Kralkek
+export interface AddedSoundMusicInfo {
+  id: number
+  id_str: string
+  title: string
+  author: string
+  album: string
+  cover_large: CoverLarge2
+  cover_medium: CoverMedium2
+  cover_thumb: CoverThumb2
+  play_url: PlayUrl2
+  source_platform: number
+  duration: number
+  extra: string
+  user_count: number
+  position: any
+  collect_stat: number
+  status: number
+  offline_desc: string
+  owner_id?: string
+  owner_nickname: string
+  is_original: boolean
+  mid: string
+  binded_challenge_id: number
+  author_deleted: boolean
+  owner_handle: string
+  author_position: any
+  prevent_download: boolean
+  strong_beat_url?: StrongBeatUrl2
+  external_song_info: any[]
+  sec_uid?: string
+  avatar_thumb?: AvatarThumb3
+  avatar_medium?: AvatarMedium3
+  preview_start_time: number
+  preview_end_time: number
+  is_commerce_music: boolean
+  is_original_sound: boolean
+  artists: any
+  lyric_short_position: any
+  mute_share: boolean
+  tag_list: any
+  is_author_artist: boolean
+  is_pgc: boolean
+  matched_pgc_sound?: MatchedPgcSound2
+  search_highlight: any
+  multi_bit_rate_play_info: any
+  tt_to_dsp_song_infos: any
+  recommend_status: number
 }
 
-export interface Kralkek {
-  id: string
-  shortId: string
-  uniqueId: string
-  nickname: string
-  avatarLarger: string
-  avatarMedium: string
-  avatarThumb: string
-  signature: string
-  createTime: number
-  verified: boolean
-  secUid: string
-  ftc: boolean
-  relation: number
-  openFavorite: boolean
-  commentSetting: number
-  duetSetting: number
-  stitchSetting: number
-  privateAccount: boolean
-  secret: boolean
-  isADVirtual: boolean
-  roomId: string
-  uniqueIdModifyTime: number
-  ttSeller: boolean
-  downloadSetting: number
-  recommendReason: string
-  nowInvitationCardUrl: string
-  nickNameModifyTime: number
-  isEmbedBanned: boolean
-  canExpPlaylist: boolean
+export interface CoverLarge2 {
+  uri: string
+  url_list: string[]
+  width: number
+  height: number
+  url_prefix: any
 }
 
-export interface Stats2 {}
-
-export interface VideoPage {
-  statusCode: number
+export interface CoverMedium2 {
+  uri: string
+  url_list: string[]
+  width: number
+  height: number
+  url_prefix: any
 }
 
-export interface SharingMetaState {
-  value: Value
+export interface CoverThumb2 {
+  uri: string
+  url_list: string[]
+  width: number
+  height: number
+  url_prefix: any
 }
 
-export interface Value {
-  "al:ios:url": string
-  "al:android:url": string
-  "al:ios:app_store_id": string
-  "al:ios:app_name": string
-  "al:android:app_name": string
-  "al:android:package": string
-  "og:site_name": string
-  "og:type": string
-  "og:title": string
-  "og:description": string
-  "fb:app_id": string
-  "twitter:app:id:iphone": string
-  "twitter:app:id:googleplay": string
-  "twitter:card": string
-  "twitter:site": string
-  "twitter:title": string
-  "twitter:description": string
-  "og:image": string
-  "twitter:image": string
-  "og:image:width": string
-  "og:image:height": string
+export interface PlayUrl2 {
+  uri: string
+  url_list: string[]
+  width: number
+  height: number
+  url_prefix: any
+}
+
+export interface StrongBeatUrl2 {
+  uri: string
+  url_list: string[]
+  width: number
+  height: number
+  url_prefix: any
+}
+
+export interface AvatarThumb3 {
+  uri: string
+  url_list: string[]
+  width: number
+  height: number
+  url_prefix: any
+}
+
+export interface AvatarMedium3 {
+  uri: string
+  url_list: string[]
+  width: number
+  height: number
+  url_prefix: any
+}
+
+export interface MatchedPgcSound2 {
+  author: string
+  title: string
+  mixed_title: string
+  mixed_author: string
+  artist_infos: any
+}
+
+export interface LogInfo {
+  order: string
+}
+
+export interface AigcInfo {
+  aigc_label_type: number
+}
+
+export interface PlaylistInfo {
+  mix_id: string
+  name: string
+  index: number
+  item_total: number
+}
+
+export interface Extra {
+  now: number
+  fatal_item_ids: any
+}
+
+export interface LogPb {
+  impr_id: string
+}
+
+export interface LogInfo2 {
+  impr_id: string
+  pull_type: string
 }

@@ -1,44 +1,11 @@
-import { ItemModule, ItemModuleChildren, TiktokApi } from "types/tiktokApi";
+import { TiktokApi } from "../../types/tiktokApi";
 import { fetchWithRetries } from "./fetchWithReplies";
 import { validateUrl } from "./validateUrl";
 
 import cheerio from "cheerio";
+import youtubedl from "youtube-dl-exec";
 
-import { MAX_RETRIES, RETRY_TIMEOUT } from "../constants/maxretries";
-import logger from "../logger";
-
-export async function getSigiState(url: string, runRetries = 0): Promise<TiktokApi> {
-    const urlObj = new URL(url);
-    validateUrl(urlObj);
-
-    const response = await fetchWithRetries(url);
-    const body = await response.text();
-
-    const $ = cheerio.load(body);
-    const $script = $('#SIGI_STATE');
-    const sigi_state: TiktokApi = JSON.parse($script.html() as string);
-
-    // Sometimes tiktok doesn't return the sigi_state, so we retry...
-    if (urlObj.hostname.includes('tiktok') && !sigi_state) {
-        logger.info(`[bot] no sigi_state found. Retrying... (${runRetries} / ${MAX_RETRIES})`);
-
-        if (runRetries >= MAX_RETRIES) {
-            throw new Error('No sigi_state found - bot could be rate limited for now. Please try again later.');
-        }
-
-        return new Promise((resolve, reject) => {
-            setTimeout(async () => {
-                try {
-                    resolve(await getSigiState(url, runRetries+1));
-                } catch (e) {
-                    reject(e);
-                }
-            }, RETRY_TIMEOUT);
-        });
-    }
-
-    return sigi_state;
-}
+import fs from "fs";
 
 export async function getTiktokIdFromTiktokUrl(url: string) {
     const urlObj = new URL(url);
@@ -59,14 +26,28 @@ export async function getTiktokIdFromTiktokUrl(url: string) {
     }
 }
 
-export async function getImageDataFromTiktokApi(url: string) {
-    try {
-        const sigi_state = await getSigiState(url);
-        if (!sigi_state?.ItemModule) return null;
+export async function getSlideshowDataFromTiktokApi(url: string) {
+    const urlObj = new URL(url);
+    const id = validateUrl(urlObj);
 
-        const id = await getTiktokIdFromTiktokUrl(url);
-        return (sigi_state.ItemModule?.[id as keyof ItemModule] as ItemModuleChildren)?.imagePost?.images;
-    } catch (e) {
+    if (!urlObj.hostname.includes('tiktok')) {
         return null;
     }
+
+    const data = await youtubedl(url, {
+        dumpPages: true,
+        skipDownload: true,
+    });
+
+    // hack from https://github.com/dylanpdx/vxtiktok/blob/main/vxtiktok.py#L70C1-L72C66
+    for (const line of (data as any).split('\n')) {
+        if (line.match(/^[A-Za-z0-9+/=]+$/)) {
+            const decoded = Buffer.from(line, 'base64').toString('utf-8');
+            const api = JSON.parse(decoded) as TiktokApi;
+
+            return api.aweme_list[0].image_post_info?.images;
+        }
+    }
+
+    return null;
 }
