@@ -30,6 +30,7 @@ export default async function handleAutomaticTiktokLinks(client: Client, message
                         repliedUser: false
                     }
                 });
+                await message.suppressEmbeds(true);
                 return;
             }
 
