@@ -4,7 +4,12 @@ import { MAX_RETRIES, RETRY_TIMEOUT } from "../constants/maxretries";
 export async function fetchWithRetries(url: string, retry = 0): Promise<Response> {
     return new Promise(async (resolve, reject) => {
         try {
-            const response = await fetch(url);
+            const headers = new Headers({
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.0.0 Safari/537.36 Edg/105.0.1343.53"
+            });
+            const response = await fetch(url, {
+                headers
+            });
 
             if (response.ok) {
                 return resolve(response);
