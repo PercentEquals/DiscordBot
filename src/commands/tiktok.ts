@@ -354,48 +354,34 @@ export const Tiktok: Command = {
         new SlashCommandStringOption().setName('range').setDescription('Range of photos/comments').setRequired(false),
     ],
     run: async (client: Client, interaction: CommandInteraction) => {
-        try {
-            //@ts-ignore
-            const url: string = interaction.options.getString('url', true);
-            //@ts-ignore
-            const spoiler = interaction.options.getBoolean('spoiler', false);
-            //@ts-ignore
-            const audioOnly = interaction.options.getBoolean('audio', false);
-            //@ts-ignore
-            const commentsOnly = interaction.options.getBoolean('comments', false);
-            //@ts-ignore
-            const range = interaction.options.getString('range', false);
+        //@ts-ignore
+        const url: string = interaction.options.getString('url', true);
+        //@ts-ignore
+        const spoiler = interaction.options.getBoolean('spoiler', false);
+        //@ts-ignore
+        const audioOnly = interaction.options.getBoolean('audio', false);
+        //@ts-ignore
+        const commentsOnly = interaction.options.getBoolean('comments', false);
+        //@ts-ignore
+        const range = interaction.options.getString('range', false);
 
+        try {
             const urlObj = new URL(url);
             let sigi_state = null;
 
             try {
                 sigi_state = await getSigiState(url);
             } catch (e) {
-                const originalException = e;
-
-                if (commentsOnly) {
-                    throw originalException;
-                }
-
                 try {
                     return await downloadVideo(interaction, url, spoiler, audioOnly);
-                } catch (e) {
-                    const vxUrl = new URL(url);
-                    vxUrl.hostname = vxUrl.hostname.replace('tiktok', 'vxtiktok');
-
-                    await interaction.followUp({
-                        ephemeral: false,
-                        content: `Could not download slideshow. Using: ${vxUrl} as fallback.`
-                    });
+                } catch (_) {
+                    throw e;
                 }
-
-                return;
             }
 
             if (commentsOnly) {
                 if (!urlObj.hostname.includes('tiktok')) {
-                    throw new Error('Comments only option is available only for tiktok links.');
+                    throw new Error('Comments only option is available for tiktok links only.');
                 }
 
                 await getCommentsFromTiktok(interaction, sigi_state, getRange(range));
@@ -409,9 +395,12 @@ export const Tiktok: Command = {
         } catch (e) {
             logger.error(e);
 
+            const vxUrl = new URL(url);
+            vxUrl.hostname = vxUrl.hostname.replace('tiktok', 'vxtiktok');
+
             await interaction.followUp({
                 ephemeral: false,
-                content: `:x: ${e}`
+                content: `:x: ${e}\n Using: ${vxUrl} as fallback.`
             })
         }
     }
