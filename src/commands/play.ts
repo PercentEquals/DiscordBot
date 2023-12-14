@@ -3,7 +3,7 @@ import { AudioPlayer, AudioPlayerState, AudioPlayerStatus, NoSubscriberBehavior,
 
 import { Command } from "../command";
 import { getBestFormat } from "../common/formatFinder";
-import { validateUrl } from "../common/validateUrl";
+import { extractUrl, validateUrl } from "../common/validateUrl";
 import logger from "../logger";
 
 import ffmpeg from "fluent-ffmpeg";
@@ -41,6 +41,7 @@ export function getAudioStream(url: string, startTimeMs: number, reject: (reason
     const process = ffmpeg(url, { timeout: 0 });
     process.addOptions(FFMPEG_OPUS_ARGUMENTS);
     process.setStartTime(Math.ceil(startTimeMs / 1000));
+    process.audioFilters('volume=0.5');
 
     process.on('error', (error) => {
         reject(error);
@@ -220,7 +221,7 @@ export const Play: Command = {
     run: async (client: Client, interaction: CommandInteraction) => {
         try {
             //@ts-ignore
-            const url: string = interaction.options.getString('url', true);
+            const url: string = extractUrl(interaction.options.getString('url', true));
             //@ts-ignore
             const startTime: string = interaction.options.getString('start', false);
 

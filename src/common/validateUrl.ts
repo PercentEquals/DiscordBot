@@ -1,5 +1,10 @@
 import { ALLOWED_YTD_HOSTS } from "../constants/allowedytdhosts";
 
+export function extractUrl(text: string) {
+    const url = text.match(/\bhttps?:\/\/\S+/gi)?.[0];
+    return url ?? text;
+}
+
 export function validateUrl(url: URL) {
     if (!ALLOWED_YTD_HOSTS.includes(url.hostname)) {
         throw new Error(`Not an allowed url ${JSON.stringify(ALLOWED_YTD_HOSTS)}`);

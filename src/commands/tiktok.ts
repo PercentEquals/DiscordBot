@@ -9,10 +9,11 @@ import { Image } from "types/tiktokApi";
 import { TikTokSigner } from "types/tiktokSigner";
 import { TiktokCommentsApi } from "types/tiktokCommentsApi";
 
-import { validateUrl } from "../common/validateUrl";
+import { extractUrl, validateUrl } from "../common/validateUrl";
 import { getBestFormat } from "../common/formatFinder";
 import { getSlideshowDataFromTiktokApi, getTiktokIdFromTiktokUrl } from "../common/sigiState";
 import { getRange } from "../common/getRange";
+import { getExtensionFromUrl } from "../common/extensionFinder";
 
 import getConfig from "../setup/configSetup";
 import logger from "../logger";
@@ -28,11 +29,12 @@ import { finished } from "stream/promises";
 
 async function convertSlideshowToVideo(url: string, imagesData: Image[], id: string): Promise<string> {
     const resultFilePath = `cache/${id}-slideshow.mp4`;
+    const files: string[] = [];
 
     const clearCache = (clearResult: boolean) => {
         for (let i = 0; i < imagesData.length; i++) {
-            if (fs.existsSync(`cache/${id}-${i}.webp`)) {
-                fs.unlinkSync(`cache/${id}-${i}.webp`);
+            if (fs.existsSync(files[i])) {
+                fs.unlinkSync(files[i]);
             }
         }
 
@@ -55,9 +57,12 @@ async function convertSlideshowToVideo(url: string, imagesData: Image[], id: str
                 resolve(resultFilePath);
             });
 
+            let extension = 'webp';
+
             for (let i = 0; i < imagesData.length; i++) {
                 const { body } = await fetch(imagesData[i].display_image.url_list[0]);
-                const stream = fs.createWriteStream(`cache/${id}-${i}.webp`);
+                extension = await getExtensionFromUrl(imagesData[i].display_image.url_list[0]);
+                const stream = fs.createWriteStream(`cache/${id}-${i}.${extension}`);
                 await finished(Readable.fromWeb(body as any).pipe(stream));
             }
 
@@ -65,7 +70,7 @@ async function convertSlideshowToVideo(url: string, imagesData: Image[], id: str
             process.addOption(`-r 6`);
             process.addOption(`-loop 1`);
             process.addOption(`-t 4`);
-            process.addOption(`-i cache/${id}-%d.webp`);
+            process.addOption(`-i cache/${id}-%d.${extension}`);
 
             let audioData = await youtubedl(url, {
                 noWarnings: true,
@@ -264,17 +269,20 @@ async function downloadSlideshow(
     const tiktokId = await getTiktokIdFromTiktokUrl(url);
     const files = [] as AttachmentBuilder[];
 
-    imagesData.forEach((image, i: number) => {
+    for (let i = 0; i < imagesData.length; i++) {
         if (ranges.length > 0 && !ranges.includes(i + 1)) {
             return;
         }
 
+        const image = imagesData[i];
         const file = new AttachmentBuilder(image.display_image.url_list[0]);
-        file.setName(`${tiktokId}-${i}.jpg`);
+        const extensions = await getExtensionFromUrl(image.display_image.url_list[0]);
+
+        file.setName(`${tiktokId}-${i}.${extensions}`);
         file.setSpoiler(spoiler);
 
         files.push(file);
-    });
+    }
 
     if (slideshowAsVideo) {
         const slideshowFile = await convertSlideshowToVideo(url, imagesData, tiktokId);
@@ -425,7 +433,7 @@ export const Tiktok: Command = {
     ],
     run: async (client: Client, interaction: CommandInteraction) => {
         //@ts-ignore
-        const url: string = interaction.options.getString('url', true);
+        const url: string = extractUrl(interaction.options.getString('url', true));
         //@ts-ignore
         const spoiler = interaction.options.getBoolean('spoiler', false);
         //@ts-ignore

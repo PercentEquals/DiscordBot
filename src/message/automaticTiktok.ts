@@ -3,19 +3,19 @@ import { Commands } from "../commands";
 import { Attachment, Client, CommandInteraction, Message } from "discord.js";
 
 import getConfig from "../setup/configSetup";
+
 import { ALLOWED_AUTO_LINK_HOSTS } from "../constants/allowedautolinkhosts";
+import { extractUrl } from "src/common/validateUrl";
+
 import logger from "../logger";
 
 export default async function handleAutomaticTiktokLinks(client: Client, message: Message): Promise<void> {
     if (!getConfig().botOptions.automaticLinkDetection) {
         return;
     }
-    
+
     const getString = (path: string, required: boolean) => {
-        if (path === 'url') {
-            const url = message.content.match(/\bhttps?:\/\/\S+/gi)?.[0];
-            return url ?? message.content;
-        }
+        return message.content;
     }
 
     const followUp = async ({ content, files }: {
@@ -64,7 +64,7 @@ export default async function handleAutomaticTiktokLinks(client: Client, message
 const handleMessageCommand = async (client: Client, interaction: CommandInteraction, message: Message): Promise<void> => {
     try {
         let found = false;
-        
+
         for (var host of ALLOWED_AUTO_LINK_HOSTS) {
             if (message.content.includes(host)) {
                 found = true;

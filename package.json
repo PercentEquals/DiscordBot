@@ -5,7 +5,8 @@
   "main": "src/index.ts",
   "type": "module",
   "scripts": {
-    "start": "ts-node --esm src/index.ts"
+    "start": "ts-node --esm src/index.ts",
+    "linux-production": "RC=1; while [ $RC -ne 0 ]; do npm run start; RC=$?; done"
   },
   "author": "PercentEquals",
   "license": "MIT",
@@ -15,6 +16,7 @@
     "discord.js": "^14.13.0",
     "dotenv": "^16.3.1",
     "ffmpeg-static": "^5.2.0",
+    "file-type": "^18.7.0",
     "fluent-ffmpeg": "^2.1.2",
     "libsodium-wrappers": "^0.7.13",
     "pino": "^8.16.1",

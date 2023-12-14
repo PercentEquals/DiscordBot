@@ -5,8 +5,6 @@ import { validateUrl } from "./validateUrl";
 import cheerio from "cheerio";
 import youtubedl from "youtube-dl-exec";
 
-import fs from "fs";
-
 export async function getTiktokIdFromTiktokUrl(url: string) {
     const urlObj = new URL(url);
     const fallbackId = validateUrl(urlObj);

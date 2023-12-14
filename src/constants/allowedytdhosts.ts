@@ -1,6 +1,8 @@
 export const ALLOWED_YTD_HOSTS = [
     "youtube.com",
     "www.youtube.com",
+    "youtu.be",
+    "www.youtu.be",
     "tiktok.com",
     "www.tiktok.com",
     "vm.tiktok.com",
