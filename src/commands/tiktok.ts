@@ -10,7 +10,7 @@ import { TikTokSigner } from "types/tiktokSigner";
 import { TiktokCommentsApi } from "types/tiktokCommentsApi";
 
 import { extractUrl, validateUrl } from "../common/validateUrl";
-import { getBestFormat } from "../common/formatFinder";
+import { getBestImageUrl, getBestFormat } from "../common/formatFinder";
 import { getSlideshowDataFromTiktokApi, getTiktokIdFromTiktokUrl } from "../common/sigiState";
 import { getRange } from "../common/getRange";
 import { getExtensionFromUrl } from "../common/extensionFinder";
@@ -27,7 +27,7 @@ import youtubedl, { YtResponse } from "youtube-dl-exec";
 import { Readable } from "stream";
 import { finished } from "stream/promises";
 
-async function convertSlideshowToVideo(url: string, imagesData: Image[], id: string): Promise<string> {
+async function convertSlideshowToVideo(url: string, imagesData: Image[], id: string, tryUsingScale: boolean = false): Promise<string> {
     const resultFilePath = `cache/${id}-slideshow.mp4`;
     const files: string[] = [];
 
@@ -48,7 +48,12 @@ async function convertSlideshowToVideo(url: string, imagesData: Image[], id: str
             logger.info('[ffmpeg] converting slideshow to video');
             
             const process = ffmpeg();
+
             process.on('error', (err: any) => {
+                if (!tryUsingScale) {
+                    return resolve(convertSlideshowToVideo(url, imagesData, id, true));
+                }
+
                 clearCache(true);
                 reject(err);
             });
@@ -57,13 +62,15 @@ async function convertSlideshowToVideo(url: string, imagesData: Image[], id: str
                 resolve(resultFilePath);
             });
 
-            let extension = 'webp';
+            const extension = await getExtensionFromUrl(getBestImageUrl(imagesData[0]));
 
             for (let i = 0; i < imagesData.length; i++) {
-                const { body } = await fetch(imagesData[i].display_image.url_list[0]);
-                extension = await getExtensionFromUrl(imagesData[i].display_image.url_list[0]);
+                const image = imagesData[i];
+                const { body } = await fetch(getBestImageUrl(image));
                 const stream = fs.createWriteStream(`cache/${id}-${i}.${extension}`);
                 await finished(Readable.fromWeb(body as any).pipe(stream));
+
+                files.push(`cache/${id}-${i}.${extension}`);
             }
 
             process.addOption(`-framerate 1`);
@@ -84,6 +91,11 @@ async function convertSlideshowToVideo(url: string, imagesData: Image[], id: str
             const bestFormat = getBestFormat(url, audioData, true);
             
             process.addOption('-i', bestFormat?.url as string);
+
+            if (tryUsingScale) {
+                process.addOption('-vf scale=800:400');
+            }
+
             process.addOption('-pix_fmt yuv420p');
             process.addOption('-c:a copy');
             process.addOption('-shortest');
@@ -275,8 +287,8 @@ async function downloadSlideshow(
         }
 
         const image = imagesData[i];
-        const file = new AttachmentBuilder(image.display_image.url_list[0]);
-        const extensions = await getExtensionFromUrl(image.display_image.url_list[0]);
+        const file = new AttachmentBuilder(getBestImageUrl(image));
+        const extensions = await getExtensionFromUrl(getBestImageUrl(image));
 
         file.setName(`${tiktokId}-${i}.${extensions}`);
         file.setSpoiler(spoiler);
@@ -286,6 +298,14 @@ async function downloadSlideshow(
 
     if (slideshowAsVideo) {
         const slideshowFile = await convertSlideshowToVideo(url, imagesData, tiktokId);
+
+        if (fs.lstatSync(slideshowFile).size > DISCORD_LIMIT) {
+            if (fs.existsSync(slideshowFile)) {
+                fs.unlinkSync(slideshowFile);
+            }
+            throw new Error(`No format found under ${DISCORD_LIMIT / 1024 / 1024}MB`);
+        }
+
         const slideshowVideo = new AttachmentBuilder(slideshowFile);
         slideshowVideo.setName(`${tiktokId}.mp4`);
         slideshowVideo.setSpoiler(spoiler);
