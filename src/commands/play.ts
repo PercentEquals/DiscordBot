@@ -19,8 +19,7 @@ let currentlyPlayingCache: {
         audioPlayer: AudioPlayer,
         volume: number,
         startTimeInMs: number,
-        playStartTime: number,
-        finished: boolean
+        playStartTime: number
     }
 } = {};
 
@@ -83,8 +82,7 @@ export function cacheCurrentlyPlaying(
         audioPlayer,
         volume,
         startTimeInMs,
-        playStartTime: process.hrtime()[0],
-        finished: false
+        playStartTime: process.hrtime()[0]
     }
 }
 
@@ -96,8 +94,8 @@ export function getCurrentlyPlaying(guildId: string, channelId: string) {
     return currentlyPlayingCache[guildId + channelId];
 }
 
-function getReplyString(audioData: YtResponse, duration: number) {
-    return `${audioData.title} - ${audioData.uploader ?? "unknown"} | ${getDuration(duration)} / ${getDuration(audioData.duration)}`;
+function getReplyString(audioData: YtResponse) {
+    return `${audioData.title} - ${audioData.uploader ?? "unknown"} | ${getDuration(audioData.duration)}`;
 }
 
 const playAudio = async (url: string, startTimeMs: number, volume: number, interaction: CommandInteraction) => {
@@ -126,6 +124,7 @@ const playAudio = async (url: string, startTimeMs: number, volume: number, inter
         throw new Error('No voice channel found - join one or check permissions!');
     }
 
+    clearCurrentlyPlaying(guildId, channelId);
     let isPromiseRejected = false;
 
     return new Promise(async (resolve, reject) => {
@@ -146,33 +145,12 @@ const playAudio = async (url: string, startTimeMs: number, volume: number, inter
             }
 
             const msg = await interaction.editReply({
-                content: `:white_check_mark: Finished playing audio: ${getReplyString(audioData, audioData.duration)}`,
+                content: `:white_check_mark: Finished playing audio: ${getReplyString(audioData)}`,
             });
 
-            getCurrentlyPlaying(guildId, channelId).finished = true;
             msg.suppressEmbeds(true);
             resolve(true);
         }
-
-        const updateTime = async () => {
-            if (isPromiseRejected) {
-                return;
-            }
-
-            const currentlyPlaying = getCurrentlyPlaying(guildId, channelId);
-
-            if (!currentlyPlaying || currentlyPlaying.finished) {
-                return;
-            }
-
-            const msg = await interaction.editReply({
-                content: `:loud_sound: Playing audio: ${getReplyString(audioData, process.hrtime()[0] - currentlyPlaying.playStartTime)}`
-            });
-
-            msg.suppressEmbeds(true);
-            setTimeout(updateTime, 5000);
-        }
-        setTimeout(updateTime, 5000);
 
         try {
             const audioStream = getAudioStream(bestFormat.url, startTimeMs, volume, reject);
