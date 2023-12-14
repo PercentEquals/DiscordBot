@@ -1,9 +1,9 @@
 import { ApplicationCommandType, Client, CommandInteraction } from "discord.js";
-import { NoSubscriberBehavior, createAudioPlayer, getVoiceConnection } from "@discordjs/voice";
 
 import { Command } from "../command";
 import logger from "../logger";
-import { clearCurrentlyPlaying, getCurrentlyPlaying } from "./play";
+
+import { getCurrentlyPlaying } from "../global/currentlyPlayingCache";
 
 export const Stop: Command = {
     name: "stop",

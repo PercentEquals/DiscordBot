@@ -1,5 +1,6 @@
 import { CommandInteraction } from "discord.js";
-import { getAudioStream, getCurrentlyPlaying, probeAndCreateResource } from "../commands/play";
+import { getAudioStream, probeAndCreateResource } from "../commands/play";
+import { getCurrentlyPlaying } from "../global/currentlyPlayingCache";
 
 export function getDuration(duration: number | null) {
     const durationDate = new Date(0);

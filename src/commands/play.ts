@@ -1,27 +1,18 @@
 import { ApplicationCommandType, Client, CommandInteraction, InternalDiscordGatewayAdapterCreator, SlashCommandStringOption } from "discord.js";
-import { AudioPlayer, AudioPlayerState, AudioPlayerStatus, NoSubscriberBehavior, createAudioPlayer, createAudioResource, demuxProbe, joinVoiceChannel } from "@discordjs/voice";
+import { AudioPlayerState, AudioPlayerStatus, NoSubscriberBehavior, createAudioPlayer, createAudioResource, demuxProbe, joinVoiceChannel } from "@discordjs/voice";
 
 import { Command } from "../command";
 import { getBestFormat } from "../common/formatFinder";
 import { extractUrl, validateUrl } from "../common/validateUrl";
 import { getVolume, getStartTimeInMs, getDuration } from "../common/audioUtils";
 
+import { cacheCurrentlyPlaying, clearCurrentlyPlaying } from "../global/currentlyPlayingCache";
+
 import logger from "../logger";
 
 import ffmpeg, { FfmpegCommand } from "fluent-ffmpeg";
 import youtubedl, { YtResponse } from "youtube-dl-exec";
 import { PassThrough } from "stream";
-
-let currentlyPlayingCache: {
-    [guildIdAndChannelId: string]: {
-        url: string,
-        audioStream: FfmpegCommand,
-        audioPlayer: AudioPlayer,
-        volume: number,
-        startTimeInMs: number,
-        playStartTime: number
-    }
-} = {};
 
 // https://github.com/discordjs/voice/issues/117
 // https://github.com/discordjs/voice/issues/150
@@ -65,33 +56,6 @@ export async function probeAndCreateResource(readableStream: any, title: string)
             title
         }
     });
-}
-
-export function cacheCurrentlyPlaying(
-    guildId: string,
-    channelId: string,
-    url: string,
-    audioStream: FfmpegCommand,
-    audioPlayer: AudioPlayer,
-    volume: number,
-    startTimeInMs: number
-) {
-    currentlyPlayingCache[guildId + channelId] = {
-        url,
-        audioStream,
-        audioPlayer,
-        volume,
-        startTimeInMs,
-        playStartTime: process.hrtime()[0]
-    }
-}
-
-export function clearCurrentlyPlaying(guildId: string, channelId: string) {
-    delete currentlyPlayingCache[guildId + channelId];
-}
-
-export function getCurrentlyPlaying(guildId: string, channelId: string) {
-    return currentlyPlayingCache[guildId + channelId];
 }
 
 function getReplyString(audioData: YtResponse) {
@@ -178,7 +142,7 @@ const playAudio = async (url: string, startTimeMs: number, volume: number, inter
 
             const msg = await interaction.followUp({
                 ephemeral: false,
-                content: `:loud_sound: Playing audio: ${audioData.title} - ${audioData.uploader ?? "unknown"} | ${getDuration(startTimeMs)} / ${getDuration(audioData.duration)}`
+                content: `:loud_sound: Playing audio: ${getReplyString(audioData)}`
             });
 
             msg.suppressEmbeds(true);
