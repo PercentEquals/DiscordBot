@@ -6,7 +6,9 @@ import { getBestFormat } from "../common/formatFinder";
 import { extractUrl, validateUrl } from "../common/validateUrl";
 import { getVolume, getStartTimeInMs, getDuration } from "../common/audioUtils";
 
-import { cacheCurrentlyPlaying, clearCurrentlyPlaying } from "../global/currentlyPlayingCache";
+import { cacheCurrentlyPlaying, clearCurrentlyPlaying, getCurrentlyPlaying } from "../global/currentlyPlayingCache";
+
+import { DISCORD_EDIT_MESSAGE_TIMEOUT } from "../constants/discordlimit";
 
 import logger from "../logger";
 
@@ -58,8 +60,8 @@ export async function probeAndCreateResource(readableStream: any, title: string)
     });
 }
 
-function getReplyString(audioData: YtResponse) {
-    return `${audioData.title} - ${audioData.uploader ?? "unknown"} | ${getDuration(audioData.duration)}`;
+function getReplyString(audioData: YtResponse, duration: number) {
+    return `${audioData.title} - ${audioData.uploader ?? "unknown"} | ${getDuration(duration)} / ${getDuration(audioData.duration)}`;
 }
 
 const playAudio = async (url: string, startTimeMs: number, volume: number, interaction: CommandInteraction) => {
@@ -100,21 +102,34 @@ const playAudio = async (url: string, startTimeMs: number, volume: number, inter
         }
 
         const onFinished = async (from: AudioPlayerState, to: AudioPlayerState) => {
-            if (isPromiseRejected) {
+            if (isPromiseRejected || !(from.status === AudioPlayerStatus.Playing && to.status === AudioPlayerStatus.Idle)) {
                 return;
             }
 
-            if (!(from.status === AudioPlayerStatus.Playing && to.status === AudioPlayerStatus.Idle)) {
-                return;
-            }
-
+            clearCurrentlyPlaying(guildId, channelId);
             const msg = await interaction.editReply({
-                content: `:white_check_mark: Finished playing audio: ${getReplyString(audioData)}`,
+                content: `:white_check_mark: Finished playing audio: ${getReplyString(audioData, audioData.duration)}`,
             });
-
             msg.suppressEmbeds(true);
             resolve(true);
         }
+
+        const editTimer = setInterval(async () => {
+            try {
+                const currentlyPlaying = getCurrentlyPlaying(guildId, channelId);
+                if (isPromiseRejected || !currentlyPlaying || currentlyPlaying.url !== bestFormat.url) {
+                    return;
+                }
+                const timeDiff = (process.hrtime()[0] - currentlyPlaying.playStartTime) * 1000;
+                const startTimeInMs = currentlyPlaying.startTimeInMs + timeDiff;
+                const msg = await interaction.editReply({
+                    content: `:loud_sound: Playing audio: ${getReplyString(audioData, startTimeInMs / 1000)}`
+                });
+                msg.suppressEmbeds(true);
+            } catch (e) {
+                // ignore
+            }
+        }, DISCORD_EDIT_MESSAGE_TIMEOUT);
 
         try {
             const audioStream = getAudioStream(bestFormat.url, startTimeMs, volume, reject);
@@ -138,11 +153,11 @@ const playAudio = async (url: string, startTimeMs: number, volume: number, inter
             connection.subscribe(player);
             player.play(resource);
 
-            cacheCurrentlyPlaying(guildId, channelId, bestFormat.url, audioStream, player, volume, startTimeMs);
+            cacheCurrentlyPlaying(guildId, channelId, bestFormat.url, audioStream, player, volume, startTimeMs, editTimer);
 
             const msg = await interaction.followUp({
                 ephemeral: false,
-                content: `:loud_sound: Playing audio: ${getReplyString(audioData)}`
+                content: `:loud_sound: Playing audio: ${getReplyString(audioData, 0)}`
             });
 
             msg.suppressEmbeds(true);

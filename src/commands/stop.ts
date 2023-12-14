@@ -3,7 +3,7 @@ import { ApplicationCommandType, Client, CommandInteraction } from "discord.js";
 import { Command } from "../command";
 import logger from "../logger";
 
-import { getCurrentlyPlaying } from "../global/currentlyPlayingCache";
+import { clearCurrentlyPlaying, getCurrentlyPlaying } from "../global/currentlyPlayingCache";
 
 export const Stop: Command = {
     name: "stop",
@@ -16,8 +16,7 @@ export const Stop: Command = {
             const channelId = interaction.member?.voice?.channelId
             const guildId = interaction.guildId as string
 
-            getCurrentlyPlaying(guildId, channelId)?.audioStream.emit('end');
-            getCurrentlyPlaying(guildId, channelId)?.audioPlayer.stop();
+            clearCurrentlyPlaying(guildId, channelId);
 
             await interaction.followUp({
                 ephemeral: false,
