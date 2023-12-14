@@ -135,49 +135,41 @@ const playAudio = async (url: string, startTimeMs: number, volume: number, inter
         }
 
         const onFinished = async (from: AudioPlayerState, to: AudioPlayerState) => {
-            try {
-                if (isPromiseRejected) {
-                    return;
-                }
-
-                if (!(from.status === AudioPlayerStatus.Playing && to.status === AudioPlayerStatus.Idle)) {
-                    return;
-                }
-
-                const msg = await interaction.editReply({
-                    content: `:white_check_mark: Finished playing audio: ${getReplyString(audioData, audioData.duration)}`,
-                });
-
-                msg.suppressEmbeds(true);
-
-                resolve(true);
-            } catch (e) {
-                reject(e);
+            if (isPromiseRejected) {
+                return;
             }
+
+            if (!(from.status === AudioPlayerStatus.Playing && to.status === AudioPlayerStatus.Idle)) {
+                return;
+            }
+
+            clearCurrentlyPlaying(guildId, channelId);
+
+            const msg = await interaction.editReply({
+                content: `:white_check_mark: Finished playing audio: ${getReplyString(audioData, audioData.duration)}`,
+            });
+
+            msg.suppressEmbeds(true);
+            resolve(true);
         }
 
         const updateTime = async () => {
-            try {
-                if (isPromiseRejected) {
-                    return;
-                }
-
-                const currentlyPlaying = getCurrentlyPlaying(guildId, channelId);
-
-                if (!currentlyPlaying) {
-                    return;
-                }
-
-                const msg = await interaction.editReply({
-                    content: `:loud_sound: Playing audio: ${getReplyString(audioData, process.hrtime()[0] - currentlyPlaying.playStartTime)}`
-                });
-
-                msg.suppressEmbeds(true);
-
-                setTimeout(updateTime, 5000);
-            } catch (e) {
-                reject(e);
+            if (isPromiseRejected) {
+                return;
             }
+
+            const currentlyPlaying = getCurrentlyPlaying(guildId, channelId);
+
+            if (!currentlyPlaying) {
+                return;
+            }
+
+            const msg = await interaction.editReply({
+                content: `:loud_sound: Playing audio: ${getReplyString(audioData, process.hrtime()[0] - currentlyPlaying.playStartTime)}`
+            });
+
+            msg.suppressEmbeds(true);
+            setTimeout(updateTime, 5000);
         }
         setTimeout(updateTime, 5000);
 
@@ -212,6 +204,7 @@ const playAudio = async (url: string, startTimeMs: number, volume: number, inter
 
             msg.suppressEmbeds(true);
         } catch (e) {
+            clearCurrentlyPlaying(guildId, channelId);
             reject(e);
         }
     });
