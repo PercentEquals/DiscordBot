@@ -5,7 +5,6 @@ import { Attachment, Client, CommandInteraction, Message } from "discord.js";
 import getConfig from "../setup/configSetup";
 
 import { ALLOWED_AUTO_LINK_HOSTS } from "../constants/allowedautolinkhosts";
-import { extractUrl } from "src/common/validateUrl";
 
 import logger from "../logger";
 

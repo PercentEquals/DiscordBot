@@ -6,23 +6,23 @@ import { Command } from "../command";
 
 import logger from "../logger";
 
-export const Seek: Command = {
-    name: "seek",
-    description: "Seeks time in currently played audio",
+export const Volume: Command = {
+    name: "volume",
+    description: "Sets volume of currently played audio [0-100]",
     type: ApplicationCommandType.ChatInput,
     options: [
-        new SlashCommandStringOption().setName('time').setDescription('Seek time in 00:00:00 format').setRequired(true)
+        new SlashCommandStringOption().setName('volume').setDescription('Audio volume [0-100]').setRequired(true)
     ],
     run: async (client: Client, interaction: CommandInteraction) => {
         try {
             //@ts-ignore
-            const time: string = interaction.options.getString('time', true);
+            const volume: string = interaction.options.getString('volume', true);
 
-            restartAudioStream(interaction, null, time);
+            restartAudioStream(interaction, volume, null);
 
             await interaction.followUp({
                 ephemeral: false,
-                content: `:white_check_mark: Seek to ${time} done!`
+                content: `:white_check_mark: Changing volume to ${volume} done!`
             });
         } catch (e) {
             logger.error(e);

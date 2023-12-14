@@ -4,6 +4,8 @@ import { AudioPlayer, AudioPlayerState, AudioPlayerStatus, NoSubscriberBehavior,
 import { Command } from "../command";
 import { getBestFormat } from "../common/formatFinder";
 import { extractUrl, validateUrl } from "../common/validateUrl";
+import { getVolume, getStartTimeInMs } from "../common/audioUtils";
+
 import logger from "../logger";
 
 import ffmpeg from "fluent-ffmpeg";
@@ -14,13 +16,16 @@ let currentlyPlayingCache: {
     [guildIdAndChannelId: string]: {
         url: string,
         audioStream: ffmpeg.FfmpegCommand,
-        audioPlayer: AudioPlayer
+        audioPlayer: AudioPlayer,
+        volume: number,
+        startTimeInMs: number,
+        playStartTime: number
     }
 } = {};
 
 // https://github.com/discordjs/voice/issues/117
 // https://github.com/discordjs/voice/issues/150
-export function getAudioStream(url: string, startTimeMs: number, reject: (reason?: any) => void) {
+export function getAudioStream(url: string, startTimeMs: number, volume: number, reject: (reason?: any) => void) {
     logger.info('[ffmpeg] downloading audio stream');
 
     const FFMPEG_OPUS_ARGUMENTS = [
@@ -41,7 +46,7 @@ export function getAudioStream(url: string, startTimeMs: number, reject: (reason
     const process = ffmpeg(url, { timeout: 0 });
     process.addOptions(FFMPEG_OPUS_ARGUMENTS);
     process.setStartTime(Math.ceil(startTimeMs / 1000));
-    process.audioFilters('volume=0.5');
+    process.audioFilters(`volume=${volume}`);
 
     process.on('error', (error) => {
         reject(error);
@@ -67,14 +72,17 @@ export function cacheCurrentlyPlaying(
     channelId: string,
     url: string,
     audioStream: ffmpeg.FfmpegCommand,
-    audioPlayer: AudioPlayer
+    audioPlayer: AudioPlayer,
+    volume: number,
+    startTimeInMs: number
 ) {
-    logger.debug(`[ffmpeg] currently playing: ${guildId} ${channelId}, ${currentlyPlayingCache[guildId + channelId]}`);
-
     currentlyPlayingCache[guildId + channelId] = {
         url,
         audioStream,
-        audioPlayer
+        audioPlayer,
+        volume,
+        startTimeInMs,
+        playStartTime: process.hrtime()[0]
     }
 }
 
@@ -83,12 +91,10 @@ export function clearCurrentlyPlaying(guildId: string, channelId: string) {
 }
 
 export function getCurrentlyPlaying(guildId: string, channelId: string) {
-    logger.debug(`[ffmpeg] getting: ${guildId} ${channelId}, ${currentlyPlayingCache[guildId + channelId]}`);
-
     return currentlyPlayingCache[guildId + channelId];
 }
 
-const playAudio = async (url: string, startTimeMs: number, interaction: CommandInteraction) => {
+const playAudio = async (url: string, startTimeMs: number, volume: number, interaction: CommandInteraction) => {
     let audioData = await youtubedl(url, {
         noWarnings: true,
         dumpSingleJson: true,
@@ -151,7 +157,7 @@ const playAudio = async (url: string, startTimeMs: number, interaction: CommandI
         }
 
         try {
-            const audioStream = getAudioStream(bestFormat.url, startTimeMs, reject) as any;
+            const audioStream = getAudioStream(bestFormat.url, startTimeMs, volume, reject) as any;
 
             const connection = joinVoiceChannel({
                 channelId: channelId as string,
@@ -172,7 +178,7 @@ const playAudio = async (url: string, startTimeMs: number, interaction: CommandI
             connection.subscribe(player);
             player.play(resource);
 
-            cacheCurrentlyPlaying(guildId, channelId, bestFormat.url, audioStream, player);
+            cacheCurrentlyPlaying(guildId, channelId, bestFormat.url, audioStream, player, volume, startTimeMs);
 
             const msg = await interaction.followUp({
                 ephemeral: false,
@@ -186,36 +192,13 @@ const playAudio = async (url: string, startTimeMs: number, interaction: CommandI
     });
 }
 
-export function getStartTimeInMs(startTime: string) {
-    if (!startTime) {
-        return 0;
-    }
-
-    const startTimeParts = startTime.replace('-', '').split(':');
-
-    if (startTimeParts.length !== 3) {
-        return 0;
-    }
-
-    const startTimePartsNumbers = startTimeParts.map((part) => {
-        return parseInt(part);
-    });
-
-    if (startTimePartsNumbers.some((part) => isNaN(part))) {
-        return 0;
-    }
-
-    const startTimeMs = startTimePartsNumbers[0] * 60 * 60 * 1000 + startTimePartsNumbers[1] * 60 * 1000 + startTimePartsNumbers[2] * 1000;
-
-    return startTimeMs;
-}
-
 export const Play: Command = {
     name: "play",
     description: "Play audio on voice via url",
     type: ApplicationCommandType.ChatInput,
     options: [
         new SlashCommandStringOption().setName('url').setDescription('Tiktok link').setRequired(true),
+        new SlashCommandStringOption().setName('volume').setDescription('Audio volume [0-100]').setRequired(false),
         new SlashCommandStringOption().setName('start').setDescription('Start time in 00:00:00 format').setRequired(false)
     ],
     run: async (client: Client, interaction: CommandInteraction) => {
@@ -224,10 +207,12 @@ export const Play: Command = {
             const url: string = extractUrl(interaction.options.getString('url', true));
             //@ts-ignore
             const startTime: string = interaction.options.getString('start', false);
+            //@ts-ignore
+            const volume: string = interaction.options.getString('volume', false);
 
             validateUrl(new URL(url));
 
-            await playAudio(url, getStartTimeInMs(startTime), interaction);
+            await playAudio(url, getStartTimeInMs(startTime), getVolume(volume), interaction);
         } catch (e) {
             logger.error(e);
 
