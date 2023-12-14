@@ -4,18 +4,18 @@ import { AudioPlayer, AudioPlayerState, AudioPlayerStatus, NoSubscriberBehavior,
 import { Command } from "../command";
 import { getBestFormat } from "../common/formatFinder";
 import { extractUrl, validateUrl } from "../common/validateUrl";
-import { getVolume, getStartTimeInMs } from "../common/audioUtils";
+import { getVolume, getStartTimeInMs, getDuration } from "../common/audioUtils";
 
 import logger from "../logger";
 
-import ffmpeg from "fluent-ffmpeg";
+import ffmpeg, { FfmpegCommand } from "fluent-ffmpeg";
 import youtubedl, { YtResponse } from "youtube-dl-exec";
 import { PassThrough } from "stream";
 
 let currentlyPlayingCache: {
     [guildIdAndChannelId: string]: {
         url: string,
-        audioStream: ffmpeg.FfmpegCommand,
+        audioStream: FfmpegCommand,
         audioPlayer: AudioPlayer,
         volume: number,
         startTimeInMs: number,
@@ -25,7 +25,7 @@ let currentlyPlayingCache: {
 
 // https://github.com/discordjs/voice/issues/117
 // https://github.com/discordjs/voice/issues/150
-export function getAudioStream(url: string, startTimeMs: number, volume: number, reject: (reason?: any) => void) {
+export function getAudioStream(url: string, startTimeMs: number, volume: number, reject: (reason?: any) => void): FfmpegCommand {
     logger.info('[ffmpeg] downloading audio stream');
 
     const FFMPEG_OPUS_ARGUMENTS = [
@@ -54,7 +54,7 @@ export function getAudioStream(url: string, startTimeMs: number, volume: number,
 
     return process.pipe(new PassThrough({
         highWaterMark: 96000 / 8 * 30
-    }));
+    })) as unknown as FfmpegCommand;
 }
 
 export async function probeAndCreateResource(readableStream: any, title: string) {
@@ -71,7 +71,7 @@ export function cacheCurrentlyPlaying(
     guildId: string,
     channelId: string,
     url: string,
-    audioStream: ffmpeg.FfmpegCommand,
+    audioStream: FfmpegCommand,
     audioPlayer: AudioPlayer,
     volume: number,
     startTimeInMs: number
@@ -92,6 +92,10 @@ export function clearCurrentlyPlaying(guildId: string, channelId: string) {
 
 export function getCurrentlyPlaying(guildId: string, channelId: string) {
     return currentlyPlayingCache[guildId + channelId];
+}
+
+function getReplyString(audioData: YtResponse, duration: number) {
+    return `${audioData.title} - ${audioData.uploader ?? "unknown"} | ${getDuration(duration)} / ${getDuration(audioData.duration)}`;
 }
 
 const playAudio = async (url: string, startTimeMs: number, volume: number, interaction: CommandInteraction) => {
@@ -122,10 +126,6 @@ const playAudio = async (url: string, startTimeMs: number, volume: number, inter
 
     let isPromiseRejected = false;
 
-    const duration = new Date(0);
-    duration.setSeconds(audioData.duration ?? 0);
-    const durationString = audioData.duration ? duration.toISOString().substr(11, 8) : '??:??:??';
-
     return new Promise(async (resolve, reject) => {
         const onError = (error: Error) => {
             if (isPromiseRejected) return;
@@ -145,7 +145,7 @@ const playAudio = async (url: string, startTimeMs: number, volume: number, inter
                 }
 
                 const msg = await interaction.editReply({
-                    content: `:white_check_mark: Finished playing audio: ${audioData.title} - ${audioData.uploader ?? "unknown"} | ${durationString}`,
+                    content: `:white_check_mark: Finished playing audio: ${getReplyString(audioData, audioData.duration)}`,
                 });
 
                 msg.suppressEmbeds(true);
@@ -156,8 +156,33 @@ const playAudio = async (url: string, startTimeMs: number, volume: number, inter
             }
         }
 
+        const updateTime = async () => {
+            try {
+                if (isPromiseRejected) {
+                    return;
+                }
+
+                const currentlyPlaying = getCurrentlyPlaying(guildId, channelId);
+
+                if (!currentlyPlaying) {
+                    return;
+                }
+
+                const msg = await interaction.editReply({
+                    content: `:loud_sound: Playing audio: ${getReplyString(audioData, process.hrtime()[0] - currentlyPlaying.playStartTime)}`
+                });
+
+                msg.suppressEmbeds(true);
+
+                setTimeout(updateTime, 5000);
+            } catch (e) {
+                reject(e);
+            }
+        }
+        setTimeout(updateTime, 5000);
+
         try {
-            const audioStream = getAudioStream(bestFormat.url, startTimeMs, volume, reject) as any;
+            const audioStream = getAudioStream(bestFormat.url, startTimeMs, volume, reject);
 
             const connection = joinVoiceChannel({
                 channelId: channelId as string,
@@ -182,7 +207,7 @@ const playAudio = async (url: string, startTimeMs: number, volume: number, inter
 
             const msg = await interaction.followUp({
                 ephemeral: false,
-                content: `:loud_sound: Playing audio: ${audioData.title} - ${audioData.uploader ?? "unknown"} | ${durationString}`
+                content: `:loud_sound: Playing audio: ${audioData.title} - ${audioData.uploader ?? "unknown"} | ${getDuration(startTimeMs)} / ${getDuration(audioData.duration)}`
             });
 
             msg.suppressEmbeds(true);

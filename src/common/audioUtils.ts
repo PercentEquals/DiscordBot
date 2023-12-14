@@ -1,6 +1,12 @@
 import { CommandInteraction } from "discord.js";
 import { getAudioStream, getCurrentlyPlaying, probeAndCreateResource } from "../commands/play";
 
+export function getDuration(duration: number | null) {
+    const durationDate = new Date(0);
+    durationDate.setSeconds(duration ?? 0);
+    return duration ? durationDate.toISOString().substr(11, 8) : '??:??:??';
+}
+
 export function getStartTimeInMs(startTime: string) {
     if (!startTime) {
         return 0;
