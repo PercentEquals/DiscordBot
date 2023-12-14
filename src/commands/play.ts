@@ -19,7 +19,8 @@ let currentlyPlayingCache: {
         audioPlayer: AudioPlayer,
         volume: number,
         startTimeInMs: number,
-        playStartTime: number
+        playStartTime: number,
+        finished: boolean
     }
 } = {};
 
@@ -82,7 +83,8 @@ export function cacheCurrentlyPlaying(
         audioPlayer,
         volume,
         startTimeInMs,
-        playStartTime: process.hrtime()[0]
+        playStartTime: process.hrtime()[0],
+        finished: false
     }
 }
 
@@ -143,12 +145,11 @@ const playAudio = async (url: string, startTimeMs: number, volume: number, inter
                 return;
             }
 
-            clearCurrentlyPlaying(guildId, channelId);
-
             const msg = await interaction.editReply({
                 content: `:white_check_mark: Finished playing audio: ${getReplyString(audioData, audioData.duration)}`,
             });
 
+            getCurrentlyPlaying(guildId, channelId).finished = true;
             msg.suppressEmbeds(true);
             resolve(true);
         }
@@ -160,7 +161,7 @@ const playAudio = async (url: string, startTimeMs: number, volume: number, inter
 
             const currentlyPlaying = getCurrentlyPlaying(guildId, channelId);
 
-            if (!currentlyPlaying) {
+            if (!currentlyPlaying || currentlyPlaying.finished) {
                 return;
             }
 
