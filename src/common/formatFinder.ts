@@ -32,6 +32,6 @@ export function getBestFormat(url: string, ytResponse: YtResponse, audioOnly: bo
 
 export function getBestImageUrl(imageData: Image) {
     return imageData.display_image.url_list.filter(
-        (url) => url.includes('webp') || url.includes('jpeg') || url.includes('jpg') || url.includes('png')
+        (url) => url.includes('.webp') || url.includes('.jpeg') || url.includes('.jpg') || url.includes('.png')
     )[0] ?? imageData.display_image.url_list[0];
 }
