@@ -14,7 +14,9 @@ export default async function handleAutomaticTiktokLinks(client: Client, message
     }
 
     const getString = (path: string, required: boolean) => {
-        return message.content;
+        if (path === "url") {
+            return message.content;
+        }
     }
 
     const followUp = async ({ content, files }: {
