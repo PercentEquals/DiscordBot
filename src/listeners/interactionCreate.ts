@@ -18,6 +18,6 @@ const handleSlashCommand = async (client: Client, interaction: CommandInteractio
 
     await interaction.deferReply();
 
-    logger.info('[bot] running command: ' + slashCommand.name);
+    logger.info('[bot] running command: ' + slashCommand.name + ' ' + JSON.stringify(interaction.options.data));
     await slashCommand.run(client, interaction);
 };
