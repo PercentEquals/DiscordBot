@@ -19,7 +19,11 @@ export async function getTiktokIdFromTiktokUrl(url: string) {
         const ogUrl = $ogUrl.attr('content') as string;
         const id = ogUrl.match(/video\/(\d+)/)?.[1] as string;
         return id;
-    } catch (e) {
+    } catch (e: any) {
+        if (e.message === 'Not found') {
+            throw e;
+        }
+
         return fallbackId;
     }
 }
