@@ -9,8 +9,7 @@ let currentlyPlayingCache: {
         audioPlayer: AudioPlayer,
         volume: number,
         startTimeInMs: number,
-        playStartTime: number,
-        timer?: NodeJS.Timeout
+        playStartTime: number
     }
 } = {};
 
@@ -21,8 +20,7 @@ export function cacheCurrentlyPlaying(
     audioStream: FfmpegCommand,
     audioPlayer: AudioPlayer,
     volume: number,
-    startTimeInMs: number,
-    timer?: NodeJS.Timeout
+    startTimeInMs: number
 ) {
     currentlyPlayingCache[guildId + channelId] = {
         url,
@@ -30,15 +28,11 @@ export function cacheCurrentlyPlaying(
         audioPlayer,
         volume,
         startTimeInMs,
-        playStartTime: process.hrtime()[0],
-        timer
+        playStartTime: process.hrtime()[0]
     }
 }
 
 export function clearCurrentlyPlaying(guildId: string, channelId: string) {
-    clearInterval(currentlyPlayingCache[guildId + channelId]?.timer);
-    clearTimeout(currentlyPlayingCache[guildId + channelId]?.timer);
-
     getCurrentlyPlaying(guildId, channelId)?.audioStream.emit('end');
     getCurrentlyPlaying(guildId, channelId)?.audioPlayer.stop();
 
