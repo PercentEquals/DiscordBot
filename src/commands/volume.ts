@@ -1,10 +1,9 @@
 import { ApplicationCommandType, Client, CommandInteraction, SlashCommandStringOption } from "discord.js";
 
 import { restartAudioStream } from "../common/audioUtils";
+import { reportError } from "../common/errorHelpers";
 
 import { Command } from "../command";
-
-import logger from "../logger";
 
 export const Volume: Command = {
     name: "volume",
@@ -25,12 +24,7 @@ export const Volume: Command = {
                 content: `:white_check_mark: Changing volume to ${volume} done!`
             });
         } catch (e) {
-            logger.error(e);
-
-            await interaction.followUp({
-                ephemeral: false,
-                content: `:x: ${e}`
-            });
+            reportError(interaction, e);
         }
     }
 };

@@ -1,10 +1,9 @@
 import { ApplicationCommandType, Client, CommandInteraction, SlashCommandStringOption } from "discord.js";
 
 import { restartAudioStream } from "../common/audioUtils";
+import { reportError } from "../common/errorHelpers";
 
 import { Command } from "../command";
-
-import logger from "../logger";
 
 export const Seek: Command = {
     name: "seek",
@@ -25,12 +24,7 @@ export const Seek: Command = {
                 content: `:white_check_mark: Seek to ${time} done!`
             });
         } catch (e) {
-            logger.error(e);
-
-            await interaction.followUp({
-                ephemeral: false,
-                content: `:x: ${e}`
-            });
+            reportError(interaction, e);
         }
     }
 };

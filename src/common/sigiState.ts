@@ -1,3 +1,5 @@
+import logger from "../logger";
+
 import { Image, TiktokApi } from "../../types/tiktokApi";
 import { validateUrl } from "./validateUrl";
 
@@ -24,41 +26,46 @@ export function getTiktokAudioData(tiktokApi: TiktokApi) {
 }
 
 export async function getDataFromYoutubeDl(url: string) {
-    const urlObj = new URL(url);
-    const id = validateUrl(urlObj);
+    try {
+        const urlObj = new URL(url);
+        const id = validateUrl(urlObj);
 
-    if (urlObj.hostname.includes('tiktok')) {
-        const data = await youtubedl(url, {
-            dumpPages: true,
-            skipDownload: true,
-        });
-    
-        // hack from https://github.com/dylanpdx/vxtiktok/blob/main/vxtiktok.py#L70C1-L72C66
-        for (const line of (data as any).split('\n')) {
-            if (line.match(/^[A-Za-z0-9+/=]+$/)) {
-                const decoded = Buffer.from(line, 'base64').toString('utf-8');
-                const api = JSON.parse(decoded) as TiktokApi;
+        if (urlObj.hostname.includes('tiktok')) {
+            const data = await youtubedl(url, {
+                dumpPages: true,
+                skipDownload: true,
+            });
+        
+            // hack from https://github.com/dylanpdx/vxtiktok/blob/main/vxtiktok.py#L70C1-L72C66
+            for (const line of (data as any).split('\n')) {
+                if (line.match(/^[A-Za-z0-9+/=]+$/)) {
+                    const decoded = Buffer.from(line, 'base64').toString('utf-8');
+                    const api = JSON.parse(decoded) as TiktokApi;
 
-                return {
-                    tiktokApi: api,
-                    ytResponse: null
+                    return {
+                        tiktokApi: api,
+                        ytResponse: null
+                    }
                 }
             }
         }
-    }
 
-    let videoData = await youtubedl(url, {
-        dumpSingleJson: true,
-        getFormat: true,
-        noWarnings: true,
-    });
+        let videoData = await youtubedl(url, {
+            dumpSingleJson: true,
+            getFormat: true,
+            noWarnings: true,
+        });
 
-    //@ts-ignore - youtube-dl-exec videoData contains useless first line
-    videoData = videoData.split('\n').slice(1).join('\n');
-    videoData = JSON.parse(videoData as any) as YtResponse;
+        //@ts-ignore - youtube-dl-exec videoData contains useless first line
+        videoData = videoData.split('\n').slice(1).join('\n');
+        videoData = JSON.parse(videoData as any) as YtResponse;
 
-    return {
-        tiktokApi: null,
-        ytResponse: videoData
+        return {
+            tiktokApi: null,
+            ytResponse: videoData
+        }
+    } catch (e) {
+        logger.error(e);
+        throw new Error('No data for provided url found!');
     }
 }

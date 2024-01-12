@@ -5,6 +5,7 @@ import { Command } from "../command";
 import { getBestFormat } from "../common/formatFinder";
 import { extractUrl, validateUrl } from "../common/validateUrl";
 import { getVolume, getStartTimeInMs, getDuration } from "../common/audioUtils";
+import { reportError } from "../common/errorHelpers";
 
 import { cacheCurrentlyPlaying, clearCurrentlyPlaying } from "../global/currentlyPlayingCache";
 
@@ -167,12 +168,7 @@ export const Play: Command = {
 
             await playAudio(url, getStartTimeInMs(startTime), getVolume(volume), interaction);
         } catch (e) {
-            logger.error(e);
-
-            await interaction.followUp({
-                ephemeral: false,
-                content: `:x: ${e}`
-            });
+            reportError(interaction, e);
         }
     }
 };

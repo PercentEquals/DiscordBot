@@ -15,6 +15,7 @@ import { getRange } from "../common/getRange";
 import { getExtensionFromUrl } from "../common/extensionFinder";
 
 import { convertSlideshowToVideo, convertVideo, downloadFile } from "../common/ffmpegUtils";
+import { reportError } from "../common/errorHelpers";
 
 import getConfig from "../setup/configSetup";
 import logger from "../logger";
@@ -316,16 +317,17 @@ export const Tiktok: Command = {
             } else {
                 return await downloadVideo(interaction, ytResponse, tiktokApi, url, spoiler, audioOnly);
             }
-        } catch (e) {
-            logger.error(e);
+        } catch (e: any) {
+            try {
+                const vxUrl = new URL(url);
+                vxUrl.hostname = vxUrl.hostname.replace('tiktok', 'vxtiktok');
 
-            const vxUrl = new URL(url);
-            vxUrl.hostname = vxUrl.hostname.replace('tiktok', 'vxtiktok');
+                return reportError(interaction, e, `Using ${vxUrl} as fallback.`);
+            } catch (e) {
+                // ignore
+            }
 
-            await interaction.followUp({
-                ephemeral: false,
-                content: "```" + `${e}` + "```" + `\n Using: ${vxUrl} as fallback.`
-            })
+            return reportError(interaction, e);
         }
     }
 };

@@ -1,7 +1,8 @@
 import { ApplicationCommandType, Client, CommandInteraction } from "discord.js";
 
+import { reportError } from "../common/errorHelpers";
+
 import { Command } from "../command";
-import logger from "../logger";
 
 import { clearCurrentlyPlaying } from "../global/currentlyPlayingCache";
 
@@ -23,12 +24,7 @@ export const Stop: Command = {
                 content: `:white_check_mark: Stopped playing currently played audio!`
             });
         } catch (e) {
-            logger.error(e);
-
-            await interaction.followUp({
-                ephemeral: false,
-                content: `:x: ${e}`
-            });
+            reportError(interaction, e);
         }
     }
 };

@@ -1,8 +1,9 @@
 import { ApplicationCommandType, Client, CommandInteraction } from "discord.js";
 import { getVoiceConnection } from "@discordjs/voice";
 
+import { reportError } from "../common/errorHelpers";
+
 import { Command } from "../command";
-import logger from "../logger";
 
 export const Leave: Command = {
     name: "leave",
@@ -18,12 +19,7 @@ export const Leave: Command = {
                 content: `:white_check_mark: Bye!`
             });
         } catch (e) {
-            logger.error(e);
-
-            await interaction.followUp({
-                ephemeral: false,
-                content: `:x: ${e}`
-            });
+            reportError(interaction, e);
         }
     }
 };
