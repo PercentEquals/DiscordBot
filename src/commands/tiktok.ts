@@ -324,7 +324,7 @@ export const Tiktok: Command = {
 
             await interaction.followUp({
                 ephemeral: false,
-                content: `:x: ` + "```" + `${e}` + "```" + `\n Using: ${vxUrl} as fallback.`
+                content: "```" + `${e}` + "```" + `\n Using: ${vxUrl} as fallback.`
             })
         }
     }
