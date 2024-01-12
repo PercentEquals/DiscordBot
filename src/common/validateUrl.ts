@@ -5,7 +5,11 @@ export function extractUrl(text: string) {
     return url ?? text;
 }
 
-export function validateUrl(url: URL) {
+export function validateUrl(url: URL | string) {
+    if (typeof url === 'string') {
+        url = new URL(url);
+    }
+
     if (!ALLOWED_YTD_HOSTS.includes(url.hostname)) {
         throw new Error(`Not an allowed url ${JSON.stringify(ALLOWED_YTD_HOSTS)}`);
     }

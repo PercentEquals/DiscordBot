@@ -1,22 +1,31 @@
-import { getExtensionFromUrl } from "./extensionFinder";
 import { getBestFormat, getBestImageUrl } from "./formatFinder";
 import { DISCORD_LIMIT } from "../constants/discordlimit";
-import { Image } from "../../types/tiktokApi";
+import { TiktokApi } from "../../types/tiktokApi";
 
 import ffmpeg from "fluent-ffmpeg";
-import youtubedl, { YtResponse } from "youtube-dl-exec";
 import { Readable } from "stream";
 import { finished } from "stream/promises";
 
 import logger from "../logger";
 import fs from "fs";
+import { getExtensionFromUrl } from "./extensionFinder";
+import { getTiktokId, getTiktokSlideshowData, getTiktokUrl } from "./sigiState";
 
-export async function convertSlideshowToVideo(url: string, imagesData: Image[], ranges: number[], id: string, tryUsingScale: boolean = false): Promise<string> {
-    const resultFilePath = `cache/${id}-slideshow.mp4`;
+export async function downloadFile(url: string, path: string) {
+    const { body } = await fetch(url);
+    const stream = fs.createWriteStream(path);
+    await finished(Readable.fromWeb(body as any).pipe(stream));
+}
+
+export async function convertSlideshowToVideo(tiktokApi: TiktokApi, ranges: number[], tryUsingScale: boolean = false): Promise<string> {
+    const tiktokId = getTiktokId(tiktokApi);
+    const slideshowData = getTiktokSlideshowData(tiktokApi);
+    
+    const resultFilePath = `cache/${tiktokId}-slideshow.mp4`;
     const files: string[] = [];
 
     const clearCache = (clearResult: boolean) => {
-        for (let i = 0; i < imagesData.length; i++) {
+        for (let i = 0; i < slideshowData.length; i++) {
             if (fs.existsSync(files[i])) {
                 fs.unlinkSync(files[i]);
             }
@@ -35,7 +44,7 @@ export async function convertSlideshowToVideo(url: string, imagesData: Image[], 
 
             process.on('error', (err: any) => {
                 if (!tryUsingScale) {
-                    return resolve(convertSlideshowToVideo(url, imagesData, ranges, id, true));
+                    return resolve(convertSlideshowToVideo(tiktokApi, ranges, true));
                 }
 
                 clearCache(true);
@@ -46,39 +55,27 @@ export async function convertSlideshowToVideo(url: string, imagesData: Image[], 
                 resolve(resultFilePath);
             });
 
-            const extension = await getExtensionFromUrl(getBestImageUrl(imagesData[0]));
+            const bestImageUrl = getBestImageUrl(slideshowData[0]);
+            const extension = getExtensionFromUrl(bestImageUrl);
 
-            for (let i = 0; i < imagesData.length; i++) {
+            for (let i = 0; i < slideshowData.length; i++) {
                 if (ranges.length > 0 && !ranges.includes(i + 1)) {
                     continue;
                 }
 
-                const image = imagesData[i];
-                const { body } = await fetch(getBestImageUrl(image));
-                const stream = fs.createWriteStream(`cache/${id}-${i}.${extension}`);
-                await finished(Readable.fromWeb(body as any).pipe(stream));
-
-                files.push(`cache/${id}-${i}.${extension}`);
+                downloadFile(getBestImageUrl(slideshowData[i]), `cache/${tiktokId}-${i}.${extension}`);
+                files.push(`cache/${tiktokId}-${i}.${extension}`);
             }
 
             process.addOption(`-framerate 1`);
             process.addOption(`-r 6`);
             process.addOption(`-loop 1`);
             process.addOption(`-t 4`);
-            process.addOption(`-i cache/${id}-%d.${extension}`);
+            process.addOption(`-i cache/${tiktokId}-%d.${extension}`);
 
-            let audioData = await youtubedl(url, {
-                noWarnings: true,
-                dumpSingleJson: true,
-                getFormat: true, 
-            });
-
-            //@ts-ignore - youtube-dl-exec audioData contains useless first line
-            audioData = audioData.split('\n').slice(1).join('\n');
-            audioData = JSON.parse(audioData as any) as YtResponse;
-            const bestFormat = getBestFormat(url, audioData, true);
+            const bestAudioFormat = getBestFormat(getTiktokUrl(tiktokApi), null, tiktokApi, true);
             
-            process.addOption('-i', bestFormat?.url as string);
+            process.addOption('-i', bestAudioFormat?.url as string);
 
             if (tryUsingScale) {
                 process.addOption('-vf scale=800:400');

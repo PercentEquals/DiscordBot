@@ -3,7 +3,7 @@ import { ApplicationCommandType, Client, CommandInteraction } from "discord.js";
 import { Command } from "../command";
 import logger from "../logger";
 
-import { clearCurrentlyPlaying, getCurrentlyPlaying } from "../global/currentlyPlayingCache";
+import { clearCurrentlyPlaying } from "../global/currentlyPlayingCache";
 
 export const Stop: Command = {
     name: "stop",

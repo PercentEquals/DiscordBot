@@ -78,7 +78,7 @@ export async function restartAudioStream(interaction: CommandInteraction, volume
     const audioStream = await new Promise(async (resolve, reject) => {
         resolve(getAudioStream(currentlyPlaying.url, startTimeInMs, newVolume, reject));
     });
-    const resource = await probeAndCreateResource(audioStream, currentlyPlaying.url);
+    const resource = await probeAndCreateResource(audioStream);
 
     currentlyPlaying.audioPlayer.play(resource);
     currentlyPlaying.startTimeInMs = startTimeInMs;

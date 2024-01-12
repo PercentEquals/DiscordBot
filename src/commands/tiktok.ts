@@ -2,77 +2,66 @@ import { ApplicationCommandType, AttachmentBuilder, Client, CommandInteraction, 
 import { Command } from "../command";
 
 import { DISCORD_LIMIT } from "../constants/discordlimit";
-import { MAX_RETRIES, RETRY_TIMEOUT } from "../constants/maxretries";
 import { TIKTOK_COMMENTS_COUNT, TIKTOK_COMMENTS_MAX_COUNT, TIKTOK_COMMENTS_OFFSET } from "../constants/tiktokcommentscount";
 
-import { Image } from "types/tiktokApi";
+import { TiktokApi } from "types/tiktokApi";
 import { TikTokSigner } from "types/tiktokSigner";
 import { TiktokCommentsApi } from "types/tiktokCommentsApi";
 
 import { extractUrl, validateUrl } from "../common/validateUrl";
-import { getBestImageUrl, getBestFormat } from "../common/formatFinder";
-import { getSlideshowDataFromTiktokApi, getTiktokIdFromTiktokUrl } from "../common/sigiState";
+import { getBestImageUrl, getBestFormat, getAnyFormat } from "../common/formatFinder";
+import { getDataFromYoutubeDl, getTiktokId, getTiktokSlideshowData } from "../common/sigiState";
 import { getRange } from "../common/getRange";
 import { getExtensionFromUrl } from "../common/extensionFinder";
 
-import { convertSlideshowToVideo, convertVideo } from "../common/ffmpegUtils";
+import { convertSlideshowToVideo, convertVideo, downloadFile } from "../common/ffmpegUtils";
 
 import getConfig from "../setup/configSetup";
 import logger from "../logger";
 import fs from "fs";
 
-import youtubedl, { YtResponse } from "youtube-dl-exec";
+import { YtResponse } from "youtube-dl-exec";
 
 //@ts-ignore - tiktok-signature types not available (https://github.com/carcabot/tiktok-signature)
 import Signer from "tiktok-signature";
 
 async function downloadAndConvertVideo(
     interaction: CommandInteraction,
+    ytResponse: YtResponse | null,
+    tiktokApi: TiktokApi | null,
     url: string,
     spoiler: boolean,
-    audioOnly: boolean,
-    title: string
+    audioOnly: boolean
 ) {
-    const id = validateUrl(new URL(url));
+    const id = validateUrl(url);
     let filePath = `cache/${id}.mp4`;
 
-    await youtubedl(url, {
-        noWarnings: true,
-        output: filePath,
-    });
-
-    if (!fs.existsSync(filePath)) {
-        throw new Error(`No format found under ${DISCORD_LIMIT / 1024 / 1024}MB`);
-    }
-
-    if (!getConfig().botOptions.allowCompressionOfLargeFiles) {
-        throw new Error(`No format found under ${DISCORD_LIMIT / 1024 / 1024}MB`);
-    }
-
-    filePath = await convertVideo(filePath, id);
-    const file = new AttachmentBuilder(filePath);
-
-    if (fs.statSync(filePath).size > DISCORD_LIMIT) {
-        if (fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath);
-        }
-        throw new Error(`No format found under ${DISCORD_LIMIT / 1024 / 1024}MB`);
-    }
-
-    file.setName(`${title}.${audioOnly ? 'mp3' : 'mp4'}`);
-    file.setSpoiler(spoiler);
-
-    logger.info('[bot] sending converted video');
-
     try {
-        await interaction.followUp({
-            ephemeral: false,
-            files: [file]
-        });
-    } catch (e) {
-        logger.error(e);
+        const format = getAnyFormat(ytResponse, tiktokApi) as { url: string, filesize: number };
+        await downloadFile(format.url, filePath);
 
-        // Sometimes discord fails to send the video, so we try again
+        if (!fs.existsSync(filePath)) {
+            throw new Error(`No format found under ${DISCORD_LIMIT / 1024 / 1024}MB`);
+        }
+
+        if (!getConfig().botOptions.allowCompressionOfLargeFiles) {
+            throw new Error(`No format found under ${DISCORD_LIMIT / 1024 / 1024}MB`);
+        }
+
+        filePath = await convertVideo(filePath, id);
+        const file = new AttachmentBuilder(filePath);
+
+        if (fs.statSync(filePath).size > DISCORD_LIMIT) {
+            if (fs.existsSync(filePath)) {
+                fs.unlinkSync(filePath);
+            }
+            throw new Error(`No format found under ${DISCORD_LIMIT / 1024 / 1024}MB`);
+        }
+
+        file.setName(`${id}.${audioOnly ? 'mp3' : 'mp4'}`);
+        file.setSpoiler(spoiler);
+
+        logger.info('[bot] sending converted video');
         await interaction.followUp({
             ephemeral: false,
             files: [file]
@@ -86,123 +75,83 @@ async function downloadAndConvertVideo(
 
 async function downloadVideo(
     interaction: CommandInteraction,
+    ytResponse: YtResponse | null,
+    tiktokApi: TiktokApi | null,
     url: string,
     spoiler: boolean,
-    audioOnly: boolean,
-    retry = 0
+    audioOnly: boolean
 ) {
-    let videoData = null;
-
-    try {
-        videoData = await youtubedl(url, {
-            dumpSingleJson: true,
-            getFormat: true,
-            noWarnings: true,
-        });
-    } catch (e) {
-        if (retry >= MAX_RETRIES) {
-            logger.error(`[youtube-dl]: ${e}.`);
-            throw e;
-        }
-
-        logger.info(`[bot] retrying video download... (${retry} / ${MAX_RETRIES})`);
-
-        return new Promise((resolve, reject) => {
-            setTimeout(() => {
-                try {
-                    resolve(downloadVideo(interaction, url, spoiler, audioOnly, retry + 1));
-                } catch (e) {
-                    reject(e);
-                }
-            }, RETRY_TIMEOUT);
-        });
-    }
-
-    //@ts-ignore - youtube-dl-exec videoData contains useless first line
-    videoData = videoData.split('\n').slice(1).join('\n');
-    videoData = JSON.parse(videoData as any) as YtResponse;
-
-    let bestFormat = getBestFormat(url, videoData, audioOnly);
+    const id = validateUrl(url);
+    const bestFormat = getBestFormat(url, ytResponse, tiktokApi, audioOnly);
 
     if (!bestFormat || bestFormat.filesize > DISCORD_LIMIT) {
-        return downloadAndConvertVideo(interaction, url, spoiler, audioOnly, videoData.title);
+        return downloadAndConvertVideo(interaction, ytResponse, tiktokApi, url, spoiler, audioOnly);
     }
 
     const file = new AttachmentBuilder(bestFormat.url);
-    file.setName(`${videoData.title}.${audioOnly ? 'mp3' : 'mp4'}`);
+    file.setName(`${id}.${audioOnly ? 'mp3' : 'mp4'}`);
     file.setSpoiler(spoiler);
 
     logger.info('[bot] sending video');
 
-    try {
-        await interaction.followUp({
-            ephemeral: false,
-            files: [file]
-        });
-    } catch (e) {
-        logger.error(e);
-
-        // Sometimes discord fails to send the video, so we try again
-        await interaction.followUp({
-            ephemeral: false,
-            files: [file]
-        });
-    }
+    await interaction.followUp({
+        ephemeral: false,
+        files: [file]
+    });
 }
 
 async function downloadSlideshowAsVideo(
     interaction: CommandInteraction,
-    url: string,
-    imagesData: Image[],
+    tiktokApi: TiktokApi,
     spoiler: boolean,
     ranges: number[] = []
 ) {
-    const tiktokId = await getTiktokIdFromTiktokUrl(url);
-    const slideshowFile = await convertSlideshowToVideo(url, imagesData, ranges, tiktokId);
+    const slideshowFile = await convertSlideshowToVideo(tiktokApi, ranges);
 
-    if (fs.lstatSync(slideshowFile).size > DISCORD_LIMIT) {
+    try {
+        if (fs.lstatSync(slideshowFile).size > DISCORD_LIMIT) {
+            if (fs.existsSync(slideshowFile)) {
+                fs.unlinkSync(slideshowFile);
+            }
+            throw new Error(`No format found under ${DISCORD_LIMIT / 1024 / 1024}MB`);
+        }
+
+        const slideshowVideo = new AttachmentBuilder(slideshowFile);
+        slideshowVideo.setName(`${getTiktokId(tiktokApi)}.mp4`);
+        slideshowVideo.setSpoiler(spoiler);
+
+        logger.info('[bot] sending slideshow as video');
+
+        await interaction.followUp({
+            ephemeral: false,
+            files: [slideshowVideo]
+        });
+    } finally {
         if (fs.existsSync(slideshowFile)) {
             fs.unlinkSync(slideshowFile);
         }
-        throw new Error(`No format found under ${DISCORD_LIMIT / 1024 / 1024}MB`);
     }
-
-    const slideshowVideo = new AttachmentBuilder(slideshowFile);
-    slideshowVideo.setName(`${tiktokId}.mp4`);
-    slideshowVideo.setSpoiler(spoiler);
-
-    logger.info('[bot] sending slideshow as video');
-
-    await interaction.followUp({
-        ephemeral: false,
-        files: [slideshowVideo]
-    });
-
-    if (fs.existsSync(slideshowFile)) {
-        fs.unlinkSync(slideshowFile);
-    }
-
-    return;
 }
 
 async function downloadSlideshow(
     interaction: CommandInteraction,
-    url: string,
-    imagesData: Image[],
+    tiktokApi: TiktokApi,
     spoiler: boolean,
     ranges: number[] = []
 ) {
-    const tiktokId = await getTiktokIdFromTiktokUrl(url);
+    const slideshowData = getTiktokSlideshowData(tiktokApi);
+    const tiktokId = getTiktokId(tiktokApi);
     const files = [] as AttachmentBuilder[];
 
-    for (let i = 0; i < imagesData.length; i++) {
+    for (let i = 0; i < slideshowData.length; i++) {
         if (ranges.length > 0 && !ranges.includes(i + 1)) {
             return;
         }
 
-        const image = imagesData[i];
-        const file = new AttachmentBuilder(getBestImageUrl(image));
-        const extensions = await getExtensionFromUrl(getBestImageUrl(image));
+        const image = slideshowData[i];
+        const bestImageUrl = getBestImageUrl(image);
+        const file = new AttachmentBuilder(bestImageUrl);
+        const extensions = await getExtensionFromUrl(bestImageUrl);
 
         file.setName(`${tiktokId}-${i}.${extensions}`);
         file.setSpoiler(spoiler);
@@ -227,14 +176,15 @@ async function downloadSlideshow(
 
 async function getCommentsFromTiktok(
     interaction: CommandInteraction,
+    tiktokApi: TiktokApi | null,
     url: string,
     range: number[]
 ) {
-    if (!new URL(url).hostname.includes('tiktok')) {
+    if (!new URL(url).hostname.includes('tiktok') || !tiktokApi) {
         throw new Error('Comments only option is available for tiktok links only.');
     }
 
-    const id = await getTiktokIdFromTiktokUrl(url);
+    const id = getTiktokId(tiktokApi);
     const USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.0.0 Safari/537.36 Edg/105.0.1343.53";
     const MSTOKEN = "G1lr_8nRB3udnK_fFzgBD7sxvc0PK6Osokd1IJMaVPVcoB4mwSW-D6MQjTdoJ2o20PLt_MWNgtsAr095wVSShdmn_XVFS34bURvakVglDyWAHncoV_jVJCRdiJRdbJBi_E_KD_G8vpFF9-aOaJrk";
 
@@ -354,16 +304,17 @@ export const Tiktok: Command = {
         const range = interaction.options.getString('range', false);
 
         try {
-            const slideshowData = await getSlideshowDataFromTiktokApi(url);
+            const { ytResponse, tiktokApi } = await getDataFromYoutubeDl(url);
+            const isSlideshow = getTiktokSlideshowData(tiktokApi)?.length > 0;
 
             if (commentsOnly) {
-                return await getCommentsFromTiktok(interaction, url, getRange(range));
-            } else if (slideshowData && !audioOnly && slideshowAsVideo) {
-                return await downloadSlideshowAsVideo(interaction, url, slideshowData, spoiler, getRange(range));
-            } else if (slideshowData && !audioOnly) {
-                return await downloadSlideshow(interaction, url, slideshowData, spoiler, getRange(range));
+                return await getCommentsFromTiktok(interaction, tiktokApi, url, getRange(range));
+            } else if (!!tiktokApi && isSlideshow && !audioOnly && slideshowAsVideo) {
+                return await downloadSlideshowAsVideo(interaction, tiktokApi, spoiler, getRange(range));
+            } else if (!!tiktokApi && isSlideshow && !audioOnly) {
+                return await downloadSlideshow(interaction, tiktokApi, spoiler, getRange(range));
             } else {
-                return await downloadVideo(interaction, url, spoiler, audioOnly);
+                return await downloadVideo(interaction, ytResponse, tiktokApi, url, spoiler, audioOnly);
             }
         } catch (e) {
             logger.error(e);
@@ -373,7 +324,7 @@ export const Tiktok: Command = {
 
             await interaction.followUp({
                 ephemeral: false,
-                content: `:x: ${e}\n Using: ${vxUrl} as fallback.`
+                content: `:x: ` + "```" + `${e}` + "```" + `\n Using: ${vxUrl} as fallback.`
             })
         }
     }

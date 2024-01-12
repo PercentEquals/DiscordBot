@@ -11,8 +11,10 @@ import { cacheCurrentlyPlaying, clearCurrentlyPlaying } from "../global/currentl
 import logger from "../logger";
 
 import ffmpeg, { FfmpegCommand } from "fluent-ffmpeg";
-import youtubedl, { YtResponse } from "youtube-dl-exec";
 import { PassThrough } from "stream";
+import { getDataFromYoutubeDl, getTiktokVideoData } from "../common/sigiState";
+import { YtResponse } from "youtube-dl-exec";
+import { TiktokApi } from "types/tiktokApi";
 
 // https://github.com/discordjs/voice/issues/117
 // https://github.com/discordjs/voice/issues/150
@@ -48,32 +50,26 @@ export function getAudioStream(url: string, startTimeMs: number, volume: number,
     })) as unknown as FfmpegCommand;
 }
 
-export async function probeAndCreateResource(readableStream: any, title: string) {
+export async function probeAndCreateResource(readableStream: any) {
     const { stream, type } = await demuxProbe(readableStream);
     return createAudioResource(stream, {
         inputType: type,
-        metadata: {
-            title
-        }
     });
 }
 
-function getReplyString(audioData: YtResponse) {
-    return `${audioData.title} - ${audioData.uploader ?? "unknown"} | ${getDuration(audioData.duration)}`;
+function getReplyString(ytResponse: YtResponse | null, tiktokApi: TiktokApi | null) {
+    if (ytResponse) {
+        return `${ytResponse.title.substring(0, 100)} - ${ytResponse.uploader ?? "unknown"} | ${getDuration(ytResponse.duration)}`;
+    } else if (tiktokApi) {
+        return `${tiktokApi.aweme_list[0].desc.substring(0, 100)} - ${tiktokApi.aweme_list[0].author.nickname} | ${getDuration(getTiktokVideoData(tiktokApi).duration)}`;
+    }
+
+    throw new Error('No audio found!');
 }
 
 const playAudio = async (url: string, startTimeMs: number, volume: number, interaction: CommandInteraction) => {
-    let audioData = await youtubedl(url, {
-        noWarnings: true,
-        dumpSingleJson: true,
-        getFormat: true,
-    });
-
-    //@ts-ignore - youtube-dl-exec videoData contains useless first line
-    audioData = audioData.split('\n').slice(1).join('\n');
-    audioData = JSON.parse(audioData as any) as YtResponse;
-
-    const bestFormat = getBestFormat(url, audioData, true);
+    let audioData = await getDataFromYoutubeDl(url);
+    const bestFormat = getBestFormat(url, audioData.ytResponse, audioData.tiktokApi, true);
 
     if (!bestFormat) {
         throw new Error('No audio found!');
@@ -106,7 +102,7 @@ const playAudio = async (url: string, startTimeMs: number, volume: number, inter
 
             clearCurrentlyPlaying(guildId, channelId);
             const msg = await interaction.editReply({
-                content: `:white_check_mark: Finished playing audio: ${getReplyString(audioData)}`,
+                content: `:white_check_mark: Finished playing audio: ${getReplyString(audioData.ytResponse, audioData.tiktokApi)}`,
             });
             msg.suppressEmbeds(true);
             resolve(true);
@@ -130,7 +126,7 @@ const playAudio = async (url: string, startTimeMs: number, volume: number, inter
             player.on('error', onError);
             player.on(AudioPlayerStatus.Idle, onFinished);
 
-            const resource = await probeAndCreateResource(audioStream, audioData.title);
+            const resource = await probeAndCreateResource(audioStream);
             connection.subscribe(player);
             player.play(resource);
 
@@ -138,7 +134,7 @@ const playAudio = async (url: string, startTimeMs: number, volume: number, inter
 
             const msg = await interaction.followUp({
                 ephemeral: false,
-                content: `:loud_sound: Playing audio: ${getReplyString(audioData)}`
+                content: `:loud_sound: Playing audio: ${getReplyString(audioData.ytResponse, audioData.tiktokApi)}`
             });
 
             msg.suppressEmbeds(true);
