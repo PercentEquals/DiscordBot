@@ -67,6 +67,10 @@ export async function convertSlideshowToVideo(tiktokApi: TiktokApi, ranges: numb
                 files.push(`cache/${tiktokId}-${i}.${extension}`);
             }
 
+            if (files.length === 0) {
+                return reject('No images found.');
+            }
+
             process.addOption(`-framerate 1`);
             process.addOption(`-r 6`);
             process.addOption(`-loop 1`);

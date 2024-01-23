@@ -146,7 +146,7 @@ async function downloadSlideshow(
 
     for (let i = 0; i < slideshowData.length; i++) {
         if (ranges.length > 0 && !ranges.includes(i + 1)) {
-            return;
+            continue;
         }
 
         const image = slideshowData[i];
@@ -161,6 +161,10 @@ async function downloadSlideshow(
     }
 
     logger.info('[bot] sending slideshow');
+
+    if (files.length === 0) {
+        throw new Error('No images found.');
+    }
 
     while (files.length > 10) {
         await interaction.followUp({
@@ -265,6 +269,10 @@ async function getCommentsFromTiktok(
 
     logger.info('[bot] sending comments');
 
+    if (commentsResponse.length === 0) {
+        throw new Error('No comments found.');
+    }
+
     while (commentsResponse.length > 10) {
         await interaction.followUp({
             ephemeral: false,
@@ -307,6 +315,11 @@ export const Tiktok: Command = {
         try {
             const { ytResponse, tiktokApi } = await getDataFromYoutubeDl(url);
             const isSlideshow = getTiktokSlideshowData(tiktokApi)?.length > 0;
+
+            if (getConfig().environmentOptions.logToFile) {
+                fs.writeFileSync('cache/tiktokApi.json', JSON.stringify(tiktokApi, null, 2));
+                fs.writeFileSync('cache/ytResponse.json', JSON.stringify(ytResponse, null, 2));
+            }
 
             if (commentsOnly) {
                 return await getCommentsFromTiktok(interaction, tiktokApi, url, getRange(range));
