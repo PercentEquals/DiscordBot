@@ -5,4 +5,6 @@ export const ALLOWED_AUTO_LINK_HOSTS = [
     "www.vm.tiktok.com",
     "m.tiktok.com",
     "www.m.tiktok.com",
+    "vxtiktok.com",
+    "www.vxtiktok.com",
 ]

@@ -25,6 +25,13 @@ Default: `true`
 
 Allows compression of files larger than 25MB. Compression results may vary and might take a while to process.
 
+### useVxFallback
+
+Type: `boolean`<br>
+Default: `true`
+
+Should the bot use vx* links as fallback.
+
 ## Environment options
 
 ### ffmpegPath

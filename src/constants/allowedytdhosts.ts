@@ -9,6 +9,8 @@ export const ALLOWED_YTD_HOSTS = [
     "www.vm.tiktok.com",
     "m.tiktok.com",
     "www.m.tiktok.com",
+    "vxtiktok.com",
+    "www.vxtiktok.com",
     "cdn.discordapp.com",
     "discordapp.com",
 ]

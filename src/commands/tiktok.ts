@@ -299,20 +299,22 @@ export const Tiktok: Command = {
         new SlashCommandStringOption().setName('range').setDescription('Range of photos/comments').setRequired(false),
     ],
     run: async (client: Client, interaction: CommandInteraction) => {
-        //@ts-ignore
-        const url: string = extractUrl(interaction.options.getString('url', true));
-        //@ts-ignore
-        const spoiler = interaction.options.getBoolean('spoiler', false);
-        //@ts-ignore
-        const slideshowAsVideo = interaction.options.getBoolean('video', false);
-        //@ts-ignore
-        const audioOnly = interaction.options.getBoolean('audio', false);
-        //@ts-ignore
-        const commentsOnly = interaction.options.getBoolean('comments', false);
-        //@ts-ignore
-        const range = interaction.options.getString('range', false);
-
         try {
+            //@ts-expect-error - Bad types
+            const url: string = extractUrl(interaction.options.getString('url', true));
+            //@ts-expect-error - Bad types
+            const spoiler = interaction.options.getBoolean('spoiler', false);
+            //@ts-expect-error - Bad types
+            const slideshowAsVideo = interaction.options.getBoolean('video', false);
+            //@ts-expect-error - Bad types
+            const audioOnly = interaction.options.getBoolean('audio', false);
+            //@ts-expect-error - Bad types
+            const commentsOnly = interaction.options.getBoolean('comments', false);
+            //@ts-expect-error - Bad types
+            const range = interaction.options.getString('range', false);
+
+            validateUrl(new URL(url));
+
             const { ytResponse, tiktokApi } = await getDataFromYoutubeDl(url);
             const isSlideshow = getTiktokSlideshowData(tiktokApi)?.length > 0;
 
@@ -331,16 +333,7 @@ export const Tiktok: Command = {
                 return await downloadVideo(interaction, ytResponse, tiktokApi, url, spoiler, audioOnly);
             }
         } catch (e: any) {
-            try {
-                const vxUrl = new URL(url);
-                vxUrl.hostname = vxUrl.hostname.replace('tiktok', 'vxtiktok');
-
-                return reportError(interaction, e, `Using ${vxUrl} as fallback.`);
-            } catch (e) {
-                // ignore
-            }
-
-            return reportError(interaction, e);
+            return reportError(interaction, e, true);
         }
     }
 };

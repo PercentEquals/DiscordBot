@@ -2,7 +2,8 @@
     "botOptions": {
         "automaticLinkDetection": true,
         "automaticLinkDetectionErrorReply": true,
-        "allowCompressionOfLargeFiles": true
+        "allowCompressionOfLargeFiles": true,
+        "useVxFallback": true
     },
     "environmentOptions": {
         "ffmpegPath": "",

@@ -64,13 +64,7 @@ export default async function handleAutomaticTiktokLinks(client: Client, message
 
 const handleMessageCommand = async (client: Client, interaction: CommandInteraction, message: Message): Promise<void> => {
     try {
-        let found = false;
-
-        for (var host of ALLOWED_AUTO_LINK_HOSTS) {
-            if (message.content.includes(host)) {
-                found = true;
-            }
-        }
+        let found = ALLOWED_AUTO_LINK_HOSTS.some((host) => message.content.includes(host));
 
         if (!found) {
             return;
