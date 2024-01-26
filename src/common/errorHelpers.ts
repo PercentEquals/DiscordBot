@@ -19,8 +19,8 @@ export function reportError(interaction: CommandInteraction, e: any, useFallback
             const vxUrl = new URL(url);
 
             if (ALLOWED_YTD_HOSTS.includes(vxUrl.hostname)) {
-                vxUrl.hostname.replace("tiktok", "vxtiktok");
-                vxUrl.hostname.replace("twitter", "vxtwitter");
+                vxUrl.hostname = vxUrl.hostname.replace("tiktok", "vxtiktok");
+                vxUrl.hostname = vxUrl.hostname.replace("twitter", "vxtwitter");
                 fallbackLink = vxUrl.toString();
             }
         } catch (e) {

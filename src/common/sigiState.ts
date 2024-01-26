@@ -30,24 +30,30 @@ export async function getDataFromYoutubeDl(url: string) {
         const urlObj = new URL(url);
         const id = validateUrl(urlObj);
 
-        if (urlObj.hostname.includes('tiktok')) {
-            const data = await youtubedl(url, {
-                dumpPages: true,
-                skipDownload: true,
-            });
-        
-            // hack from https://github.com/dylanpdx/vxtiktok/blob/main/vxtiktok.py#L70C1-L72C66
-            for (const line of (data as any).split('\n')) {
-                if (line.match(/^[A-Za-z0-9+/=]+$/)) {
-                    const decoded = Buffer.from(line, 'base64').toString('utf-8');
-                    const api = JSON.parse(decoded) as TiktokApi;
+        try {
+            if (urlObj.hostname.includes('tiktok')) {
+                const data = await youtubedl(url, {
+                    dumpPages: true,
+                    skipDownload: true,
+                });
+            
+                // hack from https://github.com/dylanpdx/vxtiktok/blob/main/vxtiktok.py#L70C1-L72C66
+                for (const line of (data as any).split('\n')) {
+                    if (line.match(/^[A-Za-z0-9+/=]+$/)) {
+                        const decoded = Buffer.from(line, 'base64').toString('utf-8');
 
-                    return {
-                        tiktokApi: api,
-                        ytResponse: null
+
+                        const api = JSON.parse(decoded) as TiktokApi;
+
+                        return {
+                            tiktokApi: api,
+                            ytResponse: null
+                        }
                     }
                 }
             }
+        } catch (e) {
+            logger.error(e);
         }
 
         let videoData = await youtubedl(url, {

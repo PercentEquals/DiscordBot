@@ -10,6 +10,12 @@ export function extractUrl(text: string) {
     try {
         const urlObj = new URL(url);
 
+        if (urlObj.hostname.includes('tiktok')) {
+            if (urlObj.pathname.includes('/photo/')) {
+                urlObj.pathname = urlObj.pathname.replace('/photo/', '/video/');
+            }
+        }
+
         if (urlObj.hostname.startsWith('vx')) {
             urlObj.hostname = urlObj.hostname.replace('vx', '');
         }
