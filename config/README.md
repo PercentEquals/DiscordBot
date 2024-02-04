@@ -21,7 +21,7 @@ Should automatic link detection reply with an error message if it fails to send 
 ### allowCompressionOfLargeFiles
 
 Type: `boolean`<br>
-Default: `true`
+Default: `false`
 
 Allows compression of files larger than 25MB. Compression results may vary and might take a while to process.
 
