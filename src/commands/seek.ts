@@ -24,7 +24,7 @@ export const Seek: Command = {
                 content: `:white_check_mark: Seek to ${time} done!`
             });
         } catch (e) {
-            reportError(interaction, e);
+            await reportError(interaction, e);
         }
     }
 };

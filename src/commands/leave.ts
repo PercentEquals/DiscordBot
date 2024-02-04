@@ -19,7 +19,7 @@ export const Leave: Command = {
                 content: `:white_check_mark: Bye!`
             });
         } catch (e) {
-            reportError(interaction, e);
+            await reportError(interaction, e);
         }
     }
 };

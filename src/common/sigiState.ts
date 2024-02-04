@@ -35,6 +35,8 @@ export async function getDataFromYoutubeDl(url: string) {
                 const data = await youtubedl(url, {
                     dumpPages: true,
                     skipDownload: true,
+                    ignoreErrors: true,
+                    noWarnings: true,
                 });
             
                 // hack from https://github.com/dylanpdx/vxtiktok/blob/main/vxtiktok.py#L70C1-L72C66

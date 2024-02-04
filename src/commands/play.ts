@@ -157,18 +157,18 @@ export const Play: Command = {
     ],
     run: async (client: Client, interaction: CommandInteraction) => {
         try {
-            //@ts-ignore
-            const url: string = extractUrl(interaction.options.getString('url', true));
-            //@ts-ignore
+            //@ts-expect-error - Bad types
+            const url: string = await extractUrl(interaction.options.getString('url', true));
+            //@ts-expect-error - Bad types
             const startTime: string = interaction.options.getString('start', false);
-            //@ts-ignore
+            //@ts-expect-error - Bad types
             const volume: string = interaction.options.getString('volume', false);
 
             validateUrl(new URL(url));
 
             await playAudio(url, getStartTimeInMs(startTime), getVolume(volume), interaction);
         } catch (e) {
-            reportError(interaction, e);
+            await reportError(interaction, e);
         }
     }
 };

@@ -1,6 +1,28 @@
 import { ALLOWED_YTD_HOSTS } from "../constants/allowedytdhosts";
 
-export function extractUrl(text: string) {
+async function getTiktokCanonicalUrl(url: string) {
+    try {
+        const data = await fetch(url, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
+            }
+        });
+
+        let text = await data.text();
+        text = text.replace(/\\u002F/g, '/');
+        const match = text.match(/{"canonical":"(https:\/\/www.tiktok.com\/[^"]+)"/);
+
+        if (!match) {
+            return url;
+        }
+
+        return match[1];
+    } catch (e) {
+        return url;
+    }
+}
+
+export async function extractUrl(text: string) {
     let url = text.match(/\bhttps?:\/\/\S+/gi)?.[0] ?? text;
 
     if (!url.startsWith('http')) {
@@ -18,6 +40,14 @@ export function extractUrl(text: string) {
 
         if (urlObj.hostname.startsWith('vx')) {
             urlObj.hostname = urlObj.hostname.replace('vx', '');
+        }
+
+        if (urlObj.hostname.includes('vm.tiktok.com')) {
+            const canonicalUrl = await getTiktokCanonicalUrl(url);
+
+            if (canonicalUrl !== url) {
+                return extractUrl(canonicalUrl);
+            }
         }
 
         return urlObj.toString() ?? url;

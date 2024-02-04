@@ -7,7 +7,7 @@ import { ALLOWED_YTD_HOSTS } from "../constants/allowedytdhosts";
 
 import { extractUrl } from "./validateUrl";
 
-export function reportError(interaction: CommandInteraction, e: any, useFallbackLink?: boolean) {
+export async function reportError(interaction: CommandInteraction, e: any, useFallbackLink?: boolean) {
     logger.error(e);
 
     let fallbackLink = "";
@@ -15,7 +15,7 @@ export function reportError(interaction: CommandInteraction, e: any, useFallback
     if (useFallbackLink && getConfig().botOptions.useVxFallback) {
         try {
             //@ts-expect-error - Bad types
-            const url: string = extractUrl(interaction.options.getString('url', true));
+            const url: string = await extractUrl(interaction.options.getString('url', true));
             const vxUrl = new URL(url);
 
             if (ALLOWED_YTD_HOSTS.includes(vxUrl.hostname)) {

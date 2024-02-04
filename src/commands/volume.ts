@@ -24,7 +24,7 @@ export const Volume: Command = {
                 content: `:white_check_mark: Changing volume to ${volume} done!`
             });
         } catch (e) {
-            reportError(interaction, e);
+            await reportError(interaction, e);
         }
     }
 };

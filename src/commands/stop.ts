@@ -24,7 +24,7 @@ export const Stop: Command = {
                 content: `:white_check_mark: Stopped playing currently played audio!`
             });
         } catch (e) {
-            reportError(interaction, e);
+            await reportError(interaction, e);
         }
     }
 };

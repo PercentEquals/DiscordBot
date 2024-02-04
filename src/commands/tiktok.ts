@@ -301,7 +301,7 @@ export const Tiktok: Command = {
     run: async (client: Client, interaction: CommandInteraction) => {
         try {
             //@ts-expect-error - Bad types
-            const url: string = extractUrl(interaction.options.getString('url', true));
+            const url: string = await extractUrl(interaction.options.getString('url', true));
             //@ts-expect-error - Bad types
             const spoiler = interaction.options.getBoolean('spoiler', false);
             //@ts-expect-error - Bad types
@@ -333,7 +333,7 @@ export const Tiktok: Command = {
                 return await downloadVideo(interaction, ytResponse, tiktokApi, url, spoiler, audioOnly);
             }
         } catch (e: any) {
-            return reportError(interaction, e, true);
+            await reportError(interaction, e, true);
         }
     }
 };
