@@ -13,7 +13,7 @@ import logger from "../logger";
 
 import ffmpeg, { FfmpegCommand } from "fluent-ffmpeg";
 import { PassThrough } from "stream";
-import { getDataFromYoutubeDl, getTiktokVideoData } from "../common/sigiState";
+import { getDataFromYoutubeDl, getTiktokAudioData } from "../common/sigiState";
 import { YtResponse } from "youtube-dl-exec";
 import { TiktokApi } from "types/tiktokApi";
 
@@ -62,7 +62,7 @@ function getReplyString(ytResponse: YtResponse | null, tiktokApi: TiktokApi | nu
     if (ytResponse) {
         return `${ytResponse.title.substring(0, 100)} - ${ytResponse.uploader ?? "unknown"} | ${getDuration(ytResponse.duration)}`;
     } else if (tiktokApi) {
-        return `${tiktokApi.aweme_list[0].desc.substring(0, 100)} - ${tiktokApi.aweme_list[0].author.nickname} | ${getDuration(getTiktokVideoData(tiktokApi).duration)}`;
+        return `${tiktokApi.aweme_list[0].desc.substring(0, 100)} - ${tiktokApi.aweme_list[0].author.nickname} | ${getDuration(getTiktokAudioData(tiktokApi).duration)}`;
     }
 
     throw new Error('No audio found!');
