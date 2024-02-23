@@ -104,17 +104,12 @@ export async function convertVideo(initialPath: string, id: string): Promise<str
     return new Promise((resolve, reject) => {
         try {
             const finalPath = `cache/${id}-ffmpeg.mp4`;
-            const targetCrf = Math.ceil(fs.statSync(initialPath).size / DISCORD_LIMIT * 36);
-
-            logger.info(`[ffmpeg] converting: CRF = ${targetCrf}`);
+            logger.info(`[ffmpeg] converting video to smaller size`);
 
             const process = ffmpeg(initialPath);
             process.output(finalPath);
-            process.addOption(["-preset", "veryfast"]);
-            process.addOption(["-r", "5"]);
-            process.addOption(["-c:v", "libx264"]);
-            process.addOption(["-tune", "fastdecode"]);
-            process.addOption(["-crf", targetCrf.toFixed(0).toString()]);
+            process.addOption(["-preset", "ultrafast"]);
+            process.addOption(["-vf", "scale=iw/4:ih/4"]);
             process.addOption(["-timeout", "10000000"]);
 
             process.on('end', (done: any) => {
