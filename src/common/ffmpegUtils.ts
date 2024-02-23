@@ -9,7 +9,7 @@ import { finished } from "stream/promises";
 import logger from "../logger";
 import fs from "fs";
 import { getExtensionFromUrl } from "./extensionFinder";
-import { getTiktokId, getTiktokSlideshowData, getTiktokUrl } from "./sigiState";
+import { getTiktokId, getTiktokSlideshowData } from "./sigiState";
 
 export async function downloadFile(url: string, path: string) {
     const { body } = await fetch(url);
@@ -17,7 +17,7 @@ export async function downloadFile(url: string, path: string) {
     await finished(Readable.fromWeb(body as any).pipe(stream));
 }
 
-export async function convertSlideshowToVideo(tiktokApi: TiktokApi, ranges: number[], tryUsingScale: boolean = false): Promise<string> {
+export async function convertSlideshowToVideo(url: string, tiktokApi: TiktokApi, ranges: number[], tryUsingScale: boolean = false): Promise<string> {
     const tiktokId = getTiktokId(tiktokApi);
     const slideshowData = getTiktokSlideshowData(tiktokApi);
     
@@ -44,7 +44,7 @@ export async function convertSlideshowToVideo(tiktokApi: TiktokApi, ranges: numb
 
             process.on('error', (err: any) => {
                 if (!tryUsingScale) {
-                    return resolve(convertSlideshowToVideo(tiktokApi, ranges, true));
+                    return resolve(convertSlideshowToVideo(url, tiktokApi, ranges, true));
                 }
 
                 clearCache(true);
@@ -77,7 +77,7 @@ export async function convertSlideshowToVideo(tiktokApi: TiktokApi, ranges: numb
             process.addOption(`-t 4`);
             process.addOption(`-i cache/${tiktokId}-%d.${extension}`);
 
-            const bestAudioFormat = getBestFormat(getTiktokUrl(tiktokApi), null, tiktokApi, true);
+            const bestAudioFormat = getBestFormat(url, null, tiktokApi, true);
             
             process.addOption('-i', bestAudioFormat?.url as string);
 

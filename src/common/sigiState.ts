@@ -5,10 +5,6 @@ import { validateUrl } from "./validateUrl";
 
 import youtubedl, { YtResponse } from "youtube-dl-exec";
 
-export function getTiktokUrl(tiktokApi: TiktokApi) {
-    return tiktokApi.aweme_list[0].share_url;
-}
-
 export function getTiktokId(tiktokApi: TiktokApi) {
     return tiktokApi.aweme_list[0].aweme_id;
 }
@@ -43,9 +39,11 @@ export async function getDataFromYoutubeDl(url: string) {
                 for (const line of (data as any).split('\n')) {
                     if (line.match(/^[A-Za-z0-9+/=]+$/)) {
                         const decoded = Buffer.from(line, 'base64').toString('utf-8');
-
-
                         const api = JSON.parse(decoded) as TiktokApi;
+
+                        if (api.aweme_list[0].aweme_id !== id) {
+                            throw new Error('Could not find tiktok data for provided url!');
+                        }
 
                         return {
                             tiktokApi: api,

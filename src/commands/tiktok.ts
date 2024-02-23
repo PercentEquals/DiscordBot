@@ -104,10 +104,11 @@ async function downloadVideo(
 async function downloadSlideshowAsVideo(
     interaction: CommandInteraction,
     tiktokApi: TiktokApi,
+    url: string,
     spoiler: boolean,
     ranges: number[] = []
 ) {
-    const slideshowFile = await convertSlideshowToVideo(tiktokApi, ranges);
+    const slideshowFile = await convertSlideshowToVideo(url, tiktokApi, ranges);
 
     try {
         if (fs.lstatSync(slideshowFile).size > DISCORD_LIMIT) {
@@ -326,7 +327,7 @@ export const Tiktok: Command = {
             if (commentsOnly) {
                 return await getCommentsFromTiktok(interaction, tiktokApi, url, getRange(range));
             } else if (!!tiktokApi && isSlideshow && !audioOnly && slideshowAsVideo) {
-                return await downloadSlideshowAsVideo(interaction, tiktokApi, spoiler, getRange(range));
+                return await downloadSlideshowAsVideo(interaction, tiktokApi, url, spoiler, getRange(range));
             } else if (!!tiktokApi && isSlideshow && !audioOnly) {
                 return await downloadSlideshow(interaction, tiktokApi, spoiler, getRange(range));
             } else {
