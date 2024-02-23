@@ -9,7 +9,7 @@ import { finished } from "stream/promises";
 import logger from "../logger";
 import fs from "fs";
 import { getExtensionFromUrl } from "./extensionFinder";
-import { getTiktokId, getTiktokSlideshowData } from "./sigiState";
+import { getTiktokAudioData, getTiktokId, getTiktokSlideshowData } from "./sigiState";
 
 export async function downloadFile(url: string, path: string) {
     const { body } = await fetch(url);
@@ -44,11 +44,12 @@ export async function convertSlideshowToVideo(url: string, tiktokApi: TiktokApi,
 
             process.on('error', (err: any) => {
                 if (!tryUsingScale) {
+                    clearCache(false);
                     return resolve(convertSlideshowToVideo(url, tiktokApi, ranges, true));
+                } else {
+                    clearCache(true);
+                    reject(err);
                 }
-
-                clearCache(true);
-                reject(err);
             });
             process.on('end', () => {
                 clearCache(false);
@@ -63,7 +64,7 @@ export async function convertSlideshowToVideo(url: string, tiktokApi: TiktokApi,
                     continue;
                 }
 
-                downloadFile(getBestImageUrl(slideshowData[i]), `cache/${tiktokId}-${i}.${extension}`);
+                await downloadFile(getBestImageUrl(slideshowData[i]), `cache/${tiktokId}-${i}.${extension}`);
                 files.push(`cache/${tiktokId}-${i}.${extension}`);
             }
 
@@ -72,10 +73,10 @@ export async function convertSlideshowToVideo(url: string, tiktokApi: TiktokApi,
             }
 
             process.addOption(`-framerate 1`);
-            process.addOption(`-r 6`);
+            process.addOption(`-r ${Math.ceil(getTiktokAudioData(tiktokApi).duration / files.length)}`);
             process.addOption(`-loop 1`);
-            process.addOption(`-t 4`);
-            process.addOption(`-i cache/${tiktokId}-%d.${extension}`);
+            process.addOption(`-t ${getTiktokAudioData(tiktokApi).duration}`);
+            process.addOption(`-i ./cache/${tiktokId}-%d.${extension}`);
 
             const bestAudioFormat = getBestFormat(url, null, tiktokApi, true);
             
@@ -110,7 +111,11 @@ export async function convertVideo(initialPath: string, id: string): Promise<str
             const process = ffmpeg(initialPath);
             process.output(finalPath);
             process.addOption(["-preset", "veryfast"]);
+            process.addOption(["-r", "5"]);
+            process.addOption(["-c:v", "libx264"]);
+            process.addOption(["-tune", "fastdecode"]);
             process.addOption(["-crf", targetCrf.toFixed(0).toString()]);
+            process.addOption(["-timeout", "10000000"]);
 
             process.on('end', (done: any) => {
                 if (fs.existsSync(initialPath)) {

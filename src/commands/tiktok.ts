@@ -153,9 +153,9 @@ async function downloadSlideshow(
         const image = slideshowData[i];
         const bestImageUrl = getBestImageUrl(image);
         const file = new AttachmentBuilder(bestImageUrl);
-        const extensions = await getExtensionFromUrl(bestImageUrl);
+        const extension = getExtensionFromUrl(bestImageUrl);
 
-        file.setName(`${tiktokId}-${i}.${extensions}`);
+        file.setName(`${tiktokId}-${i}.${extension}`);
         file.setSpoiler(spoiler);
 
         files.push(file);
