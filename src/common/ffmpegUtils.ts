@@ -89,7 +89,7 @@ export async function convertSlideshowToVideo(url: string, tiktokApi: TiktokApi,
             process.addOption(`-t ${duration}`);
             process.addOption(`-i ./cache/${tiktokId}-%d.${extension}`);
 
-            const bestAudioFormat = getBestFormat(url, null, tiktokApi);
+            const bestAudioFormat = getBestFormat(url, { tiktokApi });
 
             if (bestAudioFormat?.url) {
                 await downloadFile(bestAudioFormat?.url, `cache/${tiktokId}-audio.mp3`);

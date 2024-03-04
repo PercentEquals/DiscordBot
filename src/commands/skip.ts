@@ -14,8 +14,8 @@ export const Skip: Command = {
     run: async (client: Client, interaction: CommandInteraction) => {
         try {
             //@ts-ignore - CommandInteraction contains member with voice
-            const channelId = interaction.member?.voice?.channelId
-            const guildId = interaction.guildId as string
+            const channelId = interaction.member?.voice?.channelId;
+            const guildId = interaction.guildId as string;
 
             clearCurrentlyPlaying(guildId, channelId);
 

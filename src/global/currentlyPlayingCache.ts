@@ -2,6 +2,8 @@ import { AudioPlayer } from "@discordjs/voice";
 import { CommandInteraction } from "discord.js";
 import { FfmpegCommand } from "fluent-ffmpeg";
 
+import { YoutubeDlData } from "../common/sigiState";
+
 type CacheData = {
     url: string,
     audioStream: FfmpegCommand,
@@ -18,8 +20,10 @@ let currentlyPlayingCache: {
 let audioQueue: {
     [guildIdAndChannelId: string]: {
         url: string,
+        audioData: YoutubeDlData,
         volume: number,
         startTimeInMs: number,
+        loop: boolean,
         interaction: CommandInteraction
     }[]
 } = {};
@@ -28,8 +32,10 @@ export function pushToQueue(
     guildId: string,
     channelId: string,
     url: string,
+    audioData: YoutubeDlData,
     volume: number,
     startTimeInMs: number,
+    loop: boolean,
     interaction: CommandInteraction
 ) {
     if (!audioQueue[guildId + channelId]) {
@@ -38,18 +44,44 @@ export function pushToQueue(
 
     audioQueue[guildId + channelId].push({
         url,
+        audioData,
         volume,
         startTimeInMs,
+        loop,
         interaction
     })
 }
 
-export function popQueue(guildId: string, channelId: string) {
+export function prependToQueue(
+    guildId: string,
+    channelId: string,
+    url: string,
+    audioData: YoutubeDlData,
+    volume: number,
+    startTimeInMs: number,
+    loop: boolean,
+    interaction: CommandInteraction
+) {
+    if (!audioQueue[guildId + channelId]) {
+        audioQueue[guildId + channelId] = [];
+    }
+
+    audioQueue[guildId + channelId].unshift({
+        url,
+        audioData,
+        volume,
+        startTimeInMs,
+        loop,
+        interaction
+    });
+}
+
+export function getNextFromQueue(guildId: string, channelId: string) {
     if (!audioQueue[guildId + channelId]) {
         return null;
     }
 
-    return audioQueue[guildId + channelId].pop();
+    return audioQueue[guildId + channelId].shift();
 }
 
 export function cacheCurrentlyPlaying(

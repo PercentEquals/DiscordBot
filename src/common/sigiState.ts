@@ -9,7 +9,7 @@ export function getTiktokId(tiktokApi: TiktokApi) {
     return tiktokApi.aweme_list[0].aweme_id;
 }
 
-export function getTiktokSlideshowData(tiktokApi: TiktokApi | null) {
+export function getTiktokSlideshowData(tiktokApi: TiktokApi | null | undefined) {
     return tiktokApi?.aweme_list[0]?.image_post_info?.images as Image[];
 }
 
@@ -21,8 +21,14 @@ export function getTiktokAudioData(tiktokApi: TiktokApi) {
     return tiktokApi.aweme_list[0].music;
 }
 
-export async function getDataFromYoutubeDl(url: string) {
+export type YoutubeDlData = {
+    tiktokApi?: TiktokApi | null
+    ytResponse?: YtResponse | null
+}
+
+export async function getDataFromYoutubeDl(url: string): Promise<YoutubeDlData> {
     try {
+
         const urlObj = new URL(url);
         const id = validateUrl(urlObj);
 
@@ -60,6 +66,7 @@ export async function getDataFromYoutubeDl(url: string) {
             dumpSingleJson: true,
             getFormat: true,
             noWarnings: true,
+            skipDownload: true,
         });
 
         //@ts-ignore - youtube-dl-exec videoData contains useless first line

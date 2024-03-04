@@ -7,15 +7,13 @@ import { extractUrl, validateUrl } from "../common/validateUrl";
 import { getVolume, getStartTimeInMs, getDuration } from "../common/audioUtils";
 import { reportError } from "../common/errorHelpers";
 
-import { cacheCurrentlyPlaying, clearCurrentlyPlaying, getCurrentlyPlaying, popQueue, pushToQueue } from "../global/currentlyPlayingCache";
+import { cacheCurrentlyPlaying, clearCurrentlyPlaying, getCurrentlyPlaying, getNextFromQueue, prependToQueue, pushToQueue } from "../global/currentlyPlayingCache";
 
 import logger from "../logger";
 
 import ffmpeg, { FfmpegCommand } from "fluent-ffmpeg";
 import { PassThrough } from "stream";
-import { getDataFromYoutubeDl, getTiktokAudioData } from "../common/sigiState";
-import { YtResponse } from "youtube-dl-exec";
-import { TiktokApi } from "types/tiktokApi";
+import { YoutubeDlData, getDataFromYoutubeDl, getTiktokAudioData } from "../common/sigiState";
 
 // https://github.com/discordjs/voice/issues/117
 // https://github.com/discordjs/voice/issues/150
@@ -58,27 +56,28 @@ export async function probeAndCreateResource(readableStream: any) {
     });
 }
 
-function getReplyString(ytResponse: YtResponse | null, tiktokApi: TiktokApi | null) {
-    if (ytResponse) {
-        return `${ytResponse.title.substring(0, 100)} - ${ytResponse.uploader ?? "unknown"} | ${getDuration(ytResponse.duration)}`;
-    } else if (tiktokApi) {
-        return `${tiktokApi.aweme_list[0].desc.substring(0, 100)} - ${tiktokApi.aweme_list[0].author.nickname} | ${getDuration(getTiktokAudioData(tiktokApi).duration)}`;
+function getReplyString(audioData: YoutubeDlData) {
+    if (audioData.ytResponse) {
+        return `${audioData.ytResponse.title.substring(0, 100)} - ${audioData.ytResponse.uploader ?? "unknown"} | ${getDuration(audioData.ytResponse.duration)}`;
+    } else if (audioData.tiktokApi) {
+        return `${audioData.tiktokApi.aweme_list[0].desc.substring(0, 100)} - ${audioData.tiktokApi.aweme_list[0].author.nickname} | ${getDuration(getTiktokAudioData(audioData.tiktokApi).duration)}`;
     }
 }
 
 const playAudio = async (
     url: string,
+    audioData: YoutubeDlData,
     channelId: string,
     guildId: string,
     adapterCreator: InternalDiscordGatewayAdapterCreator,
     startTimeMs: number,
     volume: number,
+    loop: boolean,
     interaction: CommandInteraction,
     fromQueue: boolean = false
 ) => {
-    let audioData = await getDataFromYoutubeDl(url);
-    const bestFormat = getBestFormat(url, audioData.ytResponse, audioData.tiktokApi);
-
+    const bestFormat = getBestFormat(url, audioData);
+        
     if (!bestFormat) {
         throw new Error('No audio found!');
     }
@@ -99,18 +98,25 @@ const playAudio = async (
                 return;
             }
 
+            const isCurrentlyPlaying = !!getCurrentlyPlaying(guildId, channelId);
+            const audioVolume = getCurrentlyPlaying(guildId, channelId)?.volume;
+            const startTimeInMs = getCurrentlyPlaying(guildId, channelId)?.startTimeInMs;
+
             clearCurrentlyPlaying(guildId, channelId);
             const msg = await interaction.editReply({
-                content: `:white_check_mark: Finished playing audio: ${getReplyString(audioData.ytResponse, audioData.tiktokApi)}`,
+                content: `:white_check_mark: Finished playing audio: ${getReplyString(audioData)}`,
             });
+            msg.suppressEmbeds(true);
 
-            const queue = popQueue(guildId, channelId);
-
-            if (queue) {
-                await playAudio(queue.url, channelId, guildId, adapterCreator, queue.startTimeInMs, queue.volume, queue.interaction, true);
+            if (loop && isCurrentlyPlaying) {
+                prependToQueue(guildId, channelId, url, audioData, audioVolume, startTimeInMs, loop, interaction);
             }
 
-            msg.suppressEmbeds(true);
+            const queue = getNextFromQueue(guildId, channelId);
+            if (queue) {
+                await playAudio(queue.url, queue.audioData, channelId, guildId, adapterCreator, queue.startTimeInMs, queue.volume, queue.loop, queue.interaction, true);
+            }
+
             resolve(true);
         }
 
@@ -136,18 +142,20 @@ const playAudio = async (
             connection.subscribe(player);
             player.play(resource);
 
-            cacheCurrentlyPlaying(guildId, channelId, bestFormat.url, audioStream, player, volume, startTimeMs);
+            cacheCurrentlyPlaying(guildId, channelId, url, audioStream, player, volume, startTimeMs);
+
+            const playIcon = loop ? ':loop:' : ':loud_sound:';
 
             if (!fromQueue) {
                 const msg = await interaction.followUp({
                     ephemeral: false,
-                    content: `:loud_sound: Playing audio: ${getReplyString(audioData.ytResponse, audioData.tiktokApi)}`
+                    content: `${playIcon} Playing audio: ${getReplyString(audioData)}`
                 });
 
                 msg.suppressEmbeds(true);
             } else {
                 interaction.editReply({
-                    content: `:loud_sound: Playing audio: ${getReplyString(audioData.ytResponse, audioData.tiktokApi)}`
+                    content: `${playIcon} Playing audio: ${getReplyString(audioData)}`
                 });
             }
         } catch (e) {
@@ -159,24 +167,25 @@ const playAudio = async (
 
 const queueAudio = async (
     url: string,
+    audioData: YoutubeDlData,
     channelId: string,
     guildId: string,
     startTimeMs: number,
     volume: number,
+    loop: boolean,
     interaction: CommandInteraction
 ) => {
-    let audioData = await getDataFromYoutubeDl(url);
-    const bestFormat = getBestFormat(url, audioData.ytResponse, audioData.tiktokApi);
-
+    const bestFormat = getBestFormat(url, audioData);
+        
     if (!bestFormat) {
         throw new Error('No audio found!');
     }
 
-    pushToQueue(guildId, channelId, url, volume, startTimeMs, interaction);
+    pushToQueue(guildId, channelId, url, audioData, volume, startTimeMs, loop, interaction);
 
     await interaction.followUp({
         ephemeral: false,
-        content: `:information_source: Queued audio: ${getReplyString(audioData.ytResponse, audioData.tiktokApi)}`
+        content: `:information_source: Queued audio: ${getReplyString(audioData)}`
     });
 }
 
@@ -201,6 +210,8 @@ export const Play: Command = {
             const startTime: string = interaction.options.getString('start', false);
             //@ts-expect-error - Bad types
             const volume: string = interaction.options.getString('volume', false);
+            //@ts-expect-error - Bad types
+            const loop: boolean = interaction.options.getBoolean('loop', false);
 
             validateUrl(new URL(url));
         
@@ -213,10 +224,12 @@ export const Play: Command = {
                 throw new Error('No voice channel found - join one or check permissions!');
             }
 
+            let audioData = await getDataFromYoutubeDl(url);
+
             if (force || !getCurrentlyPlaying(guildId, channelId)) {
-                await playAudio(url, channelId, guildId, adapterCreator, getStartTimeInMs(startTime), getVolume(volume), interaction);
+                await playAudio(url, audioData, channelId, guildId, adapterCreator, getStartTimeInMs(startTime), getVolume(volume), loop, interaction);
             } else {
-                await queueAudio(url, channelId, guildId, getStartTimeInMs(startTime), getVolume(volume), interaction);
+                await queueAudio(url, audioData, channelId, guildId, getStartTimeInMs(startTime), getVolume(volume), loop, interaction);
             }
         } catch (e) {
             await reportError(interaction, e);

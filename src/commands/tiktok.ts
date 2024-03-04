@@ -10,7 +10,7 @@ import { TiktokCommentsApi } from "types/tiktokCommentsApi";
 
 import { extractUrl, validateUrl } from "../common/validateUrl";
 import { getBestImageUrl, getBestFormat, getAnyFormat } from "../common/formatFinder";
-import { getDataFromYoutubeDl, getTiktokId, getTiktokSlideshowData } from "../common/sigiState";
+import { YoutubeDlData, getDataFromYoutubeDl, getTiktokId, getTiktokSlideshowData } from "../common/sigiState";
 import { getRange } from "../common/getRange";
 import { getExtensionFromUrl } from "../common/extensionFinder";
 
@@ -28,8 +28,7 @@ import Signer from "tiktok-signature";
 
 async function downloadAndConvertVideo(
     interaction: CommandInteraction,
-    ytResponse: YtResponse | null,
-    tiktokApi: TiktokApi | null,
+    ytData: YoutubeDlData,
     url: string,
     spoiler: boolean,
     audioOnly: boolean
@@ -38,7 +37,7 @@ async function downloadAndConvertVideo(
     let filePath = `cache/${id}.mp4`;
 
     try {
-        const format = getAnyFormat(ytResponse, tiktokApi) as { url: string, filesize: number };
+        const format = getAnyFormat(ytData) as { url: string, filesize: number };
         await downloadFile(format.url, filePath);
 
         if (!fs.existsSync(filePath)) {
@@ -76,17 +75,16 @@ async function downloadAndConvertVideo(
 
 async function downloadVideo(
     interaction: CommandInteraction,
-    ytResponse: YtResponse | null,
-    tiktokApi: TiktokApi | null,
+    ytData: YoutubeDlData,
     url: string,
     spoiler: boolean,
     audioOnly: boolean
 ) {
     const id = validateUrl(url);
-    const bestFormat = getBestFormat(url, ytResponse, tiktokApi);
+    const bestFormat = getBestFormat(url, ytData);
 
     if (!bestFormat || bestFormat.filesize > DISCORD_LIMIT) {
-        return downloadAndConvertVideo(interaction, ytResponse, tiktokApi, url, spoiler, audioOnly);
+        return downloadAndConvertVideo(interaction, ytData, url, spoiler, audioOnly);
     }
 
     const file = new AttachmentBuilder(bestFormat.url);
@@ -182,7 +180,7 @@ async function downloadSlideshow(
 
 async function getCommentsFromTiktok(
     interaction: CommandInteraction,
-    tiktokApi: TiktokApi | null,
+    tiktokApi: TiktokApi | null | undefined,
     url: string,
     range: number[]
 ) {
@@ -316,22 +314,22 @@ export const Tiktok: Command = {
 
             validateUrl(new URL(url));
 
-            const { ytResponse, tiktokApi } = await getDataFromYoutubeDl(url);
-            const isSlideshow = getTiktokSlideshowData(tiktokApi)?.length > 0;
+            const ytData = await getDataFromYoutubeDl(url);
+            const isSlideshow = getTiktokSlideshowData(ytData.tiktokApi)?.length > 0;
 
             if (getConfig().environmentOptions.logToFile) {
-                fs.writeFileSync('cache/tiktokApi.json', JSON.stringify(tiktokApi, null, 2));
-                fs.writeFileSync('cache/ytResponse.json', JSON.stringify(ytResponse, null, 2));
+                fs.writeFileSync('cache/tiktokApi.json', JSON.stringify(ytData.tiktokApi, null, 2));
+                fs.writeFileSync('cache/ytResponse.json', JSON.stringify(ytData.ytResponse, null, 2));
             }
 
             if (commentsOnly) {
-                return await getCommentsFromTiktok(interaction, tiktokApi, url, getRange(range));
-            } else if (!!tiktokApi && isSlideshow && !audioOnly && slideshowAsVideo) {
-                return await downloadSlideshowAsVideo(interaction, tiktokApi, url, spoiler, getRange(range));
-            } else if (!!tiktokApi && isSlideshow && !audioOnly) {
-                return await downloadSlideshow(interaction, tiktokApi, spoiler, getRange(range));
+                return await getCommentsFromTiktok(interaction, ytData.tiktokApi, url, getRange(range));
+            } else if (!!ytData.tiktokApi && isSlideshow && !audioOnly && slideshowAsVideo) {
+                return await downloadSlideshowAsVideo(interaction, ytData.tiktokApi, url, spoiler, getRange(range));
+            } else if (!!ytData.tiktokApi && isSlideshow && !audioOnly) {
+                return await downloadSlideshow(interaction, ytData.tiktokApi, spoiler, getRange(range));
             } else {
-                return await downloadVideo(interaction, ytResponse, tiktokApi, url, spoiler, audioOnly);
+                return await downloadVideo(interaction, ytData, url, spoiler, audioOnly);
             }
         } catch (e: any) {
             await reportError(interaction, e, true);
