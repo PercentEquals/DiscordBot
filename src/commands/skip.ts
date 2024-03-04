@@ -6,9 +6,9 @@ import { Command } from "../command";
 
 import { clearCurrentlyPlaying } from "../global/currentlyPlayingCache";
 
-export const Stop: Command = {
-    name: "stop",
-    description: "Stops playing currently played audio",
+export const Skip: Command = {
+    name: "skip",
+    description: "Skips currently played audio",
     type: ApplicationCommandType.ChatInput,
     options: [],
     run: async (client: Client, interaction: CommandInteraction) => {
@@ -21,7 +21,7 @@ export const Stop: Command = {
 
             await interaction.followUp({
                 ephemeral: false,
-                content: `:white_check_mark: Stopped playing currently played audio!`
+                content: `:white_check_mark: Skipped currently played audio!`
             });
         } catch (e) {
             await reportError(interaction, e);

@@ -1,17 +1,56 @@
 import { AudioPlayer } from "@discordjs/voice";
+import { CommandInteraction } from "discord.js";
 import { FfmpegCommand } from "fluent-ffmpeg";
-import { clearInterval } from "timers";
+
+type CacheData = {
+    url: string,
+    audioStream: FfmpegCommand,
+    audioPlayer: AudioPlayer,
+    volume: number,
+    startTimeInMs: number,
+    playStartTime: number,
+}
 
 let currentlyPlayingCache: {
+    [guildIdAndChannelId: string]: CacheData
+} = {};
+
+let audioQueue: {
     [guildIdAndChannelId: string]: {
         url: string,
-        audioStream: FfmpegCommand,
-        audioPlayer: AudioPlayer,
         volume: number,
         startTimeInMs: number,
-        playStartTime: number
-    }
+        interaction: CommandInteraction
+    }[]
 } = {};
+
+export function pushToQueue(
+    guildId: string,
+    channelId: string,
+    url: string,
+    volume: number,
+    startTimeInMs: number,
+    interaction: CommandInteraction
+) {
+    if (!audioQueue[guildId + channelId]) {
+        audioQueue[guildId + channelId] = [];
+    }
+
+    audioQueue[guildId + channelId].push({
+        url,
+        volume,
+        startTimeInMs,
+        interaction
+    })
+}
+
+export function popQueue(guildId: string, channelId: string) {
+    if (!audioQueue[guildId + channelId]) {
+        return null;
+    }
+
+    return audioQueue[guildId + channelId].pop();
+}
 
 export function cacheCurrentlyPlaying(
     guildId: string,
@@ -32,9 +71,13 @@ export function cacheCurrentlyPlaying(
     }
 }
 
+export function clearQueue(guildId: string, channelId: string) {
+    delete audioQueue[guildId + channelId];
+}
+
 export function clearCurrentlyPlaying(guildId: string, channelId: string) {
-    getCurrentlyPlaying(guildId, channelId)?.audioStream.emit('end');
-    getCurrentlyPlaying(guildId, channelId)?.audioPlayer.stop();
+    getCurrentlyPlaying(guildId, channelId)?.audioStream?.emit('end');
+    getCurrentlyPlaying(guildId, channelId)?.audioPlayer?.stop();
 
     delete currentlyPlayingCache[guildId + channelId];
 }

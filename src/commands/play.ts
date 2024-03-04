@@ -1,4 +1,4 @@
-import { ApplicationCommandType, Client, CommandInteraction, InternalDiscordGatewayAdapterCreator, SlashCommandStringOption } from "discord.js";
+import { ApplicationCommandType, Client, CommandInteraction, InternalDiscordGatewayAdapterCreator, SlashCommandBooleanOption, SlashCommandStringOption } from "discord.js";
 import { AudioPlayerState, AudioPlayerStatus, NoSubscriberBehavior, createAudioPlayer, createAudioResource, demuxProbe, joinVoiceChannel } from "@discordjs/voice";
 
 import { Command } from "../command";
@@ -7,7 +7,7 @@ import { extractUrl, validateUrl } from "../common/validateUrl";
 import { getVolume, getStartTimeInMs, getDuration } from "../common/audioUtils";
 import { reportError } from "../common/errorHelpers";
 
-import { cacheCurrentlyPlaying, clearCurrentlyPlaying } from "../global/currentlyPlayingCache";
+import { cacheCurrentlyPlaying, clearCurrentlyPlaying, getCurrentlyPlaying, popQueue, pushToQueue } from "../global/currentlyPlayingCache";
 
 import logger from "../logger";
 
@@ -66,21 +66,21 @@ function getReplyString(ytResponse: YtResponse | null, tiktokApi: TiktokApi | nu
     }
 }
 
-const playAudio = async (url: string, startTimeMs: number, volume: number, interaction: CommandInteraction) => {
+const playAudio = async (
+    url: string,
+    channelId: string,
+    guildId: string,
+    adapterCreator: InternalDiscordGatewayAdapterCreator,
+    startTimeMs: number,
+    volume: number,
+    interaction: CommandInteraction,
+    fromQueue: boolean = false
+) => {
     let audioData = await getDataFromYoutubeDl(url);
     const bestFormat = getBestFormat(url, audioData.ytResponse, audioData.tiktokApi);
 
     if (!bestFormat) {
         throw new Error('No audio found!');
-    }
-
-    //@ts-ignore - CommandInteraction contains member with voice
-    const channelId = interaction.member?.voice?.channelId
-    const guildId = interaction.guildId as string
-    const adapterCreator = interaction.guild?.voiceAdapterCreator
-
-    if (!channelId || !guildId || !adapterCreator) {
-        throw new Error('No voice channel found - join one or check permissions!');
     }
 
     clearCurrentlyPlaying(guildId, channelId);
@@ -103,6 +103,13 @@ const playAudio = async (url: string, startTimeMs: number, volume: number, inter
             const msg = await interaction.editReply({
                 content: `:white_check_mark: Finished playing audio: ${getReplyString(audioData.ytResponse, audioData.tiktokApi)}`,
             });
+
+            const queue = popQueue(guildId, channelId);
+
+            if (queue) {
+                await playAudio(queue.url, channelId, guildId, adapterCreator, queue.startTimeInMs, queue.volume, queue.interaction, true);
+            }
+
             msg.suppressEmbeds(true);
             resolve(true);
         }
@@ -131,16 +138,45 @@ const playAudio = async (url: string, startTimeMs: number, volume: number, inter
 
             cacheCurrentlyPlaying(guildId, channelId, bestFormat.url, audioStream, player, volume, startTimeMs);
 
-            const msg = await interaction.followUp({
-                ephemeral: false,
-                content: `:loud_sound: Playing audio: ${getReplyString(audioData.ytResponse, audioData.tiktokApi)}`
-            });
+            if (!fromQueue) {
+                const msg = await interaction.followUp({
+                    ephemeral: false,
+                    content: `:loud_sound: Playing audio: ${getReplyString(audioData.ytResponse, audioData.tiktokApi)}`
+                });
 
-            msg.suppressEmbeds(true);
+                msg.suppressEmbeds(true);
+            } else {
+                interaction.editReply({
+                    content: `:loud_sound: Playing audio: ${getReplyString(audioData.ytResponse, audioData.tiktokApi)}`
+                });
+            }
         } catch (e) {
             clearCurrentlyPlaying(guildId, channelId);
             reject(e);
         }
+    });
+}
+
+const queueAudio = async (
+    url: string,
+    channelId: string,
+    guildId: string,
+    startTimeMs: number,
+    volume: number,
+    interaction: CommandInteraction
+) => {
+    let audioData = await getDataFromYoutubeDl(url);
+    const bestFormat = getBestFormat(url, audioData.ytResponse, audioData.tiktokApi);
+
+    if (!bestFormat) {
+        throw new Error('No audio found!');
+    }
+
+    pushToQueue(guildId, channelId, url, volume, startTimeMs, interaction);
+
+    await interaction.followUp({
+        ephemeral: false,
+        content: `:information_source: Queued audio: ${getReplyString(audioData.ytResponse, audioData.tiktokApi)}`
     });
 }
 
@@ -150,21 +186,38 @@ export const Play: Command = {
     type: ApplicationCommandType.ChatInput,
     options: [
         new SlashCommandStringOption().setName('url').setDescription('Tiktok link').setRequired(true),
+        new SlashCommandBooleanOption().setName('force').setDescription('Should force play instead of adding to queue?').setRequired(false),
         new SlashCommandStringOption().setName('volume').setDescription('Audio volume [0-100]').setRequired(false),
-        new SlashCommandStringOption().setName('start').setDescription('Start time in 00:00:00 format').setRequired(false)
+        new SlashCommandStringOption().setName('start').setDescription('Start time in 00:00:00 format').setRequired(false),
+        new SlashCommandBooleanOption().setName('loop').setDescription('Should audio be looped until stopped?').setRequired(false)
     ],
     run: async (client: Client, interaction: CommandInteraction) => {
         try {
             //@ts-expect-error - Bad types
             const url: string = await extractUrl(interaction.options.getString('url', true));
             //@ts-expect-error - Bad types
+            const force: boolean = interaction.options.getBoolean('force', false);
+            //@ts-expect-error - Bad types
             const startTime: string = interaction.options.getString('start', false);
             //@ts-expect-error - Bad types
             const volume: string = interaction.options.getString('volume', false);
 
             validateUrl(new URL(url));
+        
+            //@ts-ignore - CommandInteraction contains member with voice
+            const channelId = interaction.member?.voice?.channelId as string;
+            const guildId = interaction.guildId as string;
+            const adapterCreator = interaction.guild?.voiceAdapterCreator;
+        
+            if (!channelId || !guildId || !adapterCreator) {
+                throw new Error('No voice channel found - join one or check permissions!');
+            }
 
-            await playAudio(url, getStartTimeInMs(startTime), getVolume(volume), interaction);
+            if (force || !getCurrentlyPlaying(guildId, channelId)) {
+                await playAudio(url, channelId, guildId, adapterCreator, getStartTimeInMs(startTime), getVolume(volume), interaction);
+            } else {
+                await queueAudio(url, channelId, guildId, getStartTimeInMs(startTime), getVolume(volume), interaction);
+            }
         } catch (e) {
             await reportError(interaction, e);
         }
