@@ -1,7 +1,7 @@
 import { Image, TiktokApi } from "types/tiktokApi";
 import { DISCORD_LIMIT } from "../constants/discordlimit";
 import { YtResponse } from "youtube-dl-exec";
-import { getTiktokAudioData, getTiktokVideoData } from "./sigiState";
+import { getTiktokVideoData } from "./sigiState";
 
 export function getAnyFormat(ytResponse: YtResponse | null, tiktokApi: TiktokApi | null): { url: string, filesize: number } | null {
     if (!!ytResponse) {
@@ -18,7 +18,7 @@ export function getAnyFormat(ytResponse: YtResponse | null, tiktokApi: TiktokApi
     return null;
 }
 
-export function getBestFormat(url: string, ytResponse: YtResponse | null, tiktokApi: TiktokApi | null, audioOnly: boolean): { url: string, filesize: number } | null {
+export function getBestFormat(url: string, ytResponse: YtResponse | null, tiktokApi: TiktokApi | null): { url: string, filesize: number } | null {
     let bestFormat: { url: string, filesize: number } | null = null;
 
     if (!!tiktokApi && new URL(url).hostname.includes('tiktok')) {
@@ -26,14 +26,6 @@ export function getBestFormat(url: string, ytResponse: YtResponse | null, tiktok
         bestFormat = {
             url: videoData.play_addr.url_list[videoData.play_addr.url_list.length - 1],
             filesize: videoData.play_addr.data_size as number
-        }
-
-        if (audioOnly) {
-            const audioData = getTiktokAudioData(tiktokApi);
-            bestFormat = {
-                url: audioData.play_url.url_list[audioData.play_url.url_list.length - 1],
-                filesize: 0
-            }
         }
 
         if (bestFormat.filesize > DISCORD_LIMIT) {

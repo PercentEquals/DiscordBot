@@ -64,13 +64,11 @@ function getReplyString(ytResponse: YtResponse | null, tiktokApi: TiktokApi | nu
     } else if (tiktokApi) {
         return `${tiktokApi.aweme_list[0].desc.substring(0, 100)} - ${tiktokApi.aweme_list[0].author.nickname} | ${getDuration(getTiktokAudioData(tiktokApi).duration)}`;
     }
-
-    throw new Error('No audio found!');
 }
 
 const playAudio = async (url: string, startTimeMs: number, volume: number, interaction: CommandInteraction) => {
     let audioData = await getDataFromYoutubeDl(url);
-    const bestFormat = getBestFormat(url, audioData.ytResponse, audioData.tiktokApi, true);
+    const bestFormat = getBestFormat(url, audioData.ytResponse, audioData.tiktokApi);
 
     if (!bestFormat) {
         throw new Error('No audio found!');

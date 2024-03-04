@@ -1,5 +1,4 @@
 import { getBestFormat, getBestImageUrl } from "./formatFinder";
-import { DISCORD_LIMIT } from "../constants/discordlimit";
 import { TiktokApi } from "../../types/tiktokApi";
 
 import ffmpeg from "fluent-ffmpeg";
@@ -25,7 +24,7 @@ export async function convertSlideshowToVideo(url: string, tiktokApi: TiktokApi,
     const files: string[] = [];
 
     const clearCache = (clearResult: boolean) => {
-        for (let i = 0; i < slideshowData.length; i++) {
+        for (let i = 0; i < files.length; i++) {
             if (fs.existsSync(files[i])) {
                 fs.unlinkSync(files[i]);
             }
@@ -72,15 +71,31 @@ export async function convertSlideshowToVideo(url: string, tiktokApi: TiktokApi,
                 return reject('No images found.');
             }
 
+            let duration = getTiktokAudioData(tiktokApi).duration;
+
+            if (duration <= 0) {
+                duration = 1;
+            }
+
+            let r = Math.round(files.length / duration);
+
+            if (r <= 1) {
+                r = 2;
+            }
+
             process.addOption(`-framerate 1`);
-            process.addOption(`-r ${Math.ceil(getTiktokAudioData(tiktokApi).duration / files.length)}`);
+            process.addOption(`-r ${r}`);
             process.addOption(`-loop 1`);
-            process.addOption(`-t ${getTiktokAudioData(tiktokApi).duration}`);
+            process.addOption(`-t ${duration}`);
             process.addOption(`-i ./cache/${tiktokId}-%d.${extension}`);
 
-            const bestAudioFormat = getBestFormat(url, null, tiktokApi, true);
-            
-            process.addOption('-i', bestAudioFormat?.url as string);
+            const bestAudioFormat = getBestFormat(url, null, tiktokApi);
+
+            if (bestAudioFormat?.url) {
+                await downloadFile(bestAudioFormat?.url, `cache/${tiktokId}-audio.mp3`);
+                files.push(`cache/${tiktokId}-audio.mp3`);
+                process.addOption(`-i ./cache/${tiktokId}-audio.mp3`);
+            }
 
             if (tryUsingScale) {
                 process.addOption('-vf scale=800:400');

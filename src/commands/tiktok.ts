@@ -83,7 +83,7 @@ async function downloadVideo(
     audioOnly: boolean
 ) {
     const id = validateUrl(url);
-    const bestFormat = getBestFormat(url, ytResponse, tiktokApi, audioOnly);
+    const bestFormat = getBestFormat(url, ytResponse, tiktokApi);
 
     if (!bestFormat || bestFormat.filesize > DISCORD_LIMIT) {
         return downloadAndConvertVideo(interaction, ytResponse, tiktokApi, url, spoiler, audioOnly);
