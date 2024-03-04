@@ -103,13 +103,14 @@ const playAudio = async (
             const startTimeInMs = getCurrentlyPlaying(guildId, channelId)?.startTimeInMs;
 
             clearCurrentlyPlaying(guildId, channelId);
-            const msg = await interaction.editReply({
-                content: `:white_check_mark: Finished playing audio: ${getReplyString(audioData)}`,
-            });
-            msg.suppressEmbeds(true);
 
             if (loop && isCurrentlyPlaying) {
                 prependToQueue(guildId, channelId, url, audioData, audioVolume, startTimeInMs, loop, interaction);
+            } else {
+                const msg = await interaction.editReply({
+                    content: `:white_check_mark: Finished playing audio: ${getReplyString(audioData)}`,
+                });
+                msg.suppressEmbeds(true);
             }
 
             const queue = getNextFromQueue(guildId, channelId);
