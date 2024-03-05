@@ -30,6 +30,8 @@ export default class AudioController {
     private isCurrentlyPlaying = false;
     private playStartTime = process.hrtime()[0];
 
+    private replyEdited = false;
+
     private queue: {
         interaction: CommandInteraction,
         url: string,
@@ -131,6 +133,7 @@ export default class AudioController {
         this.startTimeInMs = startTimeInMs;
         this.loop = loop;
         this.url = url;
+        this.replyEdited = false;
 
         this.interaction = interaction;
 
@@ -173,6 +176,7 @@ export default class AudioController {
 
         if (nextAudio) {
             try {
+                this.replyEdited = false;
                 return resolve(await this.playAudio(nextAudio.interaction, nextAudio.url, nextAudio.startTimeInMs, nextAudio.volume, nextAudio.loop, false, nextAudio.audioData));
             } catch (e) {
                 return reject(e);
@@ -218,7 +222,8 @@ export default class AudioController {
                     ephemeral: false,
                     content: `${playIcon} Playing audio: ${getReplyString(this.audioData as YoutubeDlData)}`
                 });
-            } else {
+            } else if (!this.replyEdited) {
+                this.replyEdited = true;
                 await interaction.editReply({
                     content: `${playIcon} Playing audio: ${getReplyString(this.audioData as YoutubeDlData)}`
                 });
