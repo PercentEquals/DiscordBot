@@ -160,7 +160,9 @@ export default class AudioController {
 
         if (this.loop) {
             try {
-                return resolve(await this.playAudio(interaction, this.url, this.startTimeInMs, this.volume, this.loop, true, this.audioData as YoutubeDlData));
+                resolve(await this.playAudio(interaction, this.url, this.startTimeInMs, this.volume, this.loop, true, this.audioData as YoutubeDlData));
+                this.replyEdited = true;
+                return;
             } catch (e) {
                 return reject(e);
             }
