@@ -1,9 +1,9 @@
 import { ApplicationCommandType, Client, CommandInteraction, SlashCommandStringOption } from "discord.js";
 
-import { restartAudioStream } from "../common/audioUtils";
 import { reportError } from "../common/errorHelpers";
 
 import { Command } from "../command";
+import AudioPlayerMain from "../lib/AudioPlayer";
 
 export const Seek: Command = {
     name: "seek",
@@ -17,12 +17,12 @@ export const Seek: Command = {
             //@ts-ignore
             const time: string = interaction.options.getString('time', true);
 
-            restartAudioStream(interaction, null, time);
-
-            await interaction.followUp({
-                ephemeral: false,
-                content: `:white_check_mark: Seek to ${time} done!`
-            });
+            if (await AudioPlayerMain.restartAudio(interaction, null, time)) {
+                await interaction.followUp({
+                    ephemeral: false,
+                    content: `:white_check_mark: Seek to ${time} done!`
+                });
+            }
         } catch (e) {
             await reportError(interaction, e);
         }

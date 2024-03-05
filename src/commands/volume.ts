@@ -1,9 +1,9 @@
 import { ApplicationCommandType, Client, CommandInteraction, SlashCommandStringOption } from "discord.js";
 
-import { restartAudioStream } from "../common/audioUtils";
 import { reportError } from "../common/errorHelpers";
 
 import { Command } from "../command";
+import AudioPlayerMain from "../lib/AudioPlayer";
 
 export const Volume: Command = {
     name: "volume",
@@ -17,12 +17,12 @@ export const Volume: Command = {
             //@ts-ignore
             const volume: string = interaction.options.getString('volume', true);
 
-            restartAudioStream(interaction, volume, null);
-
-            await interaction.followUp({
-                ephemeral: false,
-                content: `:white_check_mark: Changing volume to ${volume} done!`
-            });
+            if (await AudioPlayerMain.restartAudio(interaction, volume, null)) {
+                await interaction.followUp({
+                    ephemeral: false,
+                    content: `:white_check_mark: Changing volume to ${volume} done!`
+                });
+            }
         } catch (e) {
             await reportError(interaction, e);
         }

@@ -21,8 +21,6 @@ import getConfig from "../setup/configSetup";
 import logger from "../logger";
 import fs from "fs";
 
-import { YtResponse } from "youtube-dl-exec";
-
 //@ts-ignore - tiktok-signature types not available (https://github.com/carcabot/tiktok-signature)
 import Signer from "tiktok-signature";
 

@@ -1,6 +1,4 @@
-import { CommandInteraction } from "discord.js";
-import { getAudioStream, probeAndCreateResource } from "../commands/play";
-import { getCurrentlyPlaying } from "../global/currentlyPlayingCache";
+import { YoutubeDlData, getTiktokAudioData } from "./sigiState";
 
 export function getDuration(duration: number | null) {
     const durationDate = new Date(0);
@@ -52,35 +50,10 @@ export function getVolume(volume: string | null) {
     }
 }
 
-export async function restartAudioStream(interaction: CommandInteraction, volume: string | null, startTime: string | null) {
-    //@ts-ignore - CommandInteraction contains member with voice
-    const channelId = interaction.member?.voice?.channelId
-    const guildId = interaction.guildId as string
-
-    const currentlyPlaying = getCurrentlyPlaying(guildId, channelId);
-
-    if (!currentlyPlaying) {
-        await interaction.followUp({
-            ephemeral: false,
-            content: `:information_source: Nothing is playing!`
-        });
-
-        return;
+export function getReplyString(audioData: YoutubeDlData) {
+    if (audioData.ytResponse) {
+        return `${audioData.ytResponse.title.substring(0, 100)} - ${audioData.ytResponse.uploader ?? "unknown"} | ${getDuration(audioData.ytResponse.duration)}`;
+    } else if (audioData.tiktokApi) {
+        return `${audioData.tiktokApi.aweme_list[0].desc.substring(0, 100)} - ${audioData.tiktokApi.aweme_list[0].author.nickname} | ${getDuration(getTiktokAudioData(audioData.tiktokApi).duration)}`;
     }
-
-    const newVolume = volume ? getVolume(volume) : currentlyPlaying.volume;
-
-    const timeDiff = (process.hrtime()[0] - currentlyPlaying.playStartTime) * 1000;
-    const startTimeInMs = startTime ? getStartTimeInMs(startTime) : currentlyPlaying.startTimeInMs + timeDiff;
-
-    currentlyPlaying.audioStream.emit('end');
-
-    const audioStream = await new Promise(async (resolve, reject) => {
-        resolve(getAudioStream(currentlyPlaying.url, startTimeInMs, newVolume, reject));
-    });
-    const resource = await probeAndCreateResource(audioStream);
-
-    currentlyPlaying.audioPlayer.play(resource);
-    currentlyPlaying.startTimeInMs = startTimeInMs;
-    currentlyPlaying.volume = newVolume;
 }

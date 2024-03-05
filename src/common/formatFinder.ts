@@ -1,6 +1,5 @@
-import { Image, TiktokApi } from "types/tiktokApi";
+import { Image } from "types/tiktokApi";
 import { DISCORD_LIMIT } from "../constants/discordlimit";
-import { YtResponse } from "youtube-dl-exec";
 import { YoutubeDlData, getTiktokVideoData } from "./sigiState";
 
 export function getAnyFormat(ytData: YoutubeDlData): { url: string, filesize: number } | null {

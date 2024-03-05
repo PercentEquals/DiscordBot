@@ -28,7 +28,7 @@ export type YoutubeDlData = {
 
 export async function getDataFromYoutubeDl(url: string): Promise<YoutubeDlData> {
     try {
-
+        logger.info('[youtube-dl] getting video/audio data');
         const urlObj = new URL(url);
         const id = validateUrl(urlObj);
 
@@ -51,6 +51,7 @@ export async function getDataFromYoutubeDl(url: string): Promise<YoutubeDlData> 
                             throw new Error('Could not find tiktok data for provided url!');
                         }
 
+                        logger.info('[youtube-dl] video/audio data retrieved');
                         return {
                             tiktokApi: api,
                             ytResponse: null
@@ -73,6 +74,7 @@ export async function getDataFromYoutubeDl(url: string): Promise<YoutubeDlData> 
         videoData = videoData.split('\n').slice(1).join('\n');
         videoData = JSON.parse(videoData as any) as YtResponse;
 
+        logger.info('[youtube-dl] video/audio data retrieved');
         return {
             tiktokApi: null,
             ytResponse: videoData
