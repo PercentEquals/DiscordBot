@@ -12,7 +12,7 @@ export const Leave: Command = {
     options: [],
     run: async (client: Client, interaction: CommandInteraction) => {
         try {
-            AudioPlayerMain.leave(interaction);            
+            await AudioPlayerMain.leave(interaction);            
 
             await interaction.followUp({
                 ephemeral: false,

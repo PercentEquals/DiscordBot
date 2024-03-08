@@ -32,7 +32,7 @@ export const Play: Command = {
 
             validateUrl(new URL(url));
 
-            AudioPlayerMain.playAudio(interaction, url, getStartTimeInMs(startTime), getVolume(volume), loop, force);
+            await AudioPlayerMain.playAudio(interaction, url, getStartTimeInMs(startTime), getVolume(volume), loop, force);
         } catch (e) {
             await reportError(interaction, e);
         }

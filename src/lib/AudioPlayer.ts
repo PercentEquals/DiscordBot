@@ -44,7 +44,7 @@ class AudioPlayer {
         const channelId = interaction.member?.voice?.channelId;
         const guildId = interaction.guildId;
 
-        this.ensureAudioController(interaction).stopAudio(interaction);
+        this.audioControllerPerChannel[guildId + channelId]?.stopAudio?.(interaction);
         delete this.audioControllerPerChannel[guildId + channelId];
     }
 }
