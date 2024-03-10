@@ -2,23 +2,27 @@ import { Image } from "types/tiktokApi";
 import { DISCORD_LIMIT } from "../constants/discordlimit";
 import { YoutubeDlData, getTiktokVideoData } from "./sigiState";
 
-export function getAnyFormat(ytData: YoutubeDlData): { url: string, filesize: number } | null {
-    if (!!ytData.ytResponse) {
-        return ytData.ytResponse.formats[0];
-    } else if (!!ytData.tiktokApi) {
-        const videoData = getTiktokVideoData(ytData.tiktokApi);
+export function getAnyFormat(url: string, ytData: YoutubeDlData): { url: string, filesize: number } | null {
+    let anyFormat: { url: string, filesize: number, filesize_approx?: number } | null = null;
 
-        return {
-            url: videoData.play_addr.url_list[0],
+    if (!!ytData.tiktokApi && new URL(url).hostname.includes('tiktok')) {
+        const videoData = getTiktokVideoData(ytData.tiktokApi);
+        anyFormat = {
+            url: videoData.play_addr.url_list[videoData.play_addr.url_list.length - 1],
             filesize: videoData.play_addr.data_size as number
         }
+    } else if (!!ytData.ytResponse && new URL(url).hostname.includes('youtube')) {
+        const formats = ytData.ytResponse.formats.filter((format) => format.acodec && format.vcodec && format.acodec.includes('mp4a') && format.vcodec.includes('avc'));
+        anyFormat = formats.sort((a, b) => a.filesize - b.filesize)?.[0];
+    } else if (!!ytData.ytResponse && new URL(url).hostname.includes('discordapp')) {
+        anyFormat = ytData.ytResponse.formats[0];
     }
 
-    return null;
+    return anyFormat;
 }
 
 export function getBestFormat(url: string, ytData: YoutubeDlData): { url: string, filesize: number } | null {
-    let bestFormat: { url: string, filesize: number } | null = null;
+    let bestFormat: { url: string, filesize: number, filesize_approx?: number } | null = null;
 
     if (!!ytData.tiktokApi && new URL(url).hostname.includes('tiktok')) {
         const videoData = getTiktokVideoData(ytData.tiktokApi);
@@ -37,6 +41,10 @@ export function getBestFormat(url: string, ytData: YoutubeDlData): { url: string
         bestFormat = formats.sort((a, b) => a.filesize - b.filesize)?.[0];
     } else if (!!ytData.ytResponse && new URL(url).hostname.includes('discordapp')) {
         bestFormat = ytData.ytResponse.formats[0];
+    }
+
+    if (bestFormat?.filesize == null && !!bestFormat?.filesize_approx) {
+        bestFormat.filesize = bestFormat?.filesize_approx;
     }
 
     return bestFormat;

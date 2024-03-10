@@ -14,7 +14,7 @@ import { YoutubeDlData, getDataFromYoutubeDl, getTiktokId, getTiktokSlideshowDat
 import { getRange } from "../common/getRange";
 import { getExtensionFromUrl } from "../common/extensionFinder";
 
-import { convertSlideshowToVideo, convertVideo, downloadFile } from "../common/ffmpegUtils";
+import { convertSlideshowToVideo } from "../common/ffmpegUtils";
 import { reportError } from "../common/errorHelpers";
 
 import getConfig from "../setup/configSetup";
@@ -24,6 +24,10 @@ import fs from "fs";
 //@ts-ignore - tiktok-signature types not available (https://github.com/carcabot/tiktok-signature)
 import Signer from "tiktok-signature";
 
+import FFmpegProcessor from "../lib/FFmpegProcessor";
+import UltrafastOptions from "../lib/ffmpeg/UltrafastOption";
+import CompressOptions from "../lib/ffmpeg/CompressOption";
+
 async function downloadAndConvertVideo(
     interaction: CommandInteraction,
     ytData: YoutubeDlData,
@@ -32,30 +36,20 @@ async function downloadAndConvertVideo(
     audioOnly: boolean
 ) {
     const id = validateUrl(url);
-    let filePath = `cache/${id}.mp4`;
+    const format = getAnyFormat(url, ytData);
+    let filePath = "";
 
     try {
-        const format = getAnyFormat(ytData) as { url: string, filesize: number };
-        await downloadFile(format.url, filePath);
-
-        if (!fs.existsSync(filePath)) {
+        if (!getConfig().botOptions.allowCompressionOfLargeFiles || !format?.url) {
             throw new Error(`No format found under ${DISCORD_LIMIT / 1024 / 1024}MB`);
         }
 
-        if (!getConfig().botOptions.allowCompressionOfLargeFiles) {
-            throw new Error(`No format found under ${DISCORD_LIMIT / 1024 / 1024}MB`);
-        }
+        const ffmpegProcess = new FFmpegProcessor([
+            new CompressOptions(),
+            new UltrafastOptions(),
+        ]);
 
-        filePath = await convertVideo(filePath, id);
-        const file = new AttachmentBuilder(filePath);
-
-        if (fs.statSync(filePath).size > DISCORD_LIMIT) {
-            if (fs.existsSync(filePath)) {
-                fs.unlinkSync(filePath);
-            }
-            throw new Error(`No format found under ${DISCORD_LIMIT / 1024 / 1024}MB`);
-        }
-
+        const file = await ffmpegProcess.getAttachmentBuilder([format.url]);
         file.setName(`${id}.${audioOnly ? 'mp3' : 'mp4'}`);
         file.setSpoiler(spoiler);
 
@@ -246,7 +240,7 @@ async function getCommentsFromTiktok(
         }
     );
 
-    const commentsData: TiktokCommentsApi = await request.json();
+    const commentsData: TiktokCommentsApi = await request.json() as any;
 
     const commentsResponse = commentsData.comments.map((comment) => {
         // Filter out @ mentions
