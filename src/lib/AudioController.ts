@@ -113,7 +113,6 @@ export default class AudioController {
         this.startTimeInMs = startTimeInMs;
         this.loop = loop;
         this.url = url;
-        this.replyEdited = false;
 
         this.interaction = interaction;
 
@@ -148,6 +147,7 @@ export default class AudioController {
         }
 
         this.isCurrentlyPlaying = false;
+        this.replyEdited = false;
 
         const nextAudio = this.queue.shift();
 
@@ -289,6 +289,7 @@ export default class AudioController {
         this.loop = false;
         this.isCurrentlyPlaying = false;
         this.audioStream?.emit?.('end');
+        this.replyEdited = false;
 
         return true;
     }
@@ -298,6 +299,7 @@ export default class AudioController {
         this.loop = false;
         this.isCurrentlyPlaying = false;
         this.audioStream?.emit?.('end');
+        this.replyEdited = false;
 
         this.connection = null;
 
