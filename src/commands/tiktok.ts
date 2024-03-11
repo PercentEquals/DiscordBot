@@ -27,6 +27,7 @@ import FFmpegProcessor, { InputUrl } from "../lib/FFmpegProcessor";
 import UltraFastOptions from "../lib/ffmpeg/UltraFastOptions";
 import CompressOptions from "../lib/ffmpeg/CompressOptions";
 import SlideshowOptions from "../lib/ffmpeg/SlideshowOptions";
+import PipeOptions from "../lib/ffmpeg/PipeOptions";
 
 async function downloadAndConvertVideo(
     interaction: CommandInteraction,
@@ -43,6 +44,7 @@ async function downloadAndConvertVideo(
     }
 
     const ffmpegProcess = new FFmpegProcessor([
+        new PipeOptions(),
         new CompressOptions(),
         new UltraFastOptions(),
     ]);
@@ -123,6 +125,7 @@ async function downloadSlideshowAsVideo(
     }
 
     const ffmpegProcessor = new FFmpegProcessor([
+        new PipeOptions(),
         new SlideshowOptions(urls.length, tiktokApi, withAudio)
     ]);
 

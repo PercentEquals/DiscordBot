@@ -25,12 +25,12 @@ export default class AudioStreamOptions implements IOptions {
     ) {}
 
     addInput(process: FfmpegCommand): void {
-        process.addOptions(this.options);
-        process.setStartTime(Math.ceil(this.startTimeMs / 1000));
-        process.audioFilters(`volume=${this.volume}`);
+
     }
     
     addOutput(process: FfmpegCommand): void {
-        
+        process.addOptions(this.options);
+        process.setStartTime(Math.ceil(this.startTimeMs / 1000));
+        process.audioFilters(`volume=${this.volume}`);
     }
 }

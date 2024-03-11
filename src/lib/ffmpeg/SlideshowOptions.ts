@@ -21,23 +21,29 @@ export default class SlideshowOptions implements IOptions {
             duration = 1;
         }
 
-        let r = Math.round(filesLength / duration);
+        let r = filesLength / duration;
 
-        if (r <= 1) {
-            r = 2;
+        if (r <= 0) {
+            r = 1;
         }
 
         this.inputOptions = [
-            `-framerate 30`,
+            `-framerate ${filesLength}`,
             `-loop 1`
         ]
+
+        this.outputOptions.push(...[
+            `-t ${duration}`,
+        ])
     }
 
     private inputOptions: string[] = [];
     private outputOptions = [
+        '-vf scale=640:-2',
         '-pix_fmt yuv420p',
+        '-c:a copy',
+        '-shortest',
         '-preset ultrafast',
-        `-r 6`
     ]
 
     addInput(process: FfmpegCommand): void {

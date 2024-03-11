@@ -73,7 +73,9 @@ export default class AudioController {
             new AudioStreamOptions(startTimeMs, volume)
         ]);
 
-        const ffmpegProcess = await ffmpegProcessor.buildFFmpegProcess([{ url }]);
+        const ffmpegProcess = await ffmpegProcessor.buildFFmpegProcess([
+            { url, type: 'audioStream' }
+        ]);
 
         if (ffmpegProcess == null) {
             reject("Could not download audio data!");
@@ -219,6 +221,8 @@ export default class AudioController {
                     content: `${playIcon} Playing audio: ${getReplyString(this.audioData as YoutubeDlData)}`
                 });
             }
+
+            throw new Error('lol');
         });
     }
 

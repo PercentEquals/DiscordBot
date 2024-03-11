@@ -4,7 +4,7 @@ import IOptions from "./IOptions";
 export default class PipeOptions implements IOptions {
     private options = [
         "-f ismv",
-        "-movflags frag_keyframe+empty_moov",
+        "-movflags faststart+frag_keyframe+empty_moov",
     ]
 
     addInput(process: FfmpegCommand): void {

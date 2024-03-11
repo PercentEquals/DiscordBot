@@ -13,8 +13,10 @@ function isValidPath(path: string) {
     }
 }
 
-export default async function setupFfmpeg() {
+export default async function setupFFmpeg() {
+    fs.rmSync('cache', { recursive: true });
     fs.mkdirSync('cache', { recursive: true });
+
     const ffmpegPath = getConfig().environmentOptions.ffmpegPath;
 
     if (ffmpegPath && ffmpegPath.length !== 0 && isValidPath(ffmpegPath)) {

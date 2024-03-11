@@ -4,13 +4,13 @@ import "dotenv/config.js";
 import ready from "./listeners/ready";
 import interactionCreate from "./listeners/interactionCreate";
 import messageCreate from './listeners/messageCreate';
-import setupFfmpeg from './setup/ffmpegSetup';
+import setupFFmpeg from './setup/ffmpegSetup';
 import getConfig from './setup/configSetup';
 import logger from './logger';
 
 logger.info(`[bot] starting bot...`);
 
-setupFfmpeg();
+setupFFmpeg();
 
 const intents = [
     GatewayIntentBits.DirectMessages,
