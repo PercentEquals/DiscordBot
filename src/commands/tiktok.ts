@@ -14,7 +14,6 @@ import { YoutubeDlData, getDataFromYoutubeDl, getTiktokId, getTiktokSlideshowDat
 import { getRange } from "../common/getRange";
 import { getExtensionFromUrl } from "../common/extensionFinder";
 
-import { convertSlideshowToVideo, convertVideo, downloadFile } from "../common/ffmpegUtils";
 import { reportError } from "../common/errorHelpers";
 
 import getConfig from "../setup/configSetup";
@@ -24,6 +23,12 @@ import fs from "fs";
 //@ts-ignore - tiktok-signature types not available (https://github.com/carcabot/tiktok-signature)
 import Signer from "tiktok-signature";
 
+import FFmpegProcessor, { InputUrl } from "../lib/FFmpegProcessor";
+import UltraFastOptions from "../lib/ffmpeg/UltraFastOptions";
+import CompressOptions from "../lib/ffmpeg/CompressOptions";
+import SlideshowOptions from "../lib/ffmpeg/SlideshowOptions";
+import PipeOptions from "../lib/ffmpeg/PipeOptions";
+
 async function downloadAndConvertVideo(
     interaction: CommandInteraction,
     ytData: YoutubeDlData,
@@ -32,43 +37,30 @@ async function downloadAndConvertVideo(
     audioOnly: boolean
 ) {
     const id = validateUrl(url);
-    let filePath = `cache/${id}.mp4`;
+    const format = getAnyFormat(url, ytData);
 
-    try {
-        const format = getAnyFormat(ytData) as { url: string, filesize: number };
-        await downloadFile(format.url, filePath);
-
-        if (!fs.existsSync(filePath)) {
-            throw new Error(`No format found under ${DISCORD_LIMIT / 1024 / 1024}MB`);
-        }
-
-        if (!getConfig().botOptions.allowCompressionOfLargeFiles) {
-            throw new Error(`No format found under ${DISCORD_LIMIT / 1024 / 1024}MB`);
-        }
-
-        filePath = await convertVideo(filePath, id);
-        const file = new AttachmentBuilder(filePath);
-
-        if (fs.statSync(filePath).size > DISCORD_LIMIT) {
-            if (fs.existsSync(filePath)) {
-                fs.unlinkSync(filePath);
-            }
-            throw new Error(`No format found under ${DISCORD_LIMIT / 1024 / 1024}MB`);
-        }
-
-        file.setName(`${id}.${audioOnly ? 'mp3' : 'mp4'}`);
-        file.setSpoiler(spoiler);
-
-        logger.info('[bot] sending converted video');
-        await interaction.followUp({
-            ephemeral: false,
-            files: [file]
-        });
-    } finally {
-        if (fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath);
-        }
+    if (!getConfig().botOptions.allowCompressionOfLargeFiles || !format?.url) {
+        throw new Error(`No format found under ${DISCORD_LIMIT / 1024 / 1024}MB`);
     }
+
+    const ffmpegProcess = new FFmpegProcessor([
+        new PipeOptions(),
+        new CompressOptions(),
+        new UltraFastOptions(),
+    ]);
+
+    const file = await ffmpegProcess.getAttachmentBuilder([{ url: format.url }]);
+    file.setName(`${id}.${audioOnly ? 'mp3' : 'mp4'}`);
+    file.setSpoiler(spoiler);
+
+    logger.info('[bot] sending converted video');
+
+    await interaction.followUp({
+        ephemeral: false,
+        files: [file]
+    });
+
+    logger.info('[bot] sent converted video');
 }
 
 async function downloadVideo(
@@ -95,6 +87,8 @@ async function downloadVideo(
         ephemeral: false,
         files: [file]
     });
+
+    logger.info('[bot] sent video');
 }
 
 async function downloadSlideshowAsVideo(
@@ -104,31 +98,49 @@ async function downloadSlideshowAsVideo(
     spoiler: boolean,
     ranges: number[] = []
 ) {
-    const slideshowFile = await convertSlideshowToVideo(url, tiktokApi, ranges);
+    const slideshowData = getTiktokSlideshowData(tiktokApi);
+    const urls: InputUrl[] = [];
 
-    try {
-        if (fs.lstatSync(slideshowFile).size > DISCORD_LIMIT) {
-            if (fs.existsSync(slideshowFile)) {
-                fs.unlinkSync(slideshowFile);
-            }
-            throw new Error(`No format found under ${DISCORD_LIMIT / 1024 / 1024}MB`);
+    for (let i = 0; i < slideshowData.length; i++) {
+        if (ranges.length > 0 && !ranges.includes(i + 1)) {
+            continue;
         }
 
-        const slideshowVideo = new AttachmentBuilder(slideshowFile);
-        slideshowVideo.setName(`${getTiktokId(tiktokApi)}.mp4`);
-        slideshowVideo.setSpoiler(spoiler);
-
-        logger.info('[bot] sending slideshow as video');
-
-        await interaction.followUp({
-            ephemeral: false,
-            files: [slideshowVideo]
+        urls.push({ 
+            url: getBestImageUrl(slideshowData[i]),
+            type: 'photo'
         });
-    } finally {
-        if (fs.existsSync(slideshowFile)) {
-            fs.unlinkSync(slideshowFile);
-        }
     }
+
+    
+    const bestAudioFormat = getBestFormat(url, { tiktokApi });
+    let withAudio = false;
+    
+    if (bestAudioFormat?.url) {
+        urls.push({
+            url: bestAudioFormat.url,
+            type: 'audio'
+        });
+        withAudio = true;
+    }
+
+    const ffmpegProcessor = new FFmpegProcessor([
+        new PipeOptions(),
+        new SlideshowOptions(urls.length, tiktokApi, withAudio)
+    ]);
+
+    const slideshowVideo = await ffmpegProcessor.getAttachmentBuilder(urls);
+    slideshowVideo.setName(`${getTiktokId(tiktokApi)}.mp4`);
+    slideshowVideo.setSpoiler(spoiler);
+
+    logger.info('[bot] sending slideshow as video');
+
+    await interaction.followUp({
+        ephemeral: false,
+        files: [slideshowVideo]
+    });
+
+    logger.info('[bot] sent slideshow as video');
 }
 
 async function downloadSlideshow(
@@ -246,7 +258,7 @@ async function getCommentsFromTiktok(
         }
     );
 
-    const commentsData: TiktokCommentsApi = await request.json();
+    const commentsData: TiktokCommentsApi = await request.json() as any;
 
     const commentsResponse = commentsData.comments.map((comment) => {
         // Filter out @ mentions
@@ -316,8 +328,8 @@ export const Tiktok: Command = {
             const isSlideshow = getTiktokSlideshowData(ytData.tiktokApi)?.length > 0;
 
             if (getConfig().environmentOptions.logToFile) {
-                fs.writeFileSync('cache/tiktokApi.json', JSON.stringify(ytData.tiktokApi, null, 2));
-                fs.writeFileSync('cache/ytResponse.json', JSON.stringify(ytData.ytResponse, null, 2));
+                fs.writeFileSync('logs/tiktokApi.json', JSON.stringify(ytData.tiktokApi, null, 2));
+                fs.writeFileSync('logs/ytResponse.json', JSON.stringify(ytData.ytResponse, null, 2));
             }
 
             if (commentsOnly) {

@@ -5,9 +5,11 @@ import { getBestFormat } from "../common/formatFinder";
 
 import logger from "../logger";
 
-import ffmpeg, { FfmpegCommand } from "fluent-ffmpeg";
+import { FfmpegCommand } from "fluent-ffmpeg";
 import { PassThrough } from "stream";
 import { getReplyString, getStartTimeInMs, getVolume } from "../common/audioUtils";
+import FFmpegProcessor from "./FFmpegProcessor";
+import AudioStreamOptions from "./ffmpeg/AudioStreamOptions";
 
 export default class AudioController {
     private connection: VoiceConnection | null = null;
@@ -64,36 +66,25 @@ export default class AudioController {
         });
     }
     
-    // https://github.com/discordjs/voice/issues/117
-    // https://github.com/discordjs/voice/issues/150
-    private getAudioStream(url: string, startTimeMs: number, volume: number, reject: (reason?: any) => void): FfmpegCommand {
+    private async getAudioStream(url: string, startTimeMs: number, volume: number, reject: (reason?: any) => void): Promise<FfmpegCommand> {
         logger.info(`[ffmpeg] downloading audio stream`);
     
-        const FFMPEG_OPUS_ARGUMENTS = [
-            '-analyzeduration',
-            '0',
-            '-loglevel',
-            '0',
-            '-acodec',
-            'libopus',
-            '-f',
-            'opus',
-            '-ar',
-            '48000',
-            '-ac',
-            '2',
-        ];
+        const ffmpegProcessor = new FFmpegProcessor([
+            new AudioStreamOptions(startTimeMs, volume)
+        ]);
+
+        const ffmpegProcess = await ffmpegProcessor.buildFFmpegProcess([
+            { url, type: 'audioStream' }
+        ]);
+
+        if (ffmpegProcess == null) {
+            reject("Could not download audio data!");
+            return new PassThrough() as unknown as FfmpegCommand;
+        }
+
+        ffmpegProcess.on('error', (error) => reject(error));
     
-        const process = ffmpeg(url, { timeout: 0 });
-        process.addOptions(FFMPEG_OPUS_ARGUMENTS);
-        process.setStartTime(Math.ceil(startTimeMs / 1000));
-        process.audioFilters(`volume=${volume}`);
-    
-        process.on('error', (error) => {
-            reject(error);
-        });
-    
-        return process.pipe(new PassThrough({
+        return ffmpegProcess.pipe(new PassThrough({
             highWaterMark: 96000 / 8 * 30
         })) as unknown as FfmpegCommand;
     }
@@ -200,7 +191,7 @@ export default class AudioController {
 
             this.joinChannel(interaction);
 
-            this.audioStream = this.getAudioStream(url, startTimeMs, volume, reject);
+            this.audioStream = await this.getAudioStream(url, startTimeMs, volume, reject);
             this.player = createAudioPlayer({
                 behaviors: {
                     noSubscriber: NoSubscriberBehavior.Play,
@@ -230,6 +221,8 @@ export default class AudioController {
                     content: `${playIcon} Playing audio: ${getReplyString(this.audioData as YoutubeDlData)}`
                 });
             }
+
+            throw new Error('lol');
         });
     }
 
