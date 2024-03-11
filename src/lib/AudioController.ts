@@ -24,10 +24,8 @@ export default class AudioController {
     private startTimeInMs = 0;
     private loop = false;
 
-    private audioStream: FfmpegCommand | null = null;
+    private audioStream: FfmpegCommand | null | undefined = null;
     private player: AudioPlayer | null = null;
-
-    private isRestartingStream = false;
 
     private isCurrentlyPlaying = false;
     private playStartTime = process.hrtime()[0];
@@ -66,7 +64,7 @@ export default class AudioController {
         });
     }
     
-    private async getAudioStream(url: string, startTimeMs: number, volume: number, reject: (reason?: any) => void): Promise<FfmpegCommand> {
+    private async getAudioStream(url: string, startTimeMs: number, volume: number) {
         logger.info(`[ffmpeg] downloading audio stream`);
     
         const ffmpegProcessor = new FFmpegProcessor([
@@ -76,17 +74,8 @@ export default class AudioController {
         const ffmpegProcess = await ffmpegProcessor.buildFFmpegProcess([
             { url, type: 'audioStream' }
         ]);
-
-        if (ffmpegProcess == null) {
-            reject("Could not download audio data!");
-            return new PassThrough() as unknown as FfmpegCommand;
-        }
-
-        ffmpegProcess.on('error', (error) => reject(error));
     
-        return ffmpegProcess.pipe(new PassThrough({
-            highWaterMark: 96000 / 8 * 30
-        })) as unknown as FfmpegCommand;
+        return ffmpegProcess;
     }
     
     private async probeAndCreateResource(readableStream: any) {
@@ -114,7 +103,7 @@ export default class AudioController {
             throw new Error("No audio data found!");
         }
 
-        this.bestFormat = getBestFormat(url, this.audioData);
+        this.bestFormat = getBestFormat(url, this.audioData, true);
 
         if (!this.bestFormat?.url) {
             throw new Error("No audio data found!");
@@ -131,7 +120,7 @@ export default class AudioController {
         this.joinChannel(interaction);
 
         this.audioStream?.emit?.('end');
-        this.startAudioStream(interaction, this.bestFormat.url, startTimeInMs, volume, loop, !!audioData);
+        await this.startAudioStream(interaction, this.bestFormat.url, startTimeInMs, volume, loop, !!audioData);
     }
 
     private onError(error: Error, resolve: any, reject: any) {
@@ -141,11 +130,6 @@ export default class AudioController {
 
     private async onFinish(interaction: CommandInteraction, from: AudioPlayerState, to: AudioPlayerState, resolve: any, reject: any) {
         if (!(from.status === AudioPlayerStatus.Playing && to.status === AudioPlayerStatus.Idle)) {
-            return;
-        }
-
-        if (this.isRestartingStream) {
-            this.isRestartingStream = false;
             return;
         }
 
@@ -191,7 +175,13 @@ export default class AudioController {
 
             this.joinChannel(interaction);
 
-            this.audioStream = await this.getAudioStream(url, startTimeMs, volume, reject);
+            const ffmpegProcess = await this.getAudioStream(url, startTimeMs, volume);
+            ffmpegProcess.on('error', onError);
+
+            this.audioStream = ffmpegProcess.pipe(new PassThrough({
+                highWaterMark: 96000 / 8 * 30
+            })) as unknown as FfmpegCommand;
+
             this.player = createAudioPlayer({
                 behaviors: {
                     noSubscriber: NoSubscriberBehavior.Play,
@@ -221,8 +211,6 @@ export default class AudioController {
                     content: `${playIcon} Playing audio: ${getReplyString(this.audioData as YoutubeDlData)}`
                 });
             }
-
-            throw new Error('lol');
         });
     }
 
@@ -236,9 +224,6 @@ export default class AudioController {
             return false;
         }
 
-        this.isRestartingStream = true;
-        this.audioStream?.emit?.('end');
-
         this.joinChannel(interaction);
     
         const newVolume = volume ? getVolume(volume) : this.volume;
@@ -248,9 +233,14 @@ export default class AudioController {
         this.startTimeInMs = startTimeInMs;
         this.volume = newVolume;
 
-        this.audioStream = await new Promise(async (resolve, reject) => {
-            resolve(this.getAudioStream(this.bestFormat?.url as string, startTimeInMs, newVolume, reject));
-        });
+        const ffmpegProcess = await this.getAudioStream(this.bestFormat?.url as string, startTimeInMs, newVolume);
+        ffmpegProcess.on('error', this.onError);
+
+        this.audioStream?.emit?.('end');
+        this.audioStream = ffmpegProcess.pipe(new PassThrough({
+            highWaterMark: 96000 / 8 * 30
+        })) as unknown as FfmpegCommand;
+
         const resource = await this.probeAndCreateResource(this.audioStream);
         this.player?.play(resource);
 

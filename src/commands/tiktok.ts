@@ -9,7 +9,7 @@ import { TikTokSigner } from "types/tiktokSigner";
 import { TiktokCommentsApi } from "types/tiktokCommentsApi";
 
 import { extractUrl, validateUrl } from "../common/validateUrl";
-import { getBestImageUrl, getBestFormat, getAnyFormat } from "../common/formatFinder";
+import { getBestImageUrl, getBestFormat } from "../common/formatFinder";
 import { YoutubeDlData, getDataFromYoutubeDl, getTiktokId, getTiktokSlideshowData } from "../common/sigiState";
 import { getRange } from "../common/getRange";
 import { getExtensionFromUrl } from "../common/extensionFinder";
@@ -37,7 +37,7 @@ async function downloadAndConvertVideo(
     audioOnly: boolean
 ) {
     const id = validateUrl(url);
-    const format = getAnyFormat(url, ytData);
+    const format = getBestFormat(url, ytData, true);
 
     if (!getConfig().botOptions.allowCompressionOfLargeFiles || !format?.url) {
         throw new Error(`No format found under ${DISCORD_LIMIT / 1024 / 1024}MB`);

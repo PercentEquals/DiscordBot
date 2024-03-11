@@ -9,7 +9,6 @@ import logger from "../logger";
 import IOptions from "./ffmpeg/IOptions";
 
 import { AttachmentBuilder } from "discord.js";
-import PipeOptions from "./ffmpeg/PipeOptions";
 
 //@ts-ignore - Missing types
 import { StreamInput } from "fluent-ffmpeg-multistream";
@@ -74,64 +73,63 @@ export default class FFmpegProcessor {
     }
 
     public async buildFFmpegProcess(urls: InputUrl[]) {
-        try {
-            logger.info(`[ffmpeg] processing url`);
+        logger.info(`[ffmpeg] processing url`);
 
-            this.startTime = process.hrtime()[0];
-            let isSlideshow = false;
+        this.startTime = process.hrtime()[0];
+        let isSlideshow = false;
 
-            const ffmpegProcess = ffmpeg();
+        const ffmpegProcess = ffmpeg();
 
-            for (let i = 0; i < this.options.length; i++) {
-                this.options[i].addInput(ffmpegProcess);
-            }
-
-            for (let i = 0; i < urls.length; i++) {
-                if (isSlideshow && urls.length - 1 == i) {
-                    ffmpegProcess.addOption('-i', `cache/${this.uuid}.%d.${getExtensionFromUrl(urls[0].url)}`);
-                }
-
-                if (urls[i].type == 'audioStream') {
-                    ffmpegProcess.addInput(urls[i].url);
-                } else  if (urls[i].type == 'audio') {
-                    ffmpegProcess.addOption('-vn');
-                    ffmpegProcess.addOption('-i', StreamInput(await this.downloadFileStream(urls[i].url)).url);
-                } else if (urls[i].type == 'photo') {
-                    this.cache.push(
-                        await this.downloadFile(urls[i].url, `cache/${this.uuid}.${i}.${getExtensionFromUrl(urls[i].url)}`)
-                    );
-                    isSlideshow = true;
-                } else {
-                    ffmpegProcess.addOption('-i', StreamInput(await this.downloadFileStream(urls[i].url)).url);
-                }
-            }
-
-            for (let i = 0; i < this.options.length; i++) {
-                this.options[i].addOutput(ffmpegProcess);
-            }
-
-            ffmpegProcess.on('stderr', (stderrLine) => this.onStderr(stderrLine));
-            logger.debug(ffmpegProcess._getArguments());
-
-            return ffmpegProcess;
-        } catch (e) {
-            logger.error(e);
-            return null;
+        for (let i = 0; i < this.options.length; i++) {
+            this.options[i].addInput(ffmpegProcess);
         }
+
+        for (let i = 0; i < urls.length; i++) {
+            if (isSlideshow && urls.length - 1 == i) {
+                ffmpegProcess.addOption('-i', `cache/${this.uuid}.%d.${getExtensionFromUrl(urls[0].url)}`);
+            }
+
+            if (urls[i].type == 'audioStream') {
+                ffmpegProcess.addInput(urls[i].url);
+            } else  if (urls[i].type == 'audio') {
+                ffmpegProcess.addOption('-vn');
+                ffmpegProcess.addOption('-i', StreamInput(await this.downloadFileStream(urls[i].url)).url);
+            } else if (urls[i].type == 'photo') {
+                this.cache.push(
+                    await this.downloadFile(urls[i].url, `cache/${this.uuid}.${i}.${getExtensionFromUrl(urls[i].url)}`)
+                );
+                isSlideshow = true;
+            } else {
+                ffmpegProcess.addInput(StreamInput(await this.downloadFileStream(urls[i].url)).url);
+            }
+        }
+
+        for (let i = 0; i < this.options.length; i++) {
+            this.options[i].addOutput(ffmpegProcess);
+        }
+
+        ffmpegProcess.on('stderr', (stderrLine) => this.onStderr(stderrLine));
+        logger.debug(ffmpegProcess._getArguments());
+
+        return ffmpegProcess;
     }
 
     public async getAttachmentBuilder(urls: InputUrl[]): Promise<AttachmentBuilder> {
         return new Promise(async (resolve, reject) => {
-            const ffmpegProcess = await this.buildFFmpegProcess(urls);
+            try {
+                const ffmpegProcess = await this.buildFFmpegProcess(urls);
 
-            if (ffmpegProcess == null) {
-                return reject("Could not process with ffmpeg!");
+                if (ffmpegProcess == null) {
+                    return reject("Could not process with ffmpeg!");
+                }
+
+                ffmpegProcess.on('end', this.onEnd.bind(this));
+                ffmpegProcess.on('error', (error) => this.onError(error, null, reject));
+
+                resolve(new AttachmentBuilder(ffmpegProcess.pipe()));
+            } catch (e) {
+                reject(e);
             }
-
-            ffmpegProcess.on('end', this.onEnd.bind(this));
-            ffmpegProcess.on('error', (error) => this.onError(error, null, reject));
-
-            resolve(new AttachmentBuilder(ffmpegProcess.pipe()));
         });
     }
 }
