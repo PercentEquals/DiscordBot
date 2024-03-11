@@ -1,10 +1,9 @@
 import { FfmpegCommand } from "fluent-ffmpeg";
 import IOptions from "./IOptions";
 
-export default class PipeOptions implements IOptions {
+export default class CompressOptions implements IOptions {
     private options = [
-        "-f ismv",
-        "-movflags frag_keyframe+empty_moov",
+        "-vf scale=iw/4:ih/4"
     ]
 
     addInput(process: FfmpegCommand): void {

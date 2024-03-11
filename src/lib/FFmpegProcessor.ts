@@ -2,10 +2,18 @@ import ffmpeg from "fluent-ffmpeg";
 import { Readable } from "stream";
 
 import logger from "../logger";
-import IOptions from "./ffmpeg/IOption";
+import IOptions from "./ffmpeg/IOptions";
 
 import { AttachmentBuilder } from "discord.js";
 import PipeOptions from "./ffmpeg/PipeOptions";
+
+//@ts-ignore - Missing types
+import { StreamInput } from "fluent-ffmpeg-multistream";
+
+export type InputUrl = {
+    url: string,
+    type?: 'video' | 'audio' | 'photo'
+}
 
 export default class FFmpegProcessor {
     private options: IOptions[] = [];
@@ -35,37 +43,56 @@ export default class FFmpegProcessor {
     }
 
     private onEnd(resolve: any, reject: any) {
-        logger.info(`[ffmpeg] finished processing url: ${((process.hrtime()[0] - this.startTime) / 1e+9).toFixed(3)}s`);
+        logger.info(`[ffmpeg] finished processing url: ${Math.ceil(process.hrtime()[0] - this.startTime)}s`);
     }
 
     private onStderr(stderrLine: string) {
         logger.debug(`[ffmpeg] ${stderrLine}`);
     }
 
-    public async buildFFmpegProcess(urls: string[]) {
-        logger.info(`[ffmpeg] processing url`);
+    public async buildFFmpegProcess(urls: InputUrl[]) {
+        try {
+            logger.info(`[ffmpeg] processing url`);
 
-        this.startTime = process.hrtime()[0];
+            this.startTime = process.hrtime()[0];
 
-        const ffmpegProcess = ffmpeg();
+            const ffmpegProcess = ffmpeg();
 
-        for (let i = 0; i < urls.length; i++) {
-            ffmpegProcess.addInput(await this.downloadFileStream(urls[i]));
+            for (let i = 0; i < this.options.length; i++) {
+                this.options[i].addInput(ffmpegProcess);
+            }
+
+            for (let i = 0; i < urls.length; i++) {
+                if (urls[i].type == 'audio') {
+                    ffmpegProcess.addOption('-vn');
+                } else if (urls[i].type == 'photo') {
+                    ffmpegProcess.addOption('-an');
+                }
+
+                ffmpegProcess.addOption('-i', StreamInput(await this.downloadFileStream(urls[i].url)).url);
+            }
+
+            for (let i = 0; i < this.options.length; i++) {
+                this.options[i].addOutput(ffmpegProcess);
+            }
+
+            ffmpegProcess.on('stderr', (stderrLine) => this.onStderr(stderrLine));
+            logger.warn(ffmpegProcess._getArguments());
+
+            return ffmpegProcess;
+        } catch (e) {
+            logger.error(e);
+            return null;
         }
-
-        for (let i = 0; i < this.options.length; i++) {
-            this.options[i].addToProcess(ffmpegProcess);
-        }
-
-        ffmpegProcess.on('stderr', (stderrLine) => this.onStderr(stderrLine));
-        logger.debug(ffmpegProcess._getArguments());
-
-        return ffmpegProcess;
     }
 
-    public async getAttachmentBuilder(urls: string[]): Promise<AttachmentBuilder> {
+    public async getAttachmentBuilder(urls: InputUrl[]): Promise<AttachmentBuilder> {
         return new Promise(async (resolve, reject) => {
             const ffmpegProcess = await this.buildFFmpegProcess(urls);
+
+            if (ffmpegProcess == null) {
+                return reject("Could not process with ffmpeg!");
+            }
 
             ffmpegProcess.on('end', this.onEnd.bind(this));
             ffmpegProcess.on('error', (error) => this.onError(error, null, reject));

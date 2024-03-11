@@ -1,17 +1,16 @@
 import { FfmpegCommand } from "fluent-ffmpeg";
 import IOptions from "./IOptions";
 
-export default class PipeOptions implements IOptions {
+export default class UltraFastOptions implements IOptions {
     private options = [
-        "-f ismv",
-        "-movflags frag_keyframe+empty_moov",
+        "-preset ultrafast",
     ]
 
     addInput(process: FfmpegCommand): void {
         
     }
-
+    
     addOutput(process: FfmpegCommand): void {
-        process.addOptions(this.options);
+        process.addOption(this.options);
     }
 }
