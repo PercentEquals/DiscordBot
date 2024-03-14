@@ -39,6 +39,8 @@ export async function getDataFromYoutubeDl(url: string): Promise<YoutubeDlData> 
                     skipDownload: true,
                     ignoreErrors: true,
                     noWarnings: true,
+                    //@ts-expect-error - Missing type - This is a temporary fix until youtube-dl fixes https://github.com/yt-dlp/yt-dlp/issues/9441
+                    extractorArgs: "tiktok:api_hostname=api22-normal-c-useast2a.tiktokv.com"
                 });
             
                 // hack from https://github.com/dylanpdx/vxtiktok/blob/main/vxtiktok.py#L70C1-L72C66
