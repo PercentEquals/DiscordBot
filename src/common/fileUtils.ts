@@ -3,12 +3,12 @@ import { finished } from "stream/promises";
 
 import fs from "fs";
 
-export async function downloadFileStream(url: string, headers?: any) {
+export async function downloadFileStream(url: string, options?: RequestInit) {
     if (!url.startsWith('http')) {
         return fs.createReadStream(url);
     }
 
-    const response = await fetch(url, headers);
+    const response = await fetch(url, options);
 
     if (!response.ok) {
         throw new Error(`Could not download from ${url}`);
@@ -17,11 +17,11 @@ export async function downloadFileStream(url: string, headers?: any) {
     return Readable.fromWeb(response.body as any);
 }
 
-export async function downloadFile(url: string, path: string, headers?: any) {
+export async function downloadFile(url: string, path: string, options?: RequestInit) {
     const stream = fs.createWriteStream(path);
 
     try {
-        await finished((await downloadFileStream(url, headers)).pipe(stream));
+        await finished((await downloadFileStream(url, options)).pipe(stream));
         return path;
     } catch (e) {
         stream.close();
