@@ -1,21 +1,20 @@
 import { FfmpegCommand } from "fluent-ffmpeg";
-import IOptions from "./IOptions";
 
-import { getTiktokAudioData } from "../../common/sigiState";
-import { TiktokApi } from "../../../types/tiktokApi";
+import IOptions from "./IOptions";
+import IExtractor from "../extractors/IExtractor";
 
 // https://stackoverflow.com/questions/12938581/ffmpeg-mux-video-and-audio-from-another-video-mapping-issue
 export default class SlideshowOptions implements IOptions {
     constructor(
         filesLength: number,
-        tiktokApi: TiktokApi,
+        extractor: IExtractor,
         withAudio: boolean
     ) {
         if (withAudio) {
             filesLength -= 1;
         }
 
-        let duration = getTiktokAudioData(tiktokApi).duration;
+        let duration = extractor.getDuration();
 
         if (duration <= 0) {
             duration = 1;

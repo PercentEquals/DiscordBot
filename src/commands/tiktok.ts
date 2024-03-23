@@ -4,13 +4,10 @@ import { Command } from "../command";
 import { DISCORD_LIMIT } from "../constants/discordlimit";
 import { TIKTOK_COMMENTS_COUNT, TIKTOK_COMMENTS_MAX_COUNT, TIKTOK_COMMENTS_OFFSET } from "../constants/tiktokcommentscount";
 
-import { TiktokApi } from "types/tiktokApi";
 import { TikTokSigner } from "types/tiktokSigner";
 import { TiktokCommentsApi } from "types/tiktokCommentsApi";
 
 import { extractUrl, validateUrl } from "../common/validateUrl";
-import { getBestImageUrl, getBestFormat } from "../common/formatFinder";
-import { YoutubeDlData, getDataFromYoutubeDl, getTiktokId, getTiktokSlideshowData } from "../common/sigiState";
 import { getRange } from "../common/getRange";
 import { getExtensionFromUrl } from "../common/extensionFinder";
 
@@ -18,7 +15,6 @@ import { reportError } from "../common/errorHelpers";
 
 import getConfig from "../setup/configSetup";
 import logger from "../logger";
-import fs from "fs";
 
 //@ts-ignore - tiktok-signature types not available (https://github.com/carcabot/tiktok-signature)
 import Signer from "tiktok-signature";
@@ -28,16 +24,16 @@ import UltraFastOptions from "../lib/ffmpeg/UltraFastOptions";
 import CompressOptions from "../lib/ffmpeg/CompressOptions";
 import SlideshowOptions from "../lib/ffmpeg/SlideshowOptions";
 import PipeOptions from "../lib/ffmpeg/PipeOptions";
+import LinkExtractor from "../lib/LinkExtractor";
+import IExtractor from "../lib/extractors/IExtractor";
 
 async function downloadAndConvertVideo(
     interaction: CommandInteraction,
-    ytData: YoutubeDlData,
-    url: string,
+    extractor: IExtractor,
     spoiler: boolean,
     audioOnly: boolean
 ) {
-    const id = validateUrl(url);
-    const format = getBestFormat(url, ytData, true);
+    const format = extractor.getBestFormat(true);
 
     if (!getConfig().botOptions.allowCompressionOfLargeFiles || !format?.url) {
         throw new Error(`No format found under ${DISCORD_LIMIT / 1024 / 1024}MB`);
@@ -50,7 +46,7 @@ async function downloadAndConvertVideo(
     ]);
 
     const file = await ffmpegProcess.getAttachmentBuilder([{ url: format.url }]);
-    file.setName(`${id}.${audioOnly ? 'mp3' : 'mp4'}`);
+    file.setName(`${extractor.getId()}.${audioOnly ? 'mp3' : 'mp4'}`);
     file.setSpoiler(spoiler);
 
     logger.info('[bot] sending converted video');
@@ -65,20 +61,18 @@ async function downloadAndConvertVideo(
 
 async function downloadVideo(
     interaction: CommandInteraction,
-    ytData: YoutubeDlData,
-    url: string,
+    extractor: IExtractor,
     spoiler: boolean,
     audioOnly: boolean
 ) {
-    const id = validateUrl(url);
-    const bestFormat = getBestFormat(url, ytData);
+    const bestFormat = extractor.getBestFormat();
 
     if (!bestFormat || bestFormat.filesize > DISCORD_LIMIT) {
-        return downloadAndConvertVideo(interaction, ytData, url, spoiler, audioOnly);
+        return downloadAndConvertVideo(interaction, extractor, spoiler, audioOnly);
     }
 
     const file = new AttachmentBuilder(bestFormat.url);
-    file.setName(`${id}.${audioOnly ? 'mp3' : 'mp4'}`);
+    file.setName(`${extractor.getId()}.${audioOnly ? 'mp3' : 'mp4'}`);
     file.setSpoiler(spoiler);
 
     logger.info('[bot] sending video');
@@ -93,12 +87,11 @@ async function downloadVideo(
 
 async function downloadSlideshowAsVideo(
     interaction: CommandInteraction,
-    tiktokApi: TiktokApi,
-    url: string,
+    extractor: IExtractor,
     spoiler: boolean,
     ranges: number[] = []
 ) {
-    const slideshowData = getTiktokSlideshowData(tiktokApi);
+    const slideshowData = extractor.getSlideshowData();
     const urls: InputUrl[] = [];
 
     for (let i = 0; i < slideshowData.length; i++) {
@@ -107,13 +100,12 @@ async function downloadSlideshowAsVideo(
         }
 
         urls.push({ 
-            url: getBestImageUrl(slideshowData[i]),
+            url: slideshowData[i],
             type: 'photo'
         });
     }
 
-    
-    const bestAudioFormat = getBestFormat(url, { tiktokApi });
+    const bestAudioFormat = extractor.getBestFormat();
     let withAudio = false;
     
     if (bestAudioFormat?.url) {
@@ -126,11 +118,11 @@ async function downloadSlideshowAsVideo(
 
     const ffmpegProcessor = new FFmpegProcessor([
         new PipeOptions(),
-        new SlideshowOptions(urls.length, tiktokApi, withAudio)
+        new SlideshowOptions(urls.length, extractor, withAudio)
     ]);
 
     const slideshowVideo = await ffmpegProcessor.getAttachmentBuilder(urls);
-    slideshowVideo.setName(`${getTiktokId(tiktokApi)}.mp4`);
+    slideshowVideo.setName(`${extractor.getId()}.mp4`);
     slideshowVideo.setSpoiler(spoiler);
 
     logger.info('[bot] sending slideshow as video');
@@ -145,12 +137,11 @@ async function downloadSlideshowAsVideo(
 
 async function downloadSlideshow(
     interaction: CommandInteraction,
-    tiktokApi: TiktokApi,
+    extractor: IExtractor,
     spoiler: boolean,
     ranges: number[] = []
 ) {
-    const slideshowData = getTiktokSlideshowData(tiktokApi);
-    const tiktokId = getTiktokId(tiktokApi);
+    const slideshowData = extractor.getSlideshowData();
     const files = [] as AttachmentBuilder[];
 
     for (let i = 0; i < slideshowData.length; i++) {
@@ -158,12 +149,10 @@ async function downloadSlideshow(
             continue;
         }
 
-        const image = slideshowData[i];
-        const bestImageUrl = getBestImageUrl(image);
-        const file = new AttachmentBuilder(bestImageUrl);
-        const extension = getExtensionFromUrl(bestImageUrl);
+        const file = new AttachmentBuilder(slideshowData[i]);
+        const extension = getExtensionFromUrl(slideshowData[i]);
 
-        file.setName(`${tiktokId}-${i}.${extension}`);
+        file.setName(`${extractor.getId()}-${i}.${extension}`);
         file.setSpoiler(spoiler);
 
         files.push(file);
@@ -190,15 +179,15 @@ async function downloadSlideshow(
 
 async function getCommentsFromTiktok(
     interaction: CommandInteraction,
-    tiktokApi: TiktokApi | null | undefined,
+    extractor: IExtractor,
     url: string,
     range: number[]
 ) {
-    if (!new URL(url).hostname.includes('tiktok') || !tiktokApi) {
+    if (!new URL(url).hostname.includes('tiktok') || !extractor) {
         throw new Error('Comments only option is available for tiktok links only.');
     }
 
-    const id = getTiktokId(tiktokApi);
+    const id = extractor.getId();
     const USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.0.0 Safari/537.36 Edg/105.0.1343.53";
     const MSTOKEN = "G1lr_8nRB3udnK_fFzgBD7sxvc0PK6Osokd1IJMaVPVcoB4mwSW-D6MQjTdoJ2o20PLt_MWNgtsAr095wVSShdmn_XVFS34bURvakVglDyWAHncoV_jVJCRdiJRdbJBi_E_KD_G8vpFF9-aOaJrk";
 
@@ -324,22 +313,17 @@ export const Tiktok: Command = {
 
             validateUrl(new URL(url));
 
-            const ytData = await getDataFromYoutubeDl(url);
-            const isSlideshow = getTiktokSlideshowData(ytData.tiktokApi)?.length > 0;
-
-            if (getConfig().environmentOptions.logToFile) {
-                fs.writeFileSync('logs/tiktokApi.json', JSON.stringify(ytData.tiktokApi, null, 2));
-                fs.writeFileSync('logs/ytResponse.json', JSON.stringify(ytData.ytResponse, null, 2));
-            }
+            const extractor = await (new LinkExtractor().extractUrl(url));
+            const isSlideshow = extractor.isSlideshow();
 
             if (commentsOnly) {
-                return await getCommentsFromTiktok(interaction, ytData.tiktokApi, url, getRange(range));
-            } else if (!!ytData.tiktokApi && isSlideshow && !audioOnly && slideshowAsVideo) {
-                return await downloadSlideshowAsVideo(interaction, ytData.tiktokApi, url, spoiler, getRange(range));
-            } else if (!!ytData.tiktokApi && isSlideshow && !audioOnly) {
-                return await downloadSlideshow(interaction, ytData.tiktokApi, spoiler, getRange(range));
+                return await getCommentsFromTiktok(interaction, extractor, url, getRange(range));
+            } else if (isSlideshow && !audioOnly && slideshowAsVideo) {
+                return await downloadSlideshowAsVideo(interaction, extractor, spoiler, getRange(range));
+            } else if (isSlideshow && !audioOnly) {
+                return await downloadSlideshow(interaction, extractor, spoiler, getRange(range));
             } else {
-                return await downloadVideo(interaction, ytData, url, spoiler, audioOnly);
+                return await downloadVideo(interaction, extractor, spoiler, audioOnly);
             }
         } catch (e: any) {
             await reportError(interaction, e, true);

@@ -1,7 +1,7 @@
 import { CommandInteraction } from "discord.js";
-import { YoutubeDlData } from "../common/sigiState";
 
 import AudioController from "./AudioController";
+import IExtractor from "./extractors/IExtractor";
 
 class AudioPlayer {
     private audioControllerPerChannel: {
@@ -27,8 +27,8 @@ class AudioPlayer {
         return this.audioControllerPerChannel[guildId + channelId];
     }
 
-    public async playAudio(interaction: CommandInteraction, url: string, startTimeInMs: number = 0, volume: number = 100, loop: boolean = false, force?: boolean, audioData?: YoutubeDlData) {
-        return this.ensureAudioController(interaction).playAudio(interaction, url, startTimeInMs, volume, loop, force, audioData);
+    public async playAudio(interaction: CommandInteraction, url: string, startTimeInMs: number = 0, volume: number = 100, loop: boolean = false, force?: boolean, extractor?: IExtractor) {
+        return this.ensureAudioController(interaction).playAudio(interaction, url, startTimeInMs, volume, loop, force, extractor);
     }
 
     public async restartAudio(interaction: CommandInteraction, volume: string | null, startTime: string | null) {

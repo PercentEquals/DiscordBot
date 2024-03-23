@@ -1,24 +1,24 @@
 import { CommandInteraction, InternalDiscordGatewayAdapterCreator } from "discord.js";
 import { AudioPlayer, AudioPlayerState, AudioPlayerStatus, NoSubscriberBehavior, VoiceConnection, createAudioPlayer, createAudioResource, demuxProbe, getVoiceConnection, joinVoiceChannel } from "@discordjs/voice";
-import { YoutubeDlData, getDataFromYoutubeDl } from "../common/sigiState";
-import { getBestFormat } from "../common/formatFinder";
 
 import logger from "../logger";
 
 import { FfmpegCommand } from "fluent-ffmpeg";
 import { PassThrough } from "stream";
-import { getReplyString, getStartTimeInMs, getVolume } from "../common/audioUtils";
+import { getStartTimeInMs, getVolume } from "../common/audioUtils";
+
 import FFmpegProcessor from "./FFmpegProcessor";
 import AudioStreamOptions from "./ffmpeg/AudioStreamOptions";
+import IExtractor, { BestFormat } from "./extractors/IExtractor";
+import LinkExtractor from "./LinkExtractor";
 
 export default class AudioController {
     private connection: VoiceConnection | null = null;
 
-    private interaction: CommandInteraction | null = null;
-    
     private url: string = "";
-    private audioData: YoutubeDlData | null = null;
-    private bestFormat: { url: string, filesize: number } | null = null;
+    private bestFormat: BestFormat | null | undefined = null;
+
+    private extractor: IExtractor | null = null;
     
     private volume = 100;
     private startTimeInMs = 0;
@@ -35,8 +35,8 @@ export default class AudioController {
     private queue: {
         interaction: CommandInteraction,
         url: string,
-        audioData: YoutubeDlData,
-        bestFormat: { url: string, filesize: number },
+        extractor: IExtractor,
+        bestFormat: BestFormat,
         volume: number,
         startTimeInMs: number,
         loop: boolean
@@ -85,25 +85,21 @@ export default class AudioController {
         });
     }
 
-    public async playAudio(interaction: CommandInteraction, url: string, startTimeInMs: number = 0, volume: number = 100, loop: boolean = false, force?: boolean, audioData?: YoutubeDlData) {
+    public async playAudio(interaction: CommandInteraction, url: string, startTimeInMs: number = 0, volume: number = 100, loop: boolean = false, force?: boolean, extractor?: IExtractor | null) {
         if (!force && this.isCurrentlyPlaying) {
             await this.queueAudio(interaction, url, startTimeInMs, volume, loop);
             return;
         }
 
-        if (url !== this.url && !audioData) {
-            this.audioData = await getDataFromYoutubeDl(url);
+        if (url !== this.url && !extractor) {
+            this.extractor = await new LinkExtractor().extractUrl(url);
         }
 
-        if (audioData) {
-            this.audioData = audioData;
+        if (extractor) {
+            this.extractor = extractor;
         }
 
-        if (!this.audioData?.tiktokApi && !this.audioData?.ytResponse) {
-            throw new Error("No audio data found!");
-        }
-
-        this.bestFormat = getBestFormat(url, this.audioData, true);
+        this.bestFormat = this.extractor?.getBestFormat(true);
 
         if (!this.bestFormat?.url) {
             throw new Error("No audio data found!");
@@ -114,12 +110,10 @@ export default class AudioController {
         this.loop = loop;
         this.url = url;
 
-        this.interaction = interaction;
-
         this.joinChannel(interaction);
 
         this.audioStream?.emit?.('end');
-        await this.startAudioStream(interaction, this.bestFormat.url, startTimeInMs, volume, loop, !!audioData);
+        await this.startAudioStream(interaction, this.bestFormat.url, startTimeInMs, volume, loop, !!extractor);
     }
 
     private onError(error: Error, resolve: any, reject: any) {
@@ -134,7 +128,7 @@ export default class AudioController {
 
         if (this.loop) {
             try {
-                resolve(await this.playAudio(interaction, this.url, this.startTimeInMs, this.volume, this.loop, true, this.audioData as YoutubeDlData));
+                resolve(await this.playAudio(interaction, this.url, this.startTimeInMs, this.volume, this.loop, true, this.extractor));
                 this.replyEdited = true;
                 return;
             } catch (e) {
@@ -142,7 +136,7 @@ export default class AudioController {
             }
         } else {
             await interaction.editReply({
-                content: `:white_check_mark: Finished playing audio: ${getReplyString(this.audioData as YoutubeDlData)}`,
+                content: `:white_check_mark: Finished playing audio: ${this.extractor?.getReplyString()}`,
             });
         }
 
@@ -154,7 +148,7 @@ export default class AudioController {
         if (nextAudio) {
             try {
                 this.replyEdited = false;
-                return resolve(await this.playAudio(nextAudio.interaction, nextAudio.url, nextAudio.startTimeInMs, nextAudio.volume, nextAudio.loop, false, nextAudio.audioData));
+                return resolve(await this.playAudio(nextAudio.interaction, nextAudio.url, nextAudio.startTimeInMs, nextAudio.volume, nextAudio.loop, false, nextAudio.extractor));
             } catch (e) {
                 return reject(e);
             }
@@ -165,51 +159,55 @@ export default class AudioController {
 
     private async startAudioStream(interaction: CommandInteraction, url: string, startTimeMs: number, volume: number, loop: boolean, playedFromQueue: boolean) {
         return new Promise(async (resolve, reject) => {
-            const onError = (error: Error) => {
-                this.onError(error, resolve, reject);
-            }
+            try {
+                const onError = (error: Error) => {
+                    this.onError(error, resolve, reject);
+                }
 
-            const onFinish = async (from: AudioPlayerState, to: AudioPlayerState) => {
-                await this.onFinish(interaction, from, to, resolve, reject);
-            }
+                const onFinish = async (from: AudioPlayerState, to: AudioPlayerState) => {
+                    await this.onFinish(interaction, from, to, resolve, reject);
+                }
 
-            this.joinChannel(interaction);
+                this.joinChannel(interaction);
 
-            const ffmpegProcess = await this.getAudioStream(url, startTimeMs, volume);
-            ffmpegProcess.on('error', onError);
+                const ffmpegProcess = await this.getAudioStream(url, startTimeMs, volume);
+                ffmpegProcess.on('error', onError);
 
-            this.audioStream = ffmpegProcess.pipe(new PassThrough({
-                highWaterMark: 96000 / 8 * 30
-            })) as unknown as FfmpegCommand;
+                this.audioStream = ffmpegProcess.pipe(new PassThrough({
+                    highWaterMark: 96000 / 8 * 30
+                })) as unknown as FfmpegCommand;
 
-            this.player = createAudioPlayer({
-                behaviors: {
-                    noSubscriber: NoSubscriberBehavior.Play,
-                },
-            });
-
-            this.player.on('error', onError);
-            this.player.on(AudioPlayerStatus.Idle, onFinish);
-
-            const resource = await this.probeAndCreateResource(this.audioStream);
-            this.connection?.subscribe?.(this.player);
-            this.player.play(resource);
-
-            this.isCurrentlyPlaying = true;
-            this.playStartTime = process.hrtime()[0];
-
-            const playIcon = loop ? ':loop:' : ':loud_sound:';
-
-            if (!playedFromQueue) {
-                await interaction.followUp({
-                    ephemeral: false,
-                    content: `${playIcon} Playing audio: ${getReplyString(this.audioData as YoutubeDlData)}`
+                this.player = createAudioPlayer({
+                    behaviors: {
+                        noSubscriber: NoSubscriberBehavior.Play,
+                    },
                 });
-            } else if (!this.replyEdited) {
-                this.replyEdited = true;
-                await interaction.editReply({
-                    content: `${playIcon} Playing audio: ${getReplyString(this.audioData as YoutubeDlData)}`
-                });
+
+                this.player.on('error', onError);
+                this.player.on(AudioPlayerStatus.Idle, onFinish);
+
+                const resource = await this.probeAndCreateResource(this.audioStream);
+                this.connection?.subscribe?.(this.player);
+                this.player.play(resource);
+
+                this.isCurrentlyPlaying = true;
+                this.playStartTime = process.hrtime()[0];
+
+                const playIcon = loop ? ':loop:' : ':loud_sound:';
+
+                if (!playedFromQueue) {
+                    await interaction.followUp({
+                        ephemeral: false,
+                        content: `${playIcon} Playing audio: ${this.extractor?.getReplyString()}`
+                    });
+                } else if (!this.replyEdited) {
+                    this.replyEdited = true;
+                    await interaction.editReply({
+                        content: `${playIcon} Playing audio: ${this.extractor?.getReplyString()}`
+                    });
+                }
+            } catch (e) {
+                reject(e);
             }
         });
     }
@@ -248,13 +246,8 @@ export default class AudioController {
     }
 
     private async queueAudio(interaction: CommandInteraction, url: string, startTimeInMs: number = 0, volume: number = 100, loop: boolean = false) {
-        const audioData = await getDataFromYoutubeDl(url);
-
-        if (!audioData?.tiktokApi && !audioData?.ytResponse) {
-            throw new Error("No audio data found!");
-        }
-
-        const bestFormat = getBestFormat(url, audioData);
+        const extractor = await new LinkExtractor().extractUrl(url);
+        const bestFormat = extractor.getBestFormat();
 
         if (!bestFormat?.url) {
             throw new Error("No audio data found!");
@@ -266,13 +259,13 @@ export default class AudioController {
             startTimeInMs: startTimeInMs,
             volume: volume,
             loop: loop,
-            audioData: audioData,
+            extractor: extractor,
             bestFormat: bestFormat
         });
 
         interaction.followUp({
             ephemeral: false,
-            content: `:information_source: Queued audio: ${getReplyString(audioData)}`
+            content: `:information_source: Queued audio: ${extractor.getReplyString()}`
         });
     }
 

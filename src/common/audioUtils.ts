@@ -1,6 +1,4 @@
-import { YoutubeDlData, getTiktokAudioData } from "./sigiState";
-
-export function getDuration(duration: number | null) {
+export function getHumanReadableDuration(duration: number | null) {
     const durationDate = new Date(0);
     durationDate.setSeconds(duration ?? 0);
     return duration ? durationDate.toISOString().substr(11, 8) : '??:??:??';
@@ -47,13 +45,5 @@ export function getVolume(volume: string | null) {
         return Math.abs(volumeNumber / 100);
     } catch (e) {
         return 1;
-    }
-}
-
-export function getReplyString(audioData: YoutubeDlData) {
-    if (audioData.ytResponse) {
-        return `${audioData.ytResponse.title.substring(0, 100)} - ${audioData.ytResponse.uploader ?? "unknown"} | ${getDuration(audioData.ytResponse.duration)}`;
-    } else if (audioData.tiktokApi) {
-        return `${audioData.tiktokApi.aweme_list[0].desc.substring(0, 100)} - ${audioData.tiktokApi.aweme_list[0].author.nickname} | ${getDuration(getTiktokAudioData(audioData.tiktokApi).duration)}`;
     }
 }
