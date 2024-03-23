@@ -5,6 +5,7 @@ import fs from "fs";
 import IExtractor, { BestFormat } from "./IExtractor";
 import { downloadFile } from "../../common/fileUtils";
 import { getHumanReadableDuration } from "../../common/audioUtils";
+import { DISCORD_LIMIT } from "../../constants/discordlimit";
 
 export default class TiktokRehydrationExtractor implements IExtractor {
     private uuid = crypto.randomBytes(16).toString("hex");
@@ -82,9 +83,15 @@ export default class TiktokRehydrationExtractor implements IExtractor {
 
     public getBestFormat(skipSizeCheck?: boolean): BestFormat | null {
         if (fs.existsSync(`cache/${this.getId()}`)) {
+            const filesize = fs.lstatSync(`cache/${this.getId()}`).size;
+
+            if (filesize > DISCORD_LIMIT && !skipSizeCheck) {
+                return null;
+            }
+
             return {
                 url: `cache/${this.getId()}`,
-                filesize: fs.lstatSync(`cache/${this.getId()}`).size
+                filesize
             }
         }
 

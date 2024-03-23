@@ -1,12 +1,13 @@
 import crypto from "crypto";
+import fs from "fs";
 
 import { validateUrl } from "../../common/validateUrl";
 import IExtractor, { BestFormat } from "./IExtractor";
 
 import { getHumanReadableDuration } from "../../common/audioUtils";
-import { downloadFile } from "src/common/fileUtils";
+import { downloadFile } from "../../common/fileUtils";
 
-import fs from "fs";
+import { DISCORD_LIMIT } from "../../constants/discordlimit";
 
 export default class TiktokThirdPartyExtractor implements IExtractor {
     private uuid = crypto.randomBytes(16).toString("hex");
@@ -51,9 +52,15 @@ export default class TiktokThirdPartyExtractor implements IExtractor {
 
     public getBestFormat(skipSizeCheck?: boolean): BestFormat | null {
         if (fs.existsSync(`cache/${this.getId()}`)) {
+            const filesize = fs.lstatSync(`cache/${this.getId()}`).size;
+
+            if (filesize > DISCORD_LIMIT && !skipSizeCheck) {
+                return null;
+            }
+
             return {
                 url: `cache/${this.getId()}`,
-                filesize: fs.lstatSync(`cache/${this.getId()}`).size
+                filesize
             }
         }
 
