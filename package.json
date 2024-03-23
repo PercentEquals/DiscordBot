@@ -5,10 +5,8 @@
   "main": "src/index.ts",
   "type": "module",
   "scripts": {
-    "start": "ts-node --esm src/index.ts",
-    "start-tsx": "npx tsx src/index.ts",
-    "linux-production": "RC=1; while [ $RC -ne 0 ]; do npm run start; RC=$?; done",
-    "linux-production-tsx": "RC=1; while [ $RC -ne 0 ]; do npm run start-tsx; RC=$?; done"
+    "start": "npx tsx src/index.ts",
+    "linux-production": "RC=1; while [ $RC -ne 0 ]; do npm run start; RC=$?; done"
   },
   "author": "PercentEquals",
   "license": "MIT",
@@ -32,6 +30,7 @@
   },
   "devDependencies": {
     "@types/fluent-ffmpeg": "^2.1.23",
-    "@types/node": "^20.5.4"
+    "@types/node": "^20.5.4",
+    "tsx": "^4.7.1"
   }
 }

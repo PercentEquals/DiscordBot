@@ -1,9 +1,15 @@
+import crypto from "crypto";
+
 import { validateUrl } from "../../common/validateUrl";
 import IExtractor, { BestFormat } from "./IExtractor";
 
 import { getHumanReadableDuration } from "../../common/audioUtils";
+import { downloadFile } from "src/common/fileUtils";
+
+import fs from "fs";
 
 export default class TiktokThirdPartyExtractor implements IExtractor {
+    private uuid = crypto.randomBytes(16).toString("hex");
     private id: string = "";
 
     public async extractUrl(url: string): Promise<boolean> {
@@ -11,6 +17,15 @@ export default class TiktokThirdPartyExtractor implements IExtractor {
         this.id = validateUrl(urlObj);
 
         if (!urlObj.hostname.includes('tiktok')) {
+            return false;
+        }
+
+        await downloadFile(
+            `https://tikcdn.io/ssstik/${this.id}`,
+            `cache/${this.getId()}`
+        )
+
+        if (!fs.existsSync(`cache/${this.getId()}`)) {
             return false;
         }
 
@@ -26,14 +41,18 @@ export default class TiktokThirdPartyExtractor implements IExtractor {
     }
 
     public getId(): string {
-        return this.id;
+        return this.uuid;
     }
 
     public getBestFormat(skipSizeCheck?: boolean): BestFormat | null {
-        return {
-            url: `https://tikcdn.io/ssstik/${this.getId()}`,
-            filesize: 0
+        if (fs.existsSync(`cache/${this.getId()}`)) {
+            return {
+                url: `cache/${this.getId()}`,
+                filesize: fs.lstatSync(`cache/${this.getId()}`).size
+            }
         }
+
+        return null;
     }
 
     public getDuration(): number {
@@ -42,5 +61,15 @@ export default class TiktokThirdPartyExtractor implements IExtractor {
 
     public getReplyString(): string {
         return `${this.getId()} | ${getHumanReadableDuration(null)}`;
+    }
+
+    public dispose() {
+        try {
+            if (fs.existsSync(`cache/${this.getId()}`)) {
+                fs.unlinkSync(`cache/${this.getId()}`);
+            }
+        } catch {
+            // Intentionally omitted
+        }
     }
 }

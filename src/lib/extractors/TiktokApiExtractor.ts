@@ -7,7 +7,7 @@ import IExtractor, { BestFormat } from "./IExtractor";
 import { DISCORD_LIMIT } from "../../constants/discordlimit";
 import { getHumanReadableDuration } from "../../common/audioUtils";
 
-export default class TiktokExtractor implements IExtractor {
+export default class TiktokApiExtractor implements IExtractor {
     private tiktokApi: TiktokApi | null = null;
 
     public async extractUrl(url: string): Promise<boolean> {
@@ -46,11 +46,15 @@ export default class TiktokExtractor implements IExtractor {
     }
 
     public isSlideshow(): boolean {
-        return (this.tiktokApi?.aweme_list[0]?.image_post_info?.images as Image[]).length > 0 ?? false;
+        return this.getSlideshowData().length > 0;
     }
 
     public getSlideshowData(): string[] {
         const images = this.tiktokApi?.aweme_list[0]?.image_post_info?.images as Image[];
+
+        if (!images) {
+            return [];
+        }
 
         return images.map(image => image.display_image.url_list.filter(
             (url) => url.includes('.webp') || url.includes('.jpeg') || url.includes('.jpg') || url.includes('.png')

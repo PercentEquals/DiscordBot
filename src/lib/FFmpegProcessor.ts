@@ -1,6 +1,4 @@
 import ffmpeg from "fluent-ffmpeg";
-import { Readable } from "stream";
-import { finished } from "stream/promises";
 
 import fs from "fs";
 import crypto from "crypto";
@@ -14,6 +12,7 @@ import { AttachmentBuilder } from "discord.js";
 import { StreamInput } from "fluent-ffmpeg-multistream";
 
 import { getExtensionFromUrl } from "../common/extensionFinder";
+import { downloadFile, downloadFileStream } from "../common/fileUtils";
 
 export type InputUrl = {
     url: string,
@@ -41,17 +40,6 @@ export default class FFmpegProcessor {
                 fs.unlinkSync(file);
             }
         })
-    }
-
-    private async downloadFileStream(url: string) {
-        const { body } = await fetch(url);
-        return Readable.fromWeb(body as any);
-    }
-
-    private async downloadFile(url: string, path: string) {
-        const stream = fs.createWriteStream(path);
-        await finished((await this.downloadFileStream(url)).pipe(stream));
-        return path;
     }
 
     public addOption(option: IOptions) {
@@ -93,14 +81,14 @@ export default class FFmpegProcessor {
                 ffmpegProcess.addInput(urls[i].url);
             } else  if (urls[i].type == 'audio') {
                 ffmpegProcess.addOption('-vn');
-                ffmpegProcess.addOption('-i', StreamInput(await this.downloadFileStream(urls[i].url)).url);
+                ffmpegProcess.addOption('-i', StreamInput(await downloadFileStream(urls[i].url)).url);
             } else if (urls[i].type == 'photo') {
                 this.cache.push(
-                    await this.downloadFile(urls[i].url, `cache/${this.uuid}.${i}.${getExtensionFromUrl(urls[i].url)}`)
+                    await downloadFile(urls[i].url, `cache/${this.uuid}.${i}.${getExtensionFromUrl(urls[i].url)}`)
                 );
                 isSlideshow = true;
             } else {
-                ffmpegProcess.addInput(StreamInput(await this.downloadFileStream(urls[i].url)).url);
+                ffmpegProcess.addInput(StreamInput(await downloadFileStream(urls[i].url)).url);
             }
         }
 

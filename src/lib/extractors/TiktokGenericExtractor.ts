@@ -1,7 +1,5 @@
 import crypto from "crypto";
 
-import { validateUrl } from "../../common/validateUrl";
-
 import youtubedl from "youtube-dl-exec";
 import IExtractor, { BestFormat } from "./IExtractor";
 
@@ -14,7 +12,6 @@ export default class TiktokGenericExtractor implements IExtractor {
 
     public async extractUrl(url: string): Promise<boolean> {
         const urlObj = new URL(url);
-        validateUrl(urlObj);
 
         if (!urlObj.hostname.includes('tiktok')) {
             return false;
@@ -26,6 +23,10 @@ export default class TiktokGenericExtractor implements IExtractor {
             format: "0",
             output: `cache/${this.getId()}`
         });
+
+        if (!fs.existsSync(`cache/${this.getId()}`)) {
+            return false;
+        }
 
         return true;
     }
@@ -43,10 +44,14 @@ export default class TiktokGenericExtractor implements IExtractor {
     }
 
     public getBestFormat(skipSizeCheck?: boolean): BestFormat | null {
-        return {
-            url: `cache/${this.getId()}`,
-            filesize: fs.lstatSync(`cache/${this.getId()}`).size
+        if (fs.existsSync(`cache/${this.getId()}`)) {
+            return {
+                url: `cache/${this.getId()}`,
+                filesize: fs.lstatSync(`cache/${this.getId()}`).size
+            }
         }
+
+        return null;
     }
 
     public getDuration(): number {
@@ -58,8 +63,12 @@ export default class TiktokGenericExtractor implements IExtractor {
     }
 
     public dispose() {
-        if (fs.existsSync(`cache/${this.getId()}`)) {
-            fs.unlinkSync(`cache/${this.getId()}`);
+        try {
+            if (fs.existsSync(`cache/${this.getId()}`)) {
+                fs.unlinkSync(`cache/${this.getId()}`);
+            }
+        } catch {
+            // Intentionally omitted
         }
     }
 }
