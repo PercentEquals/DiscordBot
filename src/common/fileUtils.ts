@@ -4,6 +4,10 @@ import { finished } from "stream/promises";
 import fs from "fs";
 
 export async function downloadFileStream(url: string, headers?: any) {
+    if (!url.startsWith('http')) {
+        return fs.createReadStream(url);
+    }
+
     const response = await fetch(url, headers);
 
     if (!response.ok) {
