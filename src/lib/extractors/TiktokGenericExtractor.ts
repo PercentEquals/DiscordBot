@@ -1,3 +1,5 @@
+import crypto from "crypto";
+
 import { validateUrl } from "../../common/validateUrl";
 
 import youtubedl from "youtube-dl-exec";
@@ -8,11 +10,11 @@ import { getHumanReadableDuration } from "../../common/audioUtils";
 import fs from "fs";
 
 export default class TiktokGenericExtractor implements IExtractor {
-    private id: string = "";
+    private uuid = crypto.randomBytes(16).toString("hex");
 
     public async extractUrl(url: string): Promise<boolean> {
         const urlObj = new URL(url);
-        this.id = validateUrl(urlObj);
+        validateUrl(urlObj);
 
         if (!urlObj.hostname.includes('tiktok')) {
             return false;
@@ -37,7 +39,7 @@ export default class TiktokGenericExtractor implements IExtractor {
     }
 
     public getId(): string {
-        return this.id;
+        return this.uuid;
     }
 
     public getBestFormat(skipSizeCheck?: boolean): BestFormat | null {
@@ -53,5 +55,11 @@ export default class TiktokGenericExtractor implements IExtractor {
 
     public getReplyString(): string {
         return `${this.getId()} | ${getHumanReadableDuration(null)}`;
+    }
+
+    public dispose() {
+        if (fs.existsSync(`cache/${this.getId()}`)) {
+            fs.unlinkSync(`cache/${this.getId()}`);
+        }
     }
 }

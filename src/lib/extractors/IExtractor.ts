@@ -11,4 +11,6 @@ export default interface IExtractor {
     getBestFormat(skipSizeCheck?: boolean): BestFormat | null;
     getDuration(): number;
     getReplyString(): string;
+
+    dispose?(): void;
 }

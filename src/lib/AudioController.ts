@@ -143,6 +143,8 @@ export default class AudioController {
         this.isCurrentlyPlaying = false;
         this.replyEdited = false;
 
+        // TODO: add extractor dispose on audio finish
+
         const nextAudio = this.queue.shift();
 
         if (nextAudio) {

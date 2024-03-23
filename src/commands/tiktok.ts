@@ -297,6 +297,8 @@ export const Tiktok: Command = {
         new SlashCommandStringOption().setName('range').setDescription('Range of photos/comments').setRequired(false),
     ],
     run: async (client: Client, interaction: CommandInteraction) => {
+        let extractor: IExtractor | null = null;
+
         try {
             //@ts-expect-error - Bad types
             const url: string = await extractUrl(interaction.options.getString('url', true));
@@ -313,7 +315,7 @@ export const Tiktok: Command = {
 
             validateUrl(new URL(url));
 
-            const extractor = await (new LinkExtractor().extractUrl(url));
+            extractor = await (new LinkExtractor().extractUrl(url));
             const isSlideshow = extractor.isSlideshow();
 
             if (commentsOnly) {
@@ -327,6 +329,8 @@ export const Tiktok: Command = {
             }
         } catch (e: any) {
             await reportError(interaction, e, true);
+        } finally {
+            extractor?.dispose?.();
         }
     }
 };
