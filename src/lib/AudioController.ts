@@ -92,6 +92,7 @@ export default class AudioController {
         }
 
         if (url !== this.url && !extractor) {
+            this.extractor?.dispose?.();
             this.extractor = await new LinkExtractor().extractUrl(url);
         }
 
@@ -113,6 +114,7 @@ export default class AudioController {
         this.joinChannel(interaction);
 
         this.audioStream?.emit?.('end');
+
         await this.startAudioStream(interaction, this.bestFormat.url, startTimeInMs, volume, loop, !!extractor);
     }
 
@@ -142,8 +144,6 @@ export default class AudioController {
 
         this.isCurrentlyPlaying = false;
         this.replyEdited = false;
-
-        // TODO: add extractor dispose on audio finish
 
         const nextAudio = this.queue.shift();
 

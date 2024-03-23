@@ -4,52 +4,61 @@ import fs from "fs";
 
 import IExtractor, { BestFormat } from "./IExtractor";
 import { downloadFile } from "../../common/fileUtils";
-import { getHumanReadableDuration } from "src/common/audioUtils";
+import { getHumanReadableDuration } from "../../common/audioUtils";
 
 export default class TiktokRehydrationExtractor implements IExtractor {
     private uuid = crypto.randomBytes(16).toString("hex");
     private apiData: TiktokRehydrationApi | null = null;
 
     public async extractUrl(url: string): Promise<boolean> {
-        const userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36";
-        const urlObj = new URL(url);
+        try {
+            const userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36";
+            const urlObj = new URL(url);
 
-        if (!urlObj.hostname.includes('tiktok')) {
-            return false;
-        }
-
-        let response = await fetch(url, { headers: { userAgent }});
-
-        if (!response.ok) {
-            return false;
-        }
-
-        const body = await response.text();
-    
-        const $ = cheerio.load(body);
-        const $script = $('#__UNIVERSAL_DATA_FOR_REHYDRATION__');
-        this.apiData = JSON.parse($script.html() as string).__DEFAULT_SCOPE__["webapp.video-detail"];
-
-        const canonicalHref = JSON.parse($script.html() as string).__DEFAULT_SCOPE__["seo.abtest"].canonical;
-
-        let fileUrl = this.apiData?.itemInfo?.itemStruct?.video.playAddr;
-
-        if (!fileUrl) {
-            fileUrl = this.apiData?.itemInfo?.itemStruct?.music?.playUrl as string;
-        }
-
-        await downloadFile(
-            fileUrl,
-            `cache/${this.getId()}`, 
-            {
-                headers: {
-                    "Referer": canonicalHref,
-                    "User-Agent": userAgent
-                },
+            if (!urlObj.hostname.includes('tiktok')) {
+                return false;
             }
-        );
 
-        return true;
+            let response = await fetch(url, { headers: { userAgent }});
+
+            if (!response.ok) {
+                return false;
+            }
+
+            const body = await response.text();
+        
+            const $ = cheerio.load(body);
+            const $script = $('#__UNIVERSAL_DATA_FOR_REHYDRATION__');
+            this.apiData = JSON.parse($script.html() as string).__DEFAULT_SCOPE__["webapp.video-detail"];
+
+            const canonicalHref = JSON.parse($script.html() as string).__DEFAULT_SCOPE__["seo.abtest"].canonical;
+
+            let fileUrl = this.apiData?.itemInfo?.itemStruct?.video.playAddr;
+
+            if (!fileUrl) {
+                fileUrl = this.apiData?.itemInfo?.itemStruct?.music?.playUrl as string;
+            }
+
+            await downloadFile(
+                fileUrl,
+                `cache/${this.getId()}`, 
+                {
+                    headers: {
+                        "Referer": canonicalHref,
+                        "User-Agent": userAgent
+                    },
+                }
+            );
+
+            if (!fs.existsSync(`cache/${this.getId()}`)) {
+                return false;
+            }
+
+            return true;
+        } catch (e) {
+            this.dispose();
+            throw e;
+        }
     }
 
     public isSlideshow(): boolean {
@@ -102,8 +111,8 @@ export default class TiktokRehydrationExtractor implements IExtractor {
             if (fs.existsSync(`cache/${this.getId()}`)) {
                 fs.unlinkSync(`cache/${this.getId()}`);
             }
-        } catch {
-            // Intentionally omitted
+        } catch(e) {
+            console.warn(e);
         }
     }
 }

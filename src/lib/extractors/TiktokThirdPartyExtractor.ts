@@ -13,23 +13,28 @@ export default class TiktokThirdPartyExtractor implements IExtractor {
     private id: string = "";
 
     public async extractUrl(url: string): Promise<boolean> {
-        const urlObj = new URL(url);
-        this.id = validateUrl(urlObj);
+        try {
+            const urlObj = new URL(url);
+            this.id = validateUrl(urlObj);
 
-        if (!urlObj.hostname.includes('tiktok')) {
-            return false;
+            if (!urlObj.hostname.includes('tiktok')) {
+                return false;
+            }
+
+            await downloadFile(
+                `https://tikcdn.io/ssstik/${this.id}`,
+                `cache/${this.getId()}`
+            )
+
+            if (!fs.existsSync(`cache/${this.getId()}`)) {
+                return false;
+            }
+
+            return true;
+        } catch (e) {
+            this.dispose();
+            throw e;
         }
-
-        await downloadFile(
-            `https://tikcdn.io/ssstik/${this.id}`,
-            `cache/${this.getId()}`
-        )
-
-        if (!fs.existsSync(`cache/${this.getId()}`)) {
-            return false;
-        }
-
-        return true;
     }
 
     public isSlideshow(): boolean {
@@ -68,8 +73,8 @@ export default class TiktokThirdPartyExtractor implements IExtractor {
             if (fs.existsSync(`cache/${this.getId()}`)) {
                 fs.unlinkSync(`cache/${this.getId()}`);
             }
-        } catch {
-            // Intentionally omitted
+        } catch(e) {
+            console.warn(e);
         }
     }
 }

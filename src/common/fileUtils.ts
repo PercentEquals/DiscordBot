@@ -15,6 +15,12 @@ export async function downloadFileStream(url: string, headers?: any) {
 
 export async function downloadFile(url: string, path: string, headers?: any) {
     const stream = fs.createWriteStream(path);
-    await finished((await downloadFileStream(url, headers)).pipe(stream));
-    return path;
+
+    try {
+        await finished((await downloadFileStream(url, headers)).pipe(stream));
+        return path;
+    } catch (e) {
+        stream.close();
+        throw e;
+    }
 }

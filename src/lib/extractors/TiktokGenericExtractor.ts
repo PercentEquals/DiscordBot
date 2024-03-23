@@ -11,24 +11,29 @@ export default class TiktokGenericExtractor implements IExtractor {
     private uuid = crypto.randomBytes(16).toString("hex");
 
     public async extractUrl(url: string): Promise<boolean> {
-        const urlObj = new URL(url);
+        try {
+            const urlObj = new URL(url);
 
-        if (!urlObj.hostname.includes('tiktok')) {
-            return false;
+            if (!urlObj.hostname.includes('tiktok')) {
+                return false;
+            }
+
+            await youtubedl(url, {
+                ignoreErrors: true,
+                noWarnings: true,
+                format: "0",
+                output: `cache/${this.getId()}`
+            });
+
+            if (!fs.existsSync(`cache/${this.getId()}`)) {
+                return false;
+            }
+
+            return true;
+        } catch (e) {
+            this.dispose();
+            throw e;
         }
-
-        await youtubedl(url, {
-            ignoreErrors: true,
-            noWarnings: true,
-            format: "0",
-            output: `cache/${this.getId()}`
-        });
-
-        if (!fs.existsSync(`cache/${this.getId()}`)) {
-            return false;
-        }
-
-        return true;
     }
 
     public isSlideshow(): boolean {
@@ -67,8 +72,8 @@ export default class TiktokGenericExtractor implements IExtractor {
             if (fs.existsSync(`cache/${this.getId()}`)) {
                 fs.unlinkSync(`cache/${this.getId()}`);
             }
-        } catch {
-            // Intentionally omitted
+        } catch(e) {
+            console.warn(e);
         }
     }
 }

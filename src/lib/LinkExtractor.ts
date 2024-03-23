@@ -19,8 +19,9 @@ export default class LinkExtractor {
     public async extractUrl(url: string): Promise<IExtractor> {
         for (var extractor of this.extractors) {
             try {
+                logger.info(`[bot] Trying ${extractor.constructor.name}`);
                 if (await extractor.extractUrl(url)) {
-                    logger.info(`[bot] Using ${extractor.constructor.name}`)
+                    logger.info(`[bot] Using ${extractor.constructor.name}`);
                     return extractor;
                 }
             } catch (e) {
