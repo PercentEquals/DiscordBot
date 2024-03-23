@@ -32,10 +32,14 @@ export default class TiktokRehydrationExtractor implements IExtractor {
             this.apiData = JSON.parse($script.html() as string).__DEFAULT_SCOPE__["webapp.video-detail"];
 
             const canonicalHref = JSON.parse($script.html() as string).__DEFAULT_SCOPE__["seo.abtest"].canonical;
-            const audioUrl = this.apiData?.itemInfo?.itemStruct?.music?.playUrl as string;
+            const audioUrl = this.apiData?.itemInfo?.itemStruct?.music?.playUrl;
+
+            if (!this.isSlideshow()) {
+                return false;
+            }
 
             await downloadFile(
-                audioUrl,
+                audioUrl as string,
                 `cache/${this.getId()}`, 
                 {
                     headers: {
