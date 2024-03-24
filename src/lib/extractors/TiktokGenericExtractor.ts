@@ -6,13 +6,18 @@ import IExtractor, { BestFormat } from "./IExtractor";
 
 import { getHumanReadableDuration } from "../../common/audioUtils";
 import { DISCORD_LIMIT } from "../../constants/discordlimit";
+import { validateUrl } from "src/common/validateUrl";
 
 export default class TiktokGenericExtractor implements IExtractor {
     private uuid = crypto.randomBytes(16).toString("hex");
+    private id: string = "";
+
+    private dataExtractor: IExtractor | null = null;
 
     public async extractUrl(url: string): Promise<boolean> {
         try {
             const urlObj = new URL(url);
+            this.id = validateUrl(url);
 
             if (!urlObj.hostname.includes('tiktok')) {
                 return false;
@@ -66,11 +71,19 @@ export default class TiktokGenericExtractor implements IExtractor {
     }
 
     public getDuration(): number {
+        if (this.dataExtractor) {
+            return this.dataExtractor.getDuration();
+        }
+
         return 0;
     }
 
     public getReplyString(): string {
-        return `${this.getId()} | ${getHumanReadableDuration(null)}`;
+        if (this.dataExtractor) {
+            return this.dataExtractor.getReplyString();
+        }
+
+        return `${this.id} | ${getHumanReadableDuration(null)}`;
     }
 
     public dispose() {
@@ -81,5 +94,9 @@ export default class TiktokGenericExtractor implements IExtractor {
         } catch(e) {
             console.warn(e);
         }
+    }
+
+    public provideDataExtractor(extractor: IExtractor | null): void {
+        this.dataExtractor = extractor;
     }
 }

@@ -13,6 +13,12 @@ export default class TiktokThirdPartyExtractor implements IExtractor {
     private uuid = crypto.randomBytes(16).toString("hex");
     private id: string = "";
 
+    private dataExtractor: IExtractor | null = null;
+
+    constructor(
+        private thirdPartyUrlProvider: (url: string) => Promise<string>
+    ) {}
+
     public async extractUrl(url: string): Promise<boolean> {
         try {
             const urlObj = new URL(url);
@@ -23,7 +29,7 @@ export default class TiktokThirdPartyExtractor implements IExtractor {
             }
 
             await downloadFile(
-                `https://tikcdn.io/ssstik/${this.id}`,
+                await this.thirdPartyUrlProvider(url),
                 `cache/${this.getId()}`
             )
 
@@ -68,11 +74,19 @@ export default class TiktokThirdPartyExtractor implements IExtractor {
     }
 
     public getDuration(): number {
+        if (this.dataExtractor) {
+            return this.dataExtractor.getDuration();
+        }
+
         return 0;
     }
 
     public getReplyString(): string {
-        return `${this.getId()} | ${getHumanReadableDuration(null)}`;
+        if (this.dataExtractor) {
+            return this.dataExtractor.getReplyString();
+        }
+
+        return `${this.id} | ${getHumanReadableDuration(null)}`;
     }
 
     public dispose() {
@@ -83,5 +97,9 @@ export default class TiktokThirdPartyExtractor implements IExtractor {
         } catch(e) {
             console.warn(e);
         }
+    }
+
+    public provideDataExtractor(extractor: IExtractor | null): void {
+        this.dataExtractor = extractor;
     }
 }

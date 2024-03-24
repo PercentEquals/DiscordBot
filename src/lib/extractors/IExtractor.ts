@@ -12,5 +12,6 @@ export default interface IExtractor {
     getDuration(): number;
     getReplyString(): string;
 
+    provideDataExtractor?(extractor: IExtractor | null): void;
     dispose?(): void;
 }
