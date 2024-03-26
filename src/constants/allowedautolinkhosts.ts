@@ -7,4 +7,6 @@ export const ALLOWED_AUTO_LINK_HOSTS = [
     "www.m.tiktok.com",
     "vxtiktok.com",
     "www.vxtiktok.com",
+    "instagram.com",
+    "www.instagram.com"
 ]
