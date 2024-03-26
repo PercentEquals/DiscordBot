@@ -15,4 +15,6 @@ export const ALLOWED_YTD_HOSTS = [
     "www.vxtiktok.com",
     "cdn.discordapp.com",
     "discordapp.com",
+    "instagram.com",
+    "www.instagram.com"
 ]
