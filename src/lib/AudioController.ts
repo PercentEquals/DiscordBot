@@ -7,6 +7,8 @@ import { FfmpegCommand } from "fluent-ffmpeg";
 import { PassThrough } from "stream";
 import { getStartTimeInMs, getVolume } from "../common/audioUtils";
 
+import { VOICE_LEAVE_TIMEOUT } from "src/constants/voiceleavetimeout";
+
 import FFmpegProcessor from "./FFmpegProcessor";
 import AudioStreamOptions from "./ffmpeg/AudioStreamOptions";
 import IExtractor, { BestFormat } from "./extractors/IExtractor";
@@ -29,6 +31,8 @@ export default class AudioController {
 
     private isCurrentlyPlaying = false;
     private playStartTime = process.hrtime()[0];
+
+    private leaveTimeout: NodeJS.Timeout | undefined = undefined;
 
     private replyEdited = false;
 
@@ -86,6 +90,8 @@ export default class AudioController {
     }
 
     public async playAudio(interaction: CommandInteraction, url: string, startTimeInMs: number = 0, volume: number = 100, loop: boolean = false, force?: boolean, extractor?: IExtractor | null) {
+        clearTimeout(this.leaveTimeout);
+        
         if (!force && this.isCurrentlyPlaying) {
             await this.queueAudio(interaction, url, startTimeInMs, volume, loop);
             return;
@@ -113,9 +119,30 @@ export default class AudioController {
 
         this.joinChannel(interaction);
 
+        this.leaveTimeout = setTimeout(() => {
+            this.leaveIfNotPlaying(interaction);
+        }, VOICE_LEAVE_TIMEOUT);
+
         this.audioStream?.emit?.('end');
 
         await this.startAudioStream(interaction, this.bestFormat.url, startTimeInMs, volume, loop, !!extractor);
+    }
+
+    private leaveIfNotPlaying(interaction: CommandInteraction) {
+        if (this.isCurrentlyPlaying || this.queue.length > 0) {
+            this.leaveTimeout = setTimeout(() => this.leaveIfNotPlaying(interaction), VOICE_LEAVE_TIMEOUT);
+        } else {
+            this.stopAudio(interaction);
+        }
+    }
+
+    private async playNextInQueue() {
+        const nextAudio = this.queue.shift();
+
+        if (nextAudio) {
+            this.replyEdited = false;
+            return this.playAudio(nextAudio.interaction, nextAudio.url, nextAudio.startTimeInMs, nextAudio.volume, nextAudio.loop, false, nextAudio.extractor);
+        }
     }
 
     private onError(error: Error, resolve: any, reject: any) {
@@ -145,18 +172,11 @@ export default class AudioController {
         this.isCurrentlyPlaying = false;
         this.replyEdited = false;
 
-        const nextAudio = this.queue.shift();
-
-        if (nextAudio) {
-            try {
-                this.replyEdited = false;
-                return resolve(await this.playAudio(nextAudio.interaction, nextAudio.url, nextAudio.startTimeInMs, nextAudio.volume, nextAudio.loop, false, nextAudio.extractor));
-            } catch (e) {
-                return reject(e);
-            }
+        try {
+            resolve(this.playNextInQueue())
+        } catch (e) {
+            reject(e);
         }
-
-        return resolve(true);
     }
 
     private async startAudioStream(interaction: CommandInteraction, url: string, startTimeMs: number, volume: number, loop: boolean, playedFromQueue: boolean) {
@@ -269,6 +289,11 @@ export default class AudioController {
             ephemeral: false,
             content: `:information_source: Queued audio: ${extractor.getReplyString()}`
         });
+
+        // Race condition recheck
+        if (!this.isCurrentlyPlaying && this.queue.length > 0) {
+            await this.playNextInQueue();
+        }
     }
 
     public async skipAudio(interaction: CommandInteraction) {
