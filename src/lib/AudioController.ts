@@ -173,7 +173,7 @@ export default class AudioController {
         this.replyEdited = false;
 
         try {
-            resolve(this.playNextInQueue())
+            resolve(await this.playNextInQueue())
         } catch (e) {
             reject(e);
         }
