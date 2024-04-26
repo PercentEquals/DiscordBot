@@ -1,5 +1,7 @@
 import logger from "../logger";
 
+import youtubedl from "youtube-dl-exec";
+
 import IExtractor from "./extractors/IExtractor";
 import TiktokApiExtractor from "./extractors/TiktokApiExtractor";
 import GenericExtractor from "./extractors/GenericExtractor";
@@ -21,6 +23,10 @@ export default class LinkExtractor {
     private tiktokDataExtractor: IExtractor | null = null;
 
     public async extractUrl(url: string): Promise<IExtractor> {
+        await youtubedl("", {
+            update: true
+        });
+
         for (var extractor of this.extractors) {
             try {
                 logger.info(`[bot] Trying ${extractor.constructor.name}`);
