@@ -5,7 +5,7 @@ import IExtractor from "./extractors/IExtractor";
 
 class AudioPlayer {
     private audioControllerPerChannel: {
-        [guildIdAndChannelId: string]: AudioController
+        [guildId: string]: AudioController
     } = {};
 
     private ensureAudioController(interaction: CommandInteraction) {
@@ -19,12 +19,12 @@ class AudioPlayer {
             throw new Error('No voice channel found - join one or check permissions!');
         }
 
-        if (this.audioControllerPerChannel[guildId + channelId]) {
-            return this.audioControllerPerChannel[guildId + channelId];
+        if (this.audioControllerPerChannel[guildId]) {
+            return this.audioControllerPerChannel[guildId];
         }
 
-        this.audioControllerPerChannel[guildId + channelId] = new AudioController();
-        return this.audioControllerPerChannel[guildId + channelId];
+        this.audioControllerPerChannel[guildId] = new AudioController();
+        return this.audioControllerPerChannel[guildId];
     }
 
     public async playAudio(interaction: CommandInteraction, url: string, startTimeInMs: number = 0, volume: number = 100, loop: boolean = false, force?: boolean, extractor?: IExtractor) {
@@ -40,12 +40,10 @@ class AudioPlayer {
     }
 
     public async leave(interaction: CommandInteraction) {
-        //@ts-ignore - voice is correct
-        const channelId = interaction.member?.voice?.channelId;
-        const guildId = interaction.guildId;
+        const guildId = interaction.guildId as string;
 
-        this.audioControllerPerChannel[guildId + channelId]?.stopAudio?.(interaction);
-        delete this.audioControllerPerChannel[guildId + channelId];
+        this.audioControllerPerChannel[guildId]?.stopAudio?.(interaction);
+        delete this.audioControllerPerChannel[guildId];
     }
 }
 

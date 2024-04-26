@@ -172,6 +172,12 @@ export default class AudioController {
         this.isCurrentlyPlaying = false;
         this.replyEdited = false;
 
+        clearTimeout(this.leaveTimeout);
+
+        this.leaveTimeout = setTimeout(() => {
+            this.leaveIfNotPlaying(interaction);
+        }, VOICE_LEAVE_TIMEOUT);
+
         try {
             resolve(await this.playNextInQueue())
         } catch (e) {
