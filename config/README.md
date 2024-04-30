@@ -48,6 +48,22 @@ which ffmpeg
 
 And the result of `which ffmpeg` can be set as the `ffmpegPath` option.
 
+### cookiesPath
+
+Type: `string`<br>
+Default: ``
+
+Path to the cookies file. Useful to set as some videos may be blocked for anonymous users.  
+You can generate such file with the following command:  
+```
+yt-dlp --cookies-from-browser chrome --cookies cookies.txt
+```
+
+You can also set its value to one of the following: "brave", "chrome", "chromium", "edge", "firefox", "opera", "safari", "vivaldi"  
+to automatically read cookies from the browser on the machine without having to generate cookies yourself.  
+
+For more information You can refer to: [https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp](https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp).
+
 ### logToFile
 
 Type: `boolean`<br>

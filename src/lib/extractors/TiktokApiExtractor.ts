@@ -1,7 +1,7 @@
 import { validateUrl } from "../../common/validateUrl";
 import { Image, TiktokApi } from "../../../types/tiktokApi";
 
-import youtubedl from "youtube-dl-exec";
+import YoutubeDL from "../YoutubeDLProcessor";
 import IExtractor, { BestFormat } from "./IExtractor";
 
 import { DISCORD_LIMIT } from "../../constants/discordlimit";
@@ -18,7 +18,7 @@ export default class TiktokApiExtractor implements IExtractor {
             return false;
         }
 
-        const data = await youtubedl(url, {
+        const data = await YoutubeDL(url, {
             dumpPages: true,
             skipDownload: true,
             ignoreErrors: true,

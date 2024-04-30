@@ -1,13 +1,13 @@
 import logger from "../logger";
 
-import youtubedl from "youtube-dl-exec";
+import YoutubeDL from "./YoutubeDLProcessor";
 
 import IExtractor from "./extractors/IExtractor";
 import TiktokApiExtractor from "./extractors/TiktokApiExtractor";
-import GenericExtractor from "./extractors/GenericExtractor";
 import TiktokThirdPartyExtractor from "./extractors/TiktokThirdPartyExtractor";
 import TiktokGenericExtractor from "./extractors/TiktokGenericExtractor";
 import TiktokRehydrationExtractor from "./extractors/TiktokRehydrationExtractor";
+import GenericExtractor from "./extractors/GenericExtractor";
 
 import TikProvider from "./extractors/thirdPartyProviders/TikProvider";
 
@@ -23,7 +23,7 @@ export default class LinkExtractor {
     private tiktokDataExtractor: IExtractor | null = null;
 
     public async extractUrl(url: string): Promise<IExtractor> {
-        await youtubedl("", {
+        await YoutubeDL("", {
             update: true
         });
 
@@ -40,7 +40,7 @@ export default class LinkExtractor {
                     this.tiktokDataExtractor = extractor;
                 }
             } catch (e) {
-                logger.debug(e);
+                logger.warn(e);
             }
         }
 

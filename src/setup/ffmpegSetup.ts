@@ -1,17 +1,8 @@
 import ffmpegStatic from "ffmpeg-static";
 import ffmpeg from "fluent-ffmpeg";
 import fs from "fs";
-import getConfig from "./configSetup";
+import getConfig, { isValidPath } from "./configSetup";
 import logger from "../logger";
-
-function isValidPath(path: string) {
-    try {
-        fs.accessSync(path);
-        return true;
-    } catch (e) {
-        return false;
-    }
-}
 
 export default async function setupFFmpeg() {
     if (fs.existsSync('cache')) {

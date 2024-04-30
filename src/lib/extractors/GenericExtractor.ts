@@ -1,29 +1,30 @@
 import { validateUrl } from "../../common/validateUrl";
 
-import youtubedl, { Payload } from "youtube-dl-exec";
+import YoutubeDL, { ApiData } from "../YoutubeDLProcessor";
+
 import IExtractor, { BestFormat } from "./IExtractor";
 
 import { DISCORD_LIMIT } from "../../constants/discordlimit";
 import { getHumanReadableDuration } from "../../common/audioUtils";
 
 export default class GenericExtractor implements IExtractor {
-    private apiData: Payload | null = null;
+    private apiData: ApiData | null = null;
     private id: string = "";
 
     public async extractUrl(url: string): Promise<boolean> {
         const urlObj = new URL(url);
         this.id = validateUrl(urlObj);
 
-        let videoData = await youtubedl(url, {
+        let videoData = await YoutubeDL(url, {
             dumpSingleJson: true,
             getFormat: true,
             noWarnings: true,
-            skipDownload: true,
+            skipDownload: true
         });
 
         //@ts-ignore - youtube-dl-exec videoData contains useless first line
         videoData = videoData.split('\n').slice(1).join('\n');
-        videoData = JSON.parse(videoData as any) as Payload;
+        videoData = JSON.parse(videoData as any) as ApiData;
 
         this.apiData = videoData;
         return true;

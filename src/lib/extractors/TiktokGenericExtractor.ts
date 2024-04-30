@@ -1,7 +1,7 @@
 import crypto from "crypto";
 import fs from "fs";
 
-import youtubedl from "youtube-dl-exec";
+import YoutubeDL from "../YoutubeDLProcessor";
 import IExtractor, { BestFormat } from "./IExtractor";
 
 import { getHumanReadableDuration } from "../../common/audioUtils";
@@ -23,7 +23,7 @@ export default class TiktokGenericExtractor implements IExtractor {
                 return false;
             }
 
-            await youtubedl(url, {
+            await YoutubeDL(url, {
                 ignoreErrors: true,
                 noWarnings: true,
                 format: "0",

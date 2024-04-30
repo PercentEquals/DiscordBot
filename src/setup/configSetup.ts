@@ -11,6 +11,7 @@ export type Config = {
     },
     environmentOptions: {
         ffmpegPath: string,
+        cookiesPath: string,
         logToFile: boolean
     }
 }
@@ -24,6 +25,7 @@ let config: Config = {
     },
     environmentOptions: {
         ffmpegPath: "",
+        cookiesPath: "",
         logToFile: false
     }
 };
@@ -33,6 +35,16 @@ try {
 } catch (e) {
     logger.error('Failed to load config file, using defaults');
 }
+
+export function isValidPath(path: string) {
+    try {
+        fs.accessSync(path);
+        return true;
+    } catch (e) {
+        return false;
+    }
+}
+
 
 export default function getConfig(): Config {
     return config;
