@@ -23,8 +23,8 @@ export default class TiktokApiExtractor implements IExtractor {
             skipDownload: true,
             ignoreErrors: true,
             noWarnings: true,
-            //@ts-expect-error - Missing type - This is a temporary fix until youtube-dl fixes https://github.com/yt-dlp/yt-dlp/issues/9441
-            extractorArgs: "tiktok:api_hostname=api22-normal-c-useast1a.tiktokv.com"
+            //@ts-expect-error - Missing type - values from: https://github.com/yt-dlp/yt-dlp/issues/9506
+            extractorArgs: "tiktok:api_hostname=api16-normal-c-useast1a.tiktokv.com;app_info=7355728856979392262"
         });
 
         // hack from https://github.com/dylanpdx/vxtiktok/blob/main/vxtiktok.py#L70C1-L72C66

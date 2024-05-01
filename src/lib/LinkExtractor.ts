@@ -14,8 +14,8 @@ import TikProvider from "./extractors/thirdPartyProviders/TikProvider";
 export default class LinkExtractor {
     private extractors: IExtractor[] = [
         new TiktokRehydrationExtractor(),
-        new TiktokGenericExtractor(),
         new TiktokApiExtractor(),
+        new TiktokGenericExtractor(),
         new TiktokThirdPartyExtractor(TikProvider),
         new GenericExtractor()
     ];
