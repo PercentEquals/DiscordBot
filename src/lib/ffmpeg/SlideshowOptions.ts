@@ -20,14 +20,9 @@ export default class SlideshowOptions implements IOptions {
             duration = 1;
         }
 
-        let r = filesLength / duration;
-
-        if (r <= 0) {
-            r = 1;
-        }
-
         this.inputOptions = [
-            `-framerate ${filesLength}`,
+            `-loglevel error`,
+            `-framerate 1/${Math.max(duration / filesLength, 0.1)}`,
             `-loop 1`
         ]
 
