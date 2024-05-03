@@ -20,7 +20,7 @@ let config: Config = {
     botOptions: {
         automaticLinkDetection: true,
         automaticLinkDetectionErrorReply: true,
-        allowCompressionOfLargeFiles: false,
+        allowCompressionOfLargeFiles: true,
         useVxFallback: true,
     },
     environmentOptions: {

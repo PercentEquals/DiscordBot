@@ -1,0 +1,1 @@
+export const MAX_COMPRESSION_SCALE = 3; // ~25MB * 3

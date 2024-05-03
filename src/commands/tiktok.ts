@@ -2,6 +2,7 @@ import { ApplicationCommandType, AttachmentBuilder, Client, CommandInteraction, 
 import { Command } from "../command";
 
 import { DISCORD_LIMIT } from "../constants/discordlimit";
+import { MAX_COMPRESSION_SCALE } from "src/constants/maxcompressionscale";
 import { TIKTOK_COMMENTS_COUNT, TIKTOK_COMMENTS_MAX_COUNT, TIKTOK_COMMENTS_OFFSET } from "../constants/tiktokcommentscount";
 
 import { TikTokSigner } from "types/tiktokSigner";
@@ -39,9 +40,17 @@ async function downloadAndConvertVideo(
         throw new Error(`No format found under ${DISCORD_LIMIT / 1024 / 1024}MB`);
     }
 
+    logger.info("[bot] found format is too large - attempting compression");
+
+    if (format.filesize > MAX_COMPRESSION_SCALE * DISCORD_LIMIT) {
+        logger.info(`[bot] found format is too large for compression (${format.filesize} > ${MAX_COMPRESSION_SCALE * DISCORD_LIMIT})`);
+
+        throw new Error(`No format found under ${DISCORD_LIMIT / 1024 / 1024}MB`);
+    }
+
     const ffmpegProcess = new FFmpegProcessor([
         new PipeOptions(),
-        new CompressOptions(),
+        new CompressOptions(format.filesize, DISCORD_LIMIT),
         new UltraFastOptions(),
     ]);
 
