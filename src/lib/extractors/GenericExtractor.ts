@@ -60,7 +60,7 @@ export default class GenericExtractor implements IExtractor {
 
         const urlObj = new URL(this.url);
 
-        if (urlObj.hostname.includes("twitter") || urlObj.hostname.includes("x")) {
+        if (urlObj.hostname.includes("twitter") || urlObj.hostname == "x.com") {
             formats = formatsUnderLimit?.filter(
                 (format) => (format.video_ext && format.video_ext.includes('mp4'))
             );
