@@ -5,6 +5,7 @@
   "main": "src/index.ts",
   "type": "module",
   "scripts": {
+    "dev": "npx tsx watch src/index.ts",
     "start": "npx tsx src/index.ts",
     "linux-production": "RC=1; while [ $RC -ne 0 ]; do npm run start; RC=$?; done"
   },

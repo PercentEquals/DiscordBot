@@ -54,15 +54,19 @@ export default class GenericExtractor implements IExtractor {
         const formats = formatsUnderLimit?.filter(
             (format) => format.acodec && format.vcodec && format.acodec.includes('mp4a') && format.vcodec.includes('avc')
         );
-        let bestFormat = formats?.sort((a, b) => (a.filesize as number) - (b.filesize as number))?.[0] ?? this.apiData?.formats[0];
+        let bestFormat = formats?.sort((a, b) => (a.filesize as number) - (b.filesize as number))?.[0];
 
-        if (bestFormat?.filesize == null && !!bestFormat?.filesize_approx) {
+        if (!bestFormat) {
+            return null;
+        }
+
+        if (bestFormat.filesize == null && !!bestFormat.filesize_approx) {
             bestFormat.filesize = bestFormat?.filesize_approx;
         }
 
         return {
-            url: bestFormat?.url as string,
-            filesize: bestFormat?.filesize as number
+            url: bestFormat.url,
+            filesize: bestFormat.filesize as number
         }
     }
 
