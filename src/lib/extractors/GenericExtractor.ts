@@ -8,12 +8,15 @@ import { DISCORD_LIMIT } from "../../constants/discordlimit";
 import { getHumanReadableDuration } from "../../common/audioUtils";
 
 export default class GenericExtractor implements IExtractor {
+    private url: string = "";
     private apiData: ApiData | null = null;
     private id: string = "";
 
     public async extractUrl(url: string): Promise<boolean> {
         const urlObj = new URL(url);
+
         this.id = validateUrl(urlObj);
+        this.url = url;
 
         let videoData = await YoutubeDL(url, {
             dumpSingleJson: true,
@@ -51,9 +54,18 @@ export default class GenericExtractor implements IExtractor {
             formatsUnderLimit = this.apiData?.formats;
         }
 
-        const formats = formatsUnderLimit?.filter(
+        let formats = formatsUnderLimit?.filter(
             (format) => format.acodec && format.vcodec && format.acodec.includes('mp4a') && format.vcodec.includes('avc')
         );
+
+        const urlObj = new URL(this.url);
+
+        if (urlObj.hostname.includes("twitter") || urlObj.hostname.includes("x")) {
+            formats = formatsUnderLimit?.filter(
+                (format) => (format.video_ext && format.video_ext.includes('mp4'))
+            );
+        }
+
         let bestFormat = formats?.sort((a, b) => (a.filesize as number) - (b.filesize as number))?.[0];
 
         if (!bestFormat) {

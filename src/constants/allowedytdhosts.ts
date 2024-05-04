@@ -16,5 +16,11 @@ export const ALLOWED_YTD_HOSTS = [
     "cdn.discordapp.com",
     "discordapp.com",
     "instagram.com",
-    "www.instagram.com"
+    "www.instagram.com",
+    "twitter.com",
+    "m.twitter.com",
+    "www.twitter.com",
+    "www.m.twitter.com",
+    "x.com",
+    "www.x.com"
 ]
