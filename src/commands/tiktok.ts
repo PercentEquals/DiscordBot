@@ -27,6 +27,7 @@ import SlideshowOptions from "../lib/ffmpeg/SlideshowOptions";
 import PipeOptions from "../lib/ffmpeg/PipeOptions";
 import LinkExtractor from "../lib/LinkExtractor";
 import IExtractor from "../lib/extractors/IExtractor";
+import FFProbe from "src/lib/FFprobeProcessor";
 
 async function downloadAndConvertVideo(
     interaction: CommandInteraction,
@@ -40,7 +41,7 @@ async function downloadAndConvertVideo(
         throw new Error(`No format found under ${DISCORD_LIMIT / 1024 / 1024}MB`);
     }
 
-    logger.info("[bot] found format is too large - attempting compression");
+    logger.info(`[bot] found format is too large - attempting compression (${format.filesize})`);
 
     if (format.filesize > MAX_COMPRESSION_SCALE * DISCORD_LIMIT) {
         logger.info(`[bot] found format is too large for compression (${format.filesize} > ${MAX_COMPRESSION_SCALE * DISCORD_LIMIT})`);
@@ -48,9 +49,11 @@ async function downloadAndConvertVideo(
         throw new Error(`No format found under ${DISCORD_LIMIT / 1024 / 1024}MB`);
     }
 
+    const ffprobe = await FFProbe(format.url);
+
     const ffmpegProcess = new FFmpegProcessor([
         new PipeOptions(),
-        new CompressOptions(format.filesize, DISCORD_LIMIT),
+        new CompressOptions(format.filesize, DISCORD_LIMIT, ffprobe),
         new UltraFastOptions(),
     ]);
 

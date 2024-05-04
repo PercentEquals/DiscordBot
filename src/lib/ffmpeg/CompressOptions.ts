@@ -1,4 +1,4 @@
-import { FfmpegCommand } from "fluent-ffmpeg";
+import { FfmpegCommand, FfprobeData } from "fluent-ffmpeg";
 import IOptions from "./IOptions";
 
 export default class CompressOptions implements IOptions {
@@ -6,14 +6,24 @@ export default class CompressOptions implements IOptions {
 
     constructor(
         filesize: number,
-        targetFilesize: number
+        targetFilesize: number,
+        ffprobe: FfprobeData | null
     ) {
-        const scale = Math.max(Math.ceil(filesize / targetFilesize), 2);
+        let scale = Math.max(Math.ceil(filesize / targetFilesize), 2);
+
+        if (scale % 2 != 0) {
+            scale += 1;
+        }
 
         this.options.push(...[
-            `-vf scale=iw/${scale}:-2`,
-            `-b:a 64k`
+            `-vf scale=-2:ih/${scale}`,
         ]);
+
+        if (ffprobe && ffprobe.format.bit_rate) {
+            this.options.push(...[
+                `-b:v ${Math.max(ffprobe.format.bit_rate / 2, 1000)}`
+            ]);
+        }
     }
 
     addInput(process: FfmpegCommand): void {
