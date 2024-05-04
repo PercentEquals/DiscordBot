@@ -28,6 +28,7 @@ export default class SlideshowOptions implements IOptions {
 
         this.outputOptions.push(...[
             `-t ${duration}`,
+            `-r 30`
         ])
     }
 
