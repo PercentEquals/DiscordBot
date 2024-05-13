@@ -17,6 +17,8 @@ import LinkExtractor from "./LinkExtractor";
 export default class AudioController {
     private connection: VoiceConnection | null = null;
 
+    private interaction: CommandInteraction | null = null;
+
     private url: string = "";
     private bestFormat: BestFormat | null | undefined = null;
 
@@ -116,6 +118,7 @@ export default class AudioController {
         this.startTimeInMs = startTimeInMs;
         this.loop = loop;
         this.url = url;
+        this.interaction = interaction;
 
         this.joinChannel(interaction);
 
@@ -250,25 +253,17 @@ export default class AudioController {
             return false;
         }
 
-        this.joinChannel(interaction);
-    
         const newVolume = volume ? getVolume(volume) : this.volume;
         const timeDiff = (process.hrtime()[0] - this.playStartTime) * 1000.0;
         const startTimeInMs = startTime ? getStartTimeInMs(startTime) : this.startTimeInMs + timeDiff;
-    
+
+        this.player?.removeAllListeners();
+        this.audioStream?.emit?.('end');
+
         this.startTimeInMs = startTimeInMs;
         this.volume = newVolume;
 
-        const ffmpegProcess = await this.getAudioStream(this.bestFormat?.url as string, startTimeInMs, newVolume);
-        ffmpegProcess.on('error', this.onError);
-
-        this.audioStream?.emit?.('end');
-        this.audioStream = ffmpegProcess.pipe(new PassThrough({
-            highWaterMark: 96000 / 8 * 30
-        })) as unknown as FfmpegCommand;
-
-        const resource = await this.probeAndCreateResource(this.audioStream);
-        this.player?.play(resource);
+        this.startAudioStream(this.interaction as CommandInteraction, this.bestFormat.url, startTimeInMs, newVolume, this.loop, true);
 
         return true;
     }
