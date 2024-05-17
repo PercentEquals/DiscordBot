@@ -6,6 +6,7 @@ import IExtractor, { BestFormat } from "./IExtractor";
 
 import { DISCORD_LIMIT } from "../../constants/discordlimit";
 import { getHumanReadableDuration } from "../../common/audioUtils";
+import { Format } from "youtube-dl-exec";
 
 export default class GenericExtractor implements IExtractor {
     private url: string = "";
@@ -64,6 +65,8 @@ export default class GenericExtractor implements IExtractor {
             formats = formatsUnderLimit?.filter(
                 (format) => (format.video_ext && format.video_ext.includes('mp4'))
             );
+        } else if (urlObj.hostname.includes("discord")) {
+            formats = [this.apiData?.formats[0] as Format];
         }
 
         let bestFormat = formats?.sort((a, b) => (a.filesize as number) - (b.filesize as number))?.[0];
