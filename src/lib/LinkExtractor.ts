@@ -16,6 +16,7 @@ export default class LinkExtractor {
         new TiktokRehydrationExtractor(),
         new TiktokApiExtractor(),
         new TiktokGenericExtractor(),
+        new TiktokGenericExtractor("0"),
         new TiktokThirdPartyExtractor(TikProvider),
         new GenericExtractor()
     ];

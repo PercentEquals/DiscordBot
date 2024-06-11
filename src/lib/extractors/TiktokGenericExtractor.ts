@@ -2,6 +2,7 @@ import crypto from "crypto";
 import fs from "fs";
 
 import YoutubeDL from "../YoutubeDLProcessor";
+import { Flags } from "youtube-dl-exec";
 import IExtractor, { BestFormat } from "./IExtractor";
 
 import { getHumanReadableDuration } from "../../common/audioUtils";
@@ -14,6 +15,10 @@ export default class TiktokGenericExtractor implements IExtractor {
 
     private dataExtractor: IExtractor | null = null;
 
+    constructor(
+        private format?: string | null
+    ) {}
+
     public async extractUrl(url: string): Promise<boolean> {
         try {
             const urlObj = new URL(url);
@@ -23,12 +28,15 @@ export default class TiktokGenericExtractor implements IExtractor {
                 return false;
             }
 
-            await YoutubeDL(url, {
-                ignoreErrors: true,
-                noWarnings: true,
-                format: "0",
+            const options = {
                 output: `cache/${this.getId()}`
-            });
+            } as Flags;
+
+            if (this.format) {
+                options.format = this.format;
+            }
+
+            await YoutubeDL(url, options);
 
             if (!fs.existsSync(`cache/${this.getId()}`)) {
                 return false;
