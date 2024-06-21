@@ -10,6 +10,7 @@ import TiktokRehydrationExtractor from "./extractors/TiktokRehydrationExtractor"
 import GenericExtractor from "./extractors/GenericExtractor";
 
 import TikProvider from "./extractors/thirdPartyProviders/TikProvider";
+import performance from "./utils/Performance";
 
 export default class LinkExtractor {
     private extractors: IExtractor[] = [
@@ -31,7 +32,7 @@ export default class LinkExtractor {
         for (var extractor of this.extractors) {
             try {
                 logger.info(`[bot] Trying ${extractor.constructor.name}`);
-                if (await extractor.extractUrl(url)) {
+                if (await performance(extractor, extractor.extractUrl, url)) {
                     logger.info(`[bot] Using ${extractor.constructor.name}`);
                     extractor.provideDataExtractor?.(this.tiktokDataExtractor);
                     return extractor;
