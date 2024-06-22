@@ -31,13 +31,13 @@ export default class LinkExtractor {
 
             await async.each(this.extractors, async (extractor) => {
                 try {
-                    if (abortToken) {
-                        return;
-                    }
-
-                    logger.info(`[bot] Trying ${extractor.constructor.name}`);
+                    logger.info(`[bot] Trying ${extractor.constructor.name} - ${extractor.getId()}`);
     
                     if (await performance(extractor, extractor.extractUrl, url)) {
+                        if (abortToken) {
+                            return extractor.dispose?.(false);
+                        }
+
                         abortToken = true;
                         resolve(extractor);
                     }

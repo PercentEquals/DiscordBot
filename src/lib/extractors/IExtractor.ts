@@ -13,5 +13,5 @@ export default interface IExtractor {
     getReplyString(): string;
 
     provideDataExtractor?(extractor: IExtractor | null): void;
-    dispose?(): void;
+    dispose?(deep: boolean): void;
 }

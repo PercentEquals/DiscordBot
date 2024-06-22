@@ -342,7 +342,7 @@ export const Tiktok: Command = {
         } catch (e: any) {
             await reportError(interaction, e, true);
         } finally {
-            extractor?.dispose?.();
+            extractor?.dispose?.(true);
         }
     }
 };

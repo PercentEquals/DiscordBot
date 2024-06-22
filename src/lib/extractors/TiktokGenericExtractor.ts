@@ -95,8 +95,12 @@ export default class TiktokGenericExtractor implements IExtractor {
         return `${this.id} | ${getHumanReadableDuration(null)}`;
     }
 
-    public dispose() {
+    public dispose(deep = true) {
         try {
+            if (deep) {
+                this.dataExtractor?.dispose?.(deep);
+            }
+
             if (fs.existsSync(`cache/${this.getId()}`)) {
                 fs.unlinkSync(`cache/${this.getId()}`);
             }
