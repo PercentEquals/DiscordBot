@@ -29,7 +29,8 @@ export default class TiktokGenericExtractor implements IExtractor {
             }
 
             const options = {
-                output: `cache/${this.getId()}`
+                output: `cache/${this.getId()}`,
+                useExtractors: "TikTok"
             } as Flags;
 
             if (this.format) {

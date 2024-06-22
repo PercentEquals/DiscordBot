@@ -51,9 +51,13 @@ export default class LinkExtractor {
     }
 
     public async extractUrl(url: string): Promise<IExtractor> {
-        await YoutubeDL("", {
-            update: true
+        const updateInfo = await YoutubeDL("", {
+            update: true,
+            //@ts-ignore - it should work...
+            updateTo: "nightly"
         });
+
+        logger.info(`[yt-dlp] ${updateInfo}`);
 
         if (await performance(this.tiktokDataExtractor, this.tiktokDataExtractor.extractUrl, url)) {
             return this.tiktokDataExtractor;
