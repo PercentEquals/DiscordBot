@@ -1,5 +1,7 @@
 import logger from "../logger";
 
+import async from "async";
+
 import YoutubeDL from "./YoutubeDLProcessor";
 
 import IExtractor from "./extractors/IExtractor";
@@ -14,7 +16,6 @@ import performance from "./utils/Performance";
 
 export default class LinkExtractor {
     private extractors: IExtractor[] = [
-        new TiktokRehydrationExtractor(),
         new TiktokApiExtractor(),
         new TiktokGenericExtractor(),
         new TiktokGenericExtractor("0"),
@@ -22,30 +23,47 @@ export default class LinkExtractor {
         new GenericExtractor()
     ];
 
-    private tiktokDataExtractor: IExtractor | null = null;
+    private tiktokDataExtractor: IExtractor = new TiktokRehydrationExtractor();
+
+    private async TestExtractors(url: string): Promise<IExtractor> {
+        return new Promise(async (resolve, reject) => {
+            let abortToken = false;
+
+            await async.each(this.extractors, async (extractor) => {
+                try {
+                    if (abortToken) {
+                        return;
+                    }
+
+                    logger.info(`[bot] Trying ${extractor.constructor.name}`);
+    
+                    if (await performance(extractor, extractor.extractUrl, url)) {
+                        abortToken = true;
+                        resolve(extractor);
+                    }
+                } catch (e: any) {
+                    logger.warn(`[bot] ${extractor.constructor.name} failed with ${e.toString().replace(/\s+/g, ' ').trim()}`);
+                }
+            })
+
+            reject("No data found for provided url!");
+        })
+    }
 
     public async extractUrl(url: string): Promise<IExtractor> {
         await YoutubeDL("", {
             update: true
         });
 
-        for (var extractor of this.extractors) {
-            try {
-                logger.info(`[bot] Trying ${extractor.constructor.name}`);
-                if (await performance(extractor, extractor.extractUrl, url)) {
-                    logger.info(`[bot] Using ${extractor.constructor.name}`);
-                    extractor.provideDataExtractor?.(this.tiktokDataExtractor);
-                    return extractor;
-                }
-
-                if (extractor.constructor.name === "TiktokRehydrationExtractor") {
-                    this.tiktokDataExtractor = extractor;
-                }
-            } catch (e) {
-                logger.warn(e);
-            }
+        if (await performance(this.tiktokDataExtractor, this.tiktokDataExtractor.extractUrl, url)) {
+            return this.tiktokDataExtractor;
         }
 
-        throw new Error("No data found for provided url!");
+        const workingExtractor = await this.TestExtractors(url);
+
+        logger.info(`[bot] Using ${workingExtractor.constructor.name}`);
+        workingExtractor.provideDataExtractor?.(this.tiktokDataExtractor);
+        
+        return workingExtractor;
     }
 }
