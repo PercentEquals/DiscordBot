@@ -16,20 +16,23 @@ import TikProvider from "./extractors/thirdPartyProviders/TikProvider";
 import performance from "./utils/Performance";
 
 export default class LinkExtractor {
-    private extractors: IExtractor[] = [
+    private tiktokDataExtractor: IExtractor = new TiktokRehydrationExtractor();
+
+    private p0extractors: IExtractor[] = [
         new TiktokDirectExtractor(),
-        new TiktokGenericExtractor(),
         new TiktokThirdPartyExtractor(TikProvider),
+    ];
+
+    private p1extractors: IExtractor[] = [
+        new TiktokGenericExtractor(),
         new GenericExtractor()
     ];
 
-    private tiktokDataExtractor: IExtractor = new TiktokRehydrationExtractor();
-
-    private async TestExtractors(url: string): Promise<IExtractor> {
-        return new Promise(async (resolve, reject) => {
+    private TestExtractors(extractors: IExtractor[], url: string): Promise<IExtractor | null> {
+        return new Promise(async (resolve) => {
             let abortToken = false;
 
-            await async.each(this.extractors, async (extractor) => {
+            await async.each(extractors, async (extractor) => {
                 try {
                     logger.info(`[bot] Trying ${extractor.constructor.name} - ${extractor.getId()}`);
 
@@ -48,7 +51,7 @@ export default class LinkExtractor {
                 }
             })
 
-            reject("No data found for provided url!");
+            resolve(null);
         })
     }
 
@@ -65,7 +68,15 @@ export default class LinkExtractor {
             return this.tiktokDataExtractor;
         }
 
-        const workingExtractor = await this.TestExtractors(url);
+        let workingExtractor = await this.TestExtractors(this.p0extractors, url);
+
+        if (!workingExtractor) {
+            workingExtractor = await this.TestExtractors(this.p1extractors, url);
+        }
+
+        if (!workingExtractor) {
+            throw new Error("No data for provided url found!");
+        }
 
         logger.info(`[bot] Using ${workingExtractor.constructor.name}`);
         

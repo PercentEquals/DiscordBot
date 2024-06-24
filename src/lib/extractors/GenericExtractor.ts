@@ -19,6 +19,10 @@ export default class GenericExtractor implements IExtractor {
         this.id = validateUrl(urlObj);
         this.url = url;
 
+        if (urlObj.hostname.includes('tiktok')) {
+            return false;
+        }
+
         let videoData = await YoutubeDL(url, {
             dumpSingleJson: true,
             getFormat: true,

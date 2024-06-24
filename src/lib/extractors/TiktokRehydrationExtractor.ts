@@ -24,14 +24,13 @@ export default class TiktokRehydrationExtractor extends FileBasedExtractor {
                 return false;
             }
 
-            const body = await response.text();
-
             this.cookies = "";
             this.cookies += response.headers.get("set-cookie")?.match(/ttwid=[^;]*; /);
             this.cookies += response.headers.get("set-cookie")?.match(/tt_csrf_token=[^;]*; /);
             this.cookies += response.headers.get("set-cookie")?.match(/tt_chain_token=[^;]*; /);
             this.cookies += response.headers.get("set-cookie")?.match(/msToken=[^;]*; /);
 
+            const body = await response.text();
             const $ = cheerio.load(body);
             const $script = $('#__UNIVERSAL_DATA_FOR_REHYDRATION__');
             this.apiData = JSON.parse($script.html() as string).__DEFAULT_SCOPE__["webapp.video-detail"];
