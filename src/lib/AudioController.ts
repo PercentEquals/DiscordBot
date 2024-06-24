@@ -100,7 +100,7 @@ export default class AudioController {
         }
 
         if (url !== this.url && !extractor) {
-            this.extractor?.dispose?.();
+            this.extractor?.dispose?.(true);
             this.extractor = await new LinkExtractor().extractUrl(url);
         }
 

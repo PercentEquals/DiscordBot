@@ -1,15 +1,11 @@
-import crypto from "crypto";
 import cheerio from "cheerio";
 import fs from "fs";
 
-import IExtractor, { BestFormat } from "./IExtractor";
 import { downloadFile } from "../../common/fileUtils";
 import { getHumanReadableDuration } from "../../common/audioUtils";
-import { DISCORD_LIMIT } from "../../constants/discordlimit";
+import FileBasedExtractor from "./FileBasedExtractor";
 
-export default class TiktokRehydrationExtractor implements IExtractor {
-    private uuid = crypto.randomBytes(16).toString("hex");
-
+export default class TiktokRehydrationExtractor extends FileBasedExtractor {
     private apiData: TiktokRehydrationApi | null = null;
     private cookies: string = "";
 
@@ -85,27 +81,6 @@ export default class TiktokRehydrationExtractor implements IExtractor {
         )[0] ?? image.imageURL.urlList[0]);
     }
 
-    public getId(): string {
-        return this.uuid;
-    }
-
-    public getBestFormat(skipSizeCheck?: boolean): BestFormat | null {
-        if (fs.existsSync(`cache/${this.getId()}`)) {
-            const filesize = fs.lstatSync(`cache/${this.getId()}`).size;
-
-            if (filesize > DISCORD_LIMIT && !skipSizeCheck) {
-                return null;
-            }
-
-            return {
-                url: `cache/${this.getId()}`,
-                filesize
-            }
-        }
-
-        return null;
-    }
-
     public getDuration(): number {
         let duration = this.apiData?.itemInfo.itemStruct.music.duration;
 
@@ -124,16 +99,6 @@ export default class TiktokRehydrationExtractor implements IExtractor {
         return {
             apiData: this.apiData,
             cookies: this.cookies
-        }
-    }
-
-    public dispose() {
-        try {
-            if (fs.existsSync(`cache/${this.getId()}`)) {
-                fs.unlinkSync(`cache/${this.getId()}`);
-            }
-        } catch(e) {
-            console.warn(e);
         }
     }
 }
