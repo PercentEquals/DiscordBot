@@ -5,6 +5,7 @@ import { validateUrl } from "../../common/validateUrl";
 import { downloadFile } from "../../common/fileUtils";
 
 import FileBasedExtractor from "./FileBasedExtractor";
+import FFProbe from "../FFprobeProcessor";
 
 export default class TiktokThirdPartyExtractor extends FileBasedExtractor {
     constructor(
@@ -26,6 +27,10 @@ export default class TiktokThirdPartyExtractor extends FileBasedExtractor {
                 await this.thirdPartyUrlProvider(url),
                 `cache/${this.getId()}`
             )
+
+            if(!await FFProbe(`cache/${this.getId()}`)) {
+                return false;
+            }
 
             if (!fs.existsSync(`cache/${this.getId()}`)) {
                 return false;
