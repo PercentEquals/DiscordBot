@@ -1,15 +1,14 @@
 import crypto from "crypto";
 import fs from "fs";
 
-import YoutubeDL from "../YoutubeDLProcessor";
-import { Flags } from "youtube-dl-exec";
 import IExtractor, { BestFormat } from "./IExtractor";
 
 import { getHumanReadableDuration } from "../../common/audioUtils";
 import { DISCORD_LIMIT } from "../../constants/discordlimit";
 import { validateUrl } from "src/common/validateUrl";
+import { downloadFile } from "src/common/fileUtils";
 
-export default class TiktokGenericExtractor implements IExtractor {
+export default class TiktokDirectExtractor implements IExtractor {
     private uuid = crypto.randomBytes(16).toString("hex");
     private id: string = "";
 
@@ -24,10 +23,32 @@ export default class TiktokGenericExtractor implements IExtractor {
                 return false;
             }
 
-            await YoutubeDL(url, {
-                output: `cache/${this.getId()}`,
-                useExtractors: "TikTok"
-            } as Flags);
+            const data = this.dataExtractor?.getData?.();
+            const apiData = data?.apiData;
+
+            if (!apiData) {
+                return false;
+            }
+
+            const videoInfo = apiData.itemInfo.itemStruct.video;
+            const downloadAddr = videoInfo.downloadAddr;
+
+            await downloadFile(
+                downloadAddr,
+                `cache/${this.getId()}`,
+                {
+                    headers: {
+                        "User-Agent": "Mozilla/5.0",
+                        "Accept":"text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                        "Accept-Language": "en-US,en;q=0.5",
+                        "Sec-Fetch-Mode": "navigate",
+                        "Accept-Encoding": "gzip, deflate, br",
+                        "Cookie": data.cookies
+                    },
+                    credentials: "include",
+                    method: "GET"
+                }
+            );
 
             if (!fs.existsSync(`cache/${this.getId()}`)) {
                 return false;

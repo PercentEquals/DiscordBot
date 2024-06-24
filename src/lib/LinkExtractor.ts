@@ -5,20 +5,20 @@ import async from "async";
 import YoutubeDL from "./YoutubeDLProcessor";
 
 import IExtractor from "./extractors/IExtractor";
-import TiktokApiExtractor from "./extractors/TiktokApiExtractor";
 import TiktokThirdPartyExtractor from "./extractors/TiktokThirdPartyExtractor";
 import TiktokGenericExtractor from "./extractors/TiktokGenericExtractor";
 import TiktokRehydrationExtractor from "./extractors/TiktokRehydrationExtractor";
 import GenericExtractor from "./extractors/GenericExtractor";
+import TiktokDirectExtractor from "./extractors/TiktokDirectExtractor";
 
 import TikProvider from "./extractors/thirdPartyProviders/TikProvider";
+
 import performance from "./utils/Performance";
 
 export default class LinkExtractor {
     private extractors: IExtractor[] = [
-        new TiktokApiExtractor(),
+        new TiktokDirectExtractor(),
         new TiktokGenericExtractor(),
-        new TiktokGenericExtractor("0"),
         new TiktokThirdPartyExtractor(TikProvider),
         new GenericExtractor()
     ];
@@ -32,6 +32,8 @@ export default class LinkExtractor {
             await async.each(this.extractors, async (extractor) => {
                 try {
                     logger.info(`[bot] Trying ${extractor.constructor.name} - ${extractor.getId()}`);
+
+                    extractor.provideDataExtractor?.(this.tiktokDataExtractor);
     
                     if (await performance(extractor, extractor.extractUrl, url)) {
                         if (abortToken) {
@@ -66,7 +68,6 @@ export default class LinkExtractor {
         const workingExtractor = await this.TestExtractors(url);
 
         logger.info(`[bot] Using ${workingExtractor.constructor.name}`);
-        workingExtractor.provideDataExtractor?.(this.tiktokDataExtractor);
         
         return workingExtractor;
     }

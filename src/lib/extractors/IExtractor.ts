@@ -13,5 +13,10 @@ export default interface IExtractor {
     getReplyString(): string;
 
     provideDataExtractor?(extractor: IExtractor | null): void;
+    getData?(): {
+        apiData: TiktokRehydrationApi | null,
+        cookies: string
+    }
+
     dispose?(deep: boolean): void;
 }

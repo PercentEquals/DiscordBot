@@ -9,7 +9,9 @@ import { DISCORD_LIMIT } from "../../constants/discordlimit";
 
 export default class TiktokRehydrationExtractor implements IExtractor {
     private uuid = crypto.randomBytes(16).toString("hex");
+
     private apiData: TiktokRehydrationApi | null = null;
+    private cookies: string = "";
 
     public async extractUrl(url: string): Promise<boolean> {
         try {
@@ -27,7 +29,13 @@ export default class TiktokRehydrationExtractor implements IExtractor {
             }
 
             const body = await response.text();
-        
+
+            this.cookies = "";
+            this.cookies += response.headers.get("set-cookie")?.match(/ttwid=[^;]*; /);
+            this.cookies += response.headers.get("set-cookie")?.match(/tt_csrf_token=[^;]*; /);
+            this.cookies += response.headers.get("set-cookie")?.match(/tt_chain_token=[^;]*; /);
+            this.cookies += response.headers.get("set-cookie")?.match(/msToken=[^;]*; /);
+
             const $ = cheerio.load(body);
             const $script = $('#__UNIVERSAL_DATA_FOR_REHYDRATION__');
             this.apiData = JSON.parse($script.html() as string).__DEFAULT_SCOPE__["webapp.video-detail"];
@@ -110,6 +118,13 @@ export default class TiktokRehydrationExtractor implements IExtractor {
 
     public getReplyString(): string {
         return `${this.apiData?.shareMeta.title.substring(0, 100)} - ${this.apiData?.itemInfo.itemStruct.author.nickname.substring(0, 25)} | ${getHumanReadableDuration(this.getDuration())}`;
+    }
+
+    public getData() {
+        return {
+            apiData: this.apiData,
+            cookies: this.cookies
+        }
     }
 
     public dispose() {
