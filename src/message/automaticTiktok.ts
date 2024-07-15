@@ -17,6 +17,10 @@ export default async function handleAutomaticTiktokLinks(client: Client, message
         if (path === "url") {
             return message.content;
         }
+
+        if (path === "isAutomaticLink") {
+            return true;
+        }
     }
 
     const followUp = async ({ content, files }: {

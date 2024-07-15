@@ -8,6 +8,7 @@ export type Config = {
         automaticLinkDetectionErrorReply: boolean,
         allowCompressionOfLargeFiles: boolean,
         useVxFallback: boolean,
+        verboseErrorReply: boolean
     },
     environmentOptions: {
         ffmpegPath: string,
@@ -22,6 +23,7 @@ let config: Config = {
         automaticLinkDetectionErrorReply: true,
         allowCompressionOfLargeFiles: true,
         useVxFallback: true,
+        verboseErrorReply: false
     },
     environmentOptions: {
         ffmpegPath: "",

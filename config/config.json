@@ -3,7 +3,8 @@
         "automaticLinkDetection": true,
         "automaticLinkDetectionErrorReply": true,
         "allowCompressionOfLargeFiles": true,
-        "useVxFallback": true
+        "useVxFallback": true,
+        "verboseErrorReply": false
     },
     "environmentOptions": {
         "ffmpegPath": "",

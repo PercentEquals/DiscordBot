@@ -32,6 +32,13 @@ Default: `true`
 
 Should the bot use vx* links as fallback.
 
+### verboseErrorReply
+
+Type: `boolean`<br>
+Default: `false`
+
+Should the bot report errors to the discord chat or should it just fail silently in the background.
+
 ## Environment options
 
 ### ffmpegPath
