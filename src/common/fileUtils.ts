@@ -4,6 +4,10 @@ import { finished } from "stream/promises";
 import fs from "fs";
 
 export async function downloadFileStream(url: string, options?: RequestInit) {
+    if (!url) {
+        throw new Error('No url provided!');
+    }
+
     if (!url.startsWith('http')) {
         return fs.createReadStream(url);
     }
@@ -18,6 +22,10 @@ export async function downloadFileStream(url: string, options?: RequestInit) {
 }
 
 export async function downloadFile(url: string, path: string, options?: RequestInit) {
+    if (!url || !path) {
+        throw new Error('No url/path provided!');
+    }
+
     const stream = fs.createWriteStream(path);
 
     try {

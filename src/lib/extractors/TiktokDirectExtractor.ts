@@ -23,7 +23,11 @@ export default class TiktokDirectExtractor extends FileBasedExtractor {
             }
 
             const videoInfo = apiData.itemInfo.itemStruct.video;
-            const downloadAddr = videoInfo.downloadAddr;
+            const downloadAddr = videoInfo.downloadAddr ?? videoInfo.playAddr;
+            
+            if (!downloadAddr) {
+                return false;
+            }
 
             await downloadFile(
                 downloadAddr,
