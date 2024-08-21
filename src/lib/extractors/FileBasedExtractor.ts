@@ -4,6 +4,7 @@ import fs from "fs";
 import IExtractor, { BestFormat } from "./IExtractor";
 import { getHumanReadableDuration } from "src/common/audioUtils";
 import { DISCORD_LIMIT } from "src/constants/discordlimit";
+import logger from "src/logger";
 
 export default abstract class FileBasedExtractor implements IExtractor {
     protected uuid = crypto.randomBytes(16).toString("hex");
@@ -68,7 +69,7 @@ export default abstract class FileBasedExtractor implements IExtractor {
                 fs.unlinkSync(`cache/${this.getId()}`);
             }
         } catch(e) {
-            console.warn(e);
+            logger.warn(e);
         }
     }
 

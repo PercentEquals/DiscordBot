@@ -22,7 +22,7 @@ export async function reportError(interaction: CommandInteraction, e: any, useFa
         const vxUrl = new URL(url);
 
         if (isAutomaticLink && IGNORED_AUTO_LINK_ERRORS_HOSTS.includes(vxUrl.hostname)) {
-            //return;
+            return;
         }
 
         if (useFallbackLink && getConfig().botOptions.useVxFallback) {
@@ -39,7 +39,6 @@ export async function reportError(interaction: CommandInteraction, e: any, useFa
         }
     } catch (e) {
         logger.error(e);
-        // Ignore
     }
 
     if (getConfig().botOptions.verboseErrorReply) {
