@@ -1,1 +1,1 @@
-export const MAX_COMPRESSION_SCALE = 3; // ~25MB * 3
+export const MAX_COMPRESSION_SCALE = 3; // DISCORD_LIMIT * 3

@@ -1,1 +1,1 @@
-export const DISCORD_LIMIT = 25 * 1024 * 1024; // ~25MB
+export const DISCORD_LIMIT = 10 * 1024 * 1024; // ~10MB
