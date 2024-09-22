@@ -14,6 +14,8 @@ import TiktokDirectExtractor from "./extractors/TiktokDirectExtractor";
 import TikProvider from "./extractors/thirdPartyProviders/TikProvider";
 
 import performance from "./utils/Performance";
+import { MAX_RETRY_COUNT, RETRY_WAIT_TIME } from "src/constants/maxretrycount";
+import sleep from "./utils/Sleep";
 
 export default class LinkExtractor {
     private tiktokDataExtractor: IExtractor = new TiktokRehydrationExtractor();
@@ -55,7 +57,7 @@ export default class LinkExtractor {
         })
     }
 
-    public async extractUrl(url: string): Promise<IExtractor> {
+    public async extractUrl(url: string, retryCount = 0): Promise<IExtractor> {
         const updateInfo = await YoutubeDL("", {
             update: true,
             //@ts-ignore - it should work...
@@ -72,6 +74,12 @@ export default class LinkExtractor {
 
         if (!workingExtractor) {
             workingExtractor = await this.TestExtractors(this.p1extractors, url);
+        }
+
+        if (!workingExtractor && retryCount < MAX_RETRY_COUNT) {
+            logger.info(`[bot] No data for provided url found! | Retrying... [${retryCount + 1} / ${MAX_RETRY_COUNT}]`);
+            await sleep(RETRY_WAIT_TIME);
+            return await this.extractUrl(url, retryCount + 1);
         }
 
         if (!workingExtractor) {
