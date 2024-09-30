@@ -46,11 +46,7 @@ export default class TiktokDirectExtractor extends FileBasedExtractor {
                 }
             );
 
-            if (!fs.existsSync(`cache/${this.getId()}`)) {
-                return false;
-            }
-
-            return true;
+            return fs.existsSync(`cache/${this.getId()}`);
         } catch (e) {
             this.dispose();
             throw e;

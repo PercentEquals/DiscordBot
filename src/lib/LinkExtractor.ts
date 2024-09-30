@@ -58,36 +58,50 @@ export default class LinkExtractor {
     }
 
     public async extractUrl(url: string, retryCount = 0): Promise<IExtractor> {
-        const updateInfo = await YoutubeDL("", {
-            update: true,
-            //@ts-ignore - it should work...
-            updateTo: "nightly"
-        });
+        try {
+            const updateInfo = await YoutubeDL("", {
+                update: true,
+                //@ts-ignore - it should work...
+                updateTo: "nightly"
+            });
 
-        logger.info(`[yt-dlp] ${updateInfo}`);
+            logger.info(`[yt-dlp] ${updateInfo}`);
 
-        if (await performance(this.tiktokDataExtractor, this.tiktokDataExtractor.extractUrl, url)) {
-            return this.tiktokDataExtractor;
-        }
+            if (await performance(this.tiktokDataExtractor, this.tiktokDataExtractor.extractUrl, url)) {
+                return this.tiktokDataExtractor;
+            }
 
-        let workingExtractor = await this.TestExtractors(this.p0extractors, url);
+            let workingExtractor = await this.TestExtractors(this.p0extractors, url);
 
-        if (!workingExtractor) {
-            workingExtractor = await this.TestExtractors(this.p1extractors, url);
-        }
+            if (!workingExtractor) {
+                workingExtractor = await this.TestExtractors(this.p1extractors, url);
+            }
 
-        if (!workingExtractor && retryCount < MAX_RETRY_COUNT) {
-            logger.info(`[bot] No data for provided url found! | Retrying... [${retryCount + 1} / ${MAX_RETRY_COUNT}]`);
-            await sleep(RETRY_WAIT_TIME);
-            return await this.extractUrl(url, retryCount + 1);
-        }
+            if (!workingExtractor && retryCount < MAX_RETRY_COUNT) {
+                return await this.retry(url, retryCount);
+            }
 
-        if (!workingExtractor) {
+            if (!workingExtractor) {
+                throw new Error("No data for provided url found!");
+            }
+
+            logger.info(`[bot] Using ${workingExtractor.constructor.name}`);
+            
+            return workingExtractor;
+        } catch (e) {
+            logger.warn(e);
+
+            if (retryCount < MAX_RETRY_COUNT) {
+                return await this.retry(url, retryCount);
+            }
+
             throw new Error("No data for provided url found!");
         }
+    }
 
-        logger.info(`[bot] Using ${workingExtractor.constructor.name}`);
-        
-        return workingExtractor;
+    private async retry(url: string, retryCount = 0) {
+        logger.info(`[bot] No data for provided url found! | Retrying... [${retryCount + 1} / ${MAX_RETRY_COUNT}]`);
+        await sleep(RETRY_WAIT_TIME);
+        return await this.extractUrl(url, retryCount + 1);
     }
 }
