@@ -7,6 +7,7 @@ export type Config = {
         automaticLinkDetection: boolean,
         automaticLinkDetectionErrorReply: boolean,
         allowCompressionOfLargeFiles: boolean,
+        allowSplittingOfLargeFiles: boolean,
         useVxFallback: boolean,
         verboseErrorReply: boolean
     },
@@ -22,6 +23,7 @@ let config: Config = {
         automaticLinkDetection: true,
         automaticLinkDetectionErrorReply: true,
         allowCompressionOfLargeFiles: true,
+        allowSplittingOfLargeFiles: true,
         useVxFallback: true,
         verboseErrorReply: false
     },

@@ -26,21 +26,21 @@ export default abstract class FileBasedExtractor implements IExtractor {
         return this.uuid;
     }
 
-    public getBestFormat(skipSizeCheck?: boolean): BestFormat | null {
-        if (fs.existsSync(`cache/${this.getId()}`)) {
-            const filesize = fs.lstatSync(`cache/${this.getId()}`).size;
-
-            if (filesize > DISCORD_LIMIT && !skipSizeCheck) {
-                return null;
-            }
-
-            return {
-                url: `cache/${this.getId()}`,
-                filesize
-            }
+    public getBestFormat(skipSizeCheck?: boolean) {
+        if (!fs.existsSync(this.getCacheFileName())) {
+            return null;
         }
 
-        return null;
+        const filesize = fs.lstatSync(this.getCacheFileName()).size;
+
+        if (filesize > DISCORD_LIMIT && !skipSizeCheck) {
+            return null;
+        }
+
+        return {
+            url: this.getCacheFileName(),
+            filesize
+        };
     }
 
     public getDuration(): number {
@@ -65,8 +65,8 @@ export default abstract class FileBasedExtractor implements IExtractor {
                 this.dataExtractor?.dispose?.(deep);
             }
 
-            if (fs.existsSync(`cache/${this.getId()}`)) {
-                fs.unlinkSync(`cache/${this.getId()}`);
+            if (fs.existsSync(this.getCacheFileName())) {
+                fs.unlinkSync(this.getCacheFileName());
             }
         } catch(e) {
             logger.warn(e);
@@ -75,5 +75,9 @@ export default abstract class FileBasedExtractor implements IExtractor {
 
     public provideDataExtractor(extractor: IExtractor | null): void {
         this.dataExtractor = extractor;
+    }
+
+    protected getCacheFileName() {
+        return `cache/${this.getId()}`;
     }
 }

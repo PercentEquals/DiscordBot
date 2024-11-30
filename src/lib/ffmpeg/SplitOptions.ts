@@ -3,6 +3,7 @@ import IOptions from "./IOptions";
 
 import {DISCORD_LIMIT} from "../../constants/discordlimit";
 import {MAX_SPLIT_FILES} from "../../constants/maxsplitfiles";
+import logger from "../../logger";
 
 export default class SplitOptions implements IOptions {
     private splitDurations: number[] = [];
@@ -31,7 +32,9 @@ export default class SplitOptions implements IOptions {
             }
         }
 
-        if (this.splitDurations.length > MAX_SPLIT_FILES) {
+        if (this.splitDurations.length > MAX_SPLIT_FILES || this.splitDurations.length < 0) {
+            logger.info(`[bot] found format is too large for splitting (${this.splitDurations.length} > ${MAX_SPLIT_FILES})`);
+
             throw new Error(`No format found under ${DISCORD_LIMIT / 1024 / 1024}MB`);
         }
     }
@@ -41,19 +44,17 @@ export default class SplitOptions implements IOptions {
     }
 
     addOutput(process: FfmpegCommand): void {
-        if (this.splitDurations.length > 0) {
-            for (let i = 0; i < this.splitDurations.length; i++) {
-                this.files.push(`cache/${this.id}_${i + 1}.mp4`);
+        for (let i = 0; i < this.splitDurations.length; i++) {
+            this.files.push(`cache/${this.id}_${i + 1}.mp4`);
 
-                const startTime = this.splitDurations.slice(0, i).reduce((a, b) => a + b, 0);
-                const duration = this.splitDurations[i];
-                process
-                    .output(this.files[i])
-                    .addOptions([
-                        `-ss ${startTime}`,
-                        `-t ${duration}`
-                    ]);
-            }
+            const startTime = this.splitDurations.slice(0, i).reduce((a, b) => a + b, 0);
+            const duration = this.splitDurations[i];
+            process
+                .output(this.files[i])
+                .addOptions([
+                    `-ss ${startTime}`,
+                    `-t ${duration}`
+                ]);
         }
     }
 

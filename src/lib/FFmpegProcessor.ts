@@ -133,7 +133,7 @@ export default class FFmpegProcessor {
                     ffmpegProcess.run();
                 }
             } catch (e) {
-                reject(e);
+                // reject(e);
             }
         });
     }

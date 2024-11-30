@@ -23,7 +23,15 @@ Should automatic link detection reply with an error message if it fails to send 
 Type: `boolean`<br>
 Default: `true`
 
-Allows compression of files larger than 25MB. Compression results may vary and might take a while to process.
+Allows compression of files larger than discord free limit. Compression results may vary and might take a while to process.
+
+### allowSplittingOfLargeFiles
+
+Type: `boolean`<br>
+Default: `true`
+
+Allows splitting of files larger than discord free limit. Splitting results may vary and might take a while to process.
+
 
 ### useVxFallback
 

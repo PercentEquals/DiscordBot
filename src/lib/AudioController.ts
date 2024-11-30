@@ -1,17 +1,28 @@
-import { CommandInteraction, InternalDiscordGatewayAdapterCreator } from "discord.js";
-import { AudioPlayer, AudioPlayerState, AudioPlayerStatus, NoSubscriberBehavior, VoiceConnection, createAudioPlayer, createAudioResource, demuxProbe, getVoiceConnection, joinVoiceChannel } from "@discordjs/voice";
+import {CommandInteraction, InternalDiscordGatewayAdapterCreator} from "discord.js";
+import {
+    AudioPlayer,
+    AudioPlayerState,
+    AudioPlayerStatus,
+    createAudioPlayer,
+    createAudioResource,
+    demuxProbe,
+    getVoiceConnection,
+    joinVoiceChannel,
+    NoSubscriberBehavior,
+    VoiceConnection
+} from "@discordjs/voice";
 
 import logger from "../logger";
 
-import { FfmpegCommand } from "fluent-ffmpeg";
-import { PassThrough } from "stream";
-import { getStartTimeInMs, getVolume } from "../common/audioUtils";
+import {FfmpegCommand} from "fluent-ffmpeg";
+import {PassThrough} from "stream";
+import {getStartTimeInMs, getVolume} from "../common/audioUtils";
 
-import { VOICE_LEAVE_TIMEOUT } from "src/constants/voiceleavetimeout";
+import {VOICE_LEAVE_TIMEOUT} from "src/constants/voiceleavetimeout";
 
 import FFmpegProcessor from "./FFmpegProcessor";
 import AudioStreamOptions from "./ffmpeg/AudioStreamOptions";
-import IExtractor, { BestFormat } from "./extractors/IExtractor";
+import IExtractor, {BestFormat} from "./extractors/IExtractor";
 import LinkExtractor from "./LinkExtractor";
 
 export default class AudioController {
@@ -77,11 +88,9 @@ export default class AudioController {
             new AudioStreamOptions(startTimeMs, volume)
         ]);
 
-        const ffmpegProcess = await ffmpegProcessor.buildFFmpegProcess([
+        return await ffmpegProcessor.buildFFmpegProcess([
             { url, type: 'audioStream' }
         ]);
-    
-        return ffmpegProcess;
     }
     
     private async probeAndCreateResource(readableStream: any) {
@@ -263,7 +272,7 @@ export default class AudioController {
         this.startTimeInMs = startTimeInMs;
         this.volume = newVolume;
 
-        this.startAudioStream(this.interaction as CommandInteraction, this.bestFormat.url, startTimeInMs, newVolume, this.loop, true);
+        await this.startAudioStream(this.interaction as CommandInteraction, this.bestFormat.url, startTimeInMs, newVolume, this.loop, true);
 
         return true;
     }
@@ -286,7 +295,7 @@ export default class AudioController {
             bestFormat: bestFormat
         });
 
-        interaction.followUp({
+        await interaction.followUp({
             ephemeral: false,
             content: `:information_source: Queued audio: ${extractor.getReplyString()}`
         });
