@@ -14,7 +14,10 @@ export default class SlideshowOptions implements IOptions {
             filesLength -= 1;
         }
 
-        let duration = extractor.getDuration();
+        let duration = Math.min(
+            filesLength * 3,
+            extractor.getDuration()
+        );
 
         if (duration <= 0) {
             duration = 1;
@@ -27,7 +30,7 @@ export default class SlideshowOptions implements IOptions {
         ]
 
         this.outputOptions.push(...[
-            `-t ${duration}`,
+            `-t ${extractor.getDuration()}`,
             `-r 30`
         ])
     }
