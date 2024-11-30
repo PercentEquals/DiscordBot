@@ -3,13 +3,13 @@ import { finished } from "stream/promises";
 
 import fs from "fs";
 
-export async function downloadFileStream(url: string, options?: RequestInit) {
+async function downloadFileStream(url: string, options?: RequestInit) {
     if (!url) {
         throw new Error('No url provided!');
     }
 
     if (!url.startsWith('http')) {
-        return fs.createReadStream(url);
+        throw new Error('Invalid url provided!');
     }
 
     const response = await fetch(url, options);

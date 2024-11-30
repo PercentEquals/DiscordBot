@@ -1,0 +1,1 @@
+﻿export const MAX_SPLIT_FILES = 10;

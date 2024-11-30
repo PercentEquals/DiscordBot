@@ -23,6 +23,5 @@ export default async function setupFFmpeg() {
 
         ffmpeg.setFfmpegPath(ffmpegStatic as string);
         logger.info(`[ffmpeg] using default FFMPEG path: ${ffmpegStatic}`);
-        logger.warn(`[ffmpeg] default FFMPEG path is not recommended - it will behave slower and might not work at all.`);
     }
 }

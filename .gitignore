@@ -3,3 +3,4 @@ debug/*
 cache/*
 logs/*
 .env
+.idea

@@ -8,11 +8,9 @@ import IOptions from "./ffmpeg/IOptions";
 
 import { AttachmentBuilder } from "discord.js";
 
-//@ts-ignore - Missing types
-import { StreamInput } from "fluent-ffmpeg-multistream";
-
 import { getExtensionFromUrl } from "../common/extensionFinder";
-import { downloadFile, downloadFileStream } from "../common/fileUtils";
+import { downloadFile } from "../common/fileUtils";
+import PipeOptions from "./ffmpeg/PipeOptions";
 
 export type InputUrl = {
     url: string,
@@ -20,6 +18,7 @@ export type InputUrl = {
 }
 
 export default class FFmpegProcessor {
+    private isPipeAble = false;
     private uuid = crypto.randomBytes(16).toString("hex");
     private options: IOptions[] = [];
     private startTime = process.hrtime()[0];
@@ -34,7 +33,7 @@ export default class FFmpegProcessor {
         });
     }
 
-    private cleanUp() {
+    public cleanUp() {
         this.cache.forEach(file => {
             if (fs.existsSync(file)) {
                 fs.unlinkSync(file);
@@ -44,6 +43,10 @@ export default class FFmpegProcessor {
 
     public addOption(option: IOptions) {
         this.options.push(option);
+
+        if (option instanceof PipeOptions) {
+            this.isPipeAble = true;
+        }
     }
 
     private onError(error: Error, resolve: any, reject: any) {
@@ -54,6 +57,14 @@ export default class FFmpegProcessor {
     private onEnd(resolve: any, reject: any) {
         this.cleanUp();
         logger.info(`[ffmpeg] finished processing url: ${Math.ceil(process.hrtime()[0] - this.startTime)}s`);
+
+        if (this.isPipeAble) {
+            return;
+        }
+
+        const outputFiles = this.options.find(option => option.getFiles)?.getFiles?.() ?? [];
+        this.cache.push(...outputFiles);
+        resolve(outputFiles.map((file) => new AttachmentBuilder(file)));
     }
 
     private onStderr(stderrLine: string) {
@@ -77,18 +88,16 @@ export default class FFmpegProcessor {
                 ffmpegProcess.addOption('-i', `cache/${this.uuid}.%d.${getExtensionFromUrl(urls[0].url)}`);
             }
 
-            if (urls[i].type == 'audioStream') {
-                ffmpegProcess.addInput(urls[i].url);
-            } else  if (urls[i].type == 'audio') {
+            if (urls[i].type == 'audio') {
                 ffmpegProcess.addOption('-vn');
-                ffmpegProcess.addOption('-i', StreamInput(await downloadFileStream(urls[i].url)).url);
+                ffmpegProcess.addOption('-i', urls[i].url);
             } else if (urls[i].type == 'photo') {
                 this.cache.push(
                     await downloadFile(urls[i].url, `cache/${this.uuid}.${i}.${getExtensionFromUrl(urls[i].url)}`)
                 );
                 isSlideshow = true;
             } else {
-                ffmpegProcess.addInput(StreamInput(await downloadFileStream(urls[i].url)).url);
+                ffmpegProcess.addInput(urls[i].url);
             }
         }
 
@@ -97,12 +106,10 @@ export default class FFmpegProcessor {
         }
 
         ffmpegProcess.on('stderr', (stderrLine) => this.onStderr(stderrLine));
-        logger.debug(ffmpegProcess._getArguments());
-
         return ffmpegProcess;
     }
 
-    public async getAttachmentBuilder(urls: InputUrl[]): Promise<AttachmentBuilder> {
+    public async getAttachmentBuilder(urls: InputUrl[]): Promise<AttachmentBuilder[]> {
         return new Promise(async (resolve, reject) => {
             try {
                 const ffmpegProcess = await this.buildFFmpegProcess(urls);
@@ -111,10 +118,20 @@ export default class FFmpegProcessor {
                     return reject("Could not process with ffmpeg!");
                 }
 
-                ffmpegProcess.on('end', this.onEnd.bind(this));
-                ffmpegProcess.on('error', (error) => this.onError(error, null, reject));
+                ffmpegProcess.on('end', () => this.onEnd(resolve, reject));
+                ffmpegProcess.on('error', (error) => this.onError(error, resolve, reject));
+                ffmpegProcess.on('progress', function(progress) {
+                    logger.info(`[ffmpeg] Processing: ` + progress.percent + `% done`);
+                });
+                ffmpegProcess.on('start', function(commandLine) {
+                    logger.info(`[ffmpeg] ${commandLine}`);
+                });
 
-                resolve(new AttachmentBuilder(ffmpegProcess.pipe()));
+                if (this.isPipeAble) {
+                    resolve([new AttachmentBuilder(ffmpegProcess.pipe())]);
+                } else {
+                    ffmpegProcess.run();
+                }
             } catch (e) {
                 reject(e);
             }

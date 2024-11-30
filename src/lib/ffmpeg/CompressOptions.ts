@@ -1,5 +1,8 @@
 import { FfmpegCommand, FfprobeData } from "fluent-ffmpeg";
 import IOptions from "./IOptions";
+import {DISCORD_LIMIT} from "../../constants/discordlimit";
+import logger from "../../logger";
+import {MAX_COMPRESSION_SCALE} from "../../constants/maxcompressionscale";
 
 export default class CompressOptions implements IOptions {
     private options: string[] = [];
@@ -9,6 +12,12 @@ export default class CompressOptions implements IOptions {
         targetFilesize: number,
         ffprobe: FfprobeData | null
     ) {
+        if (filesize > MAX_COMPRESSION_SCALE * DISCORD_LIMIT) {
+            logger.info(`[bot] found format is too large for compression (${filesize} > ${MAX_COMPRESSION_SCALE * DISCORD_LIMIT})`);
+
+            throw new Error(`No format found under ${DISCORD_LIMIT / 1024 / 1024}MB`);
+        }
+
         let scale = Math.max(Math.ceil(filesize / targetFilesize), 2);
 
         if (scale % 2 != 0) {

@@ -28,6 +28,7 @@ import PipeOptions from "../lib/ffmpeg/PipeOptions";
 import LinkExtractor from "../lib/LinkExtractor";
 import IExtractor from "../lib/extractors/IExtractor";
 import FFProbe from "src/lib/FFprobeProcessor";
+import SplitOptions from "../lib/ffmpeg/SplitOptions";
 
 async function downloadAndConvertVideo(
     interaction: CommandInteraction,
@@ -43,31 +44,44 @@ async function downloadAndConvertVideo(
 
     logger.info(`[bot] found format is too large - attempting compression (${format.filesize})`);
 
-    if (format.filesize > MAX_COMPRESSION_SCALE * DISCORD_LIMIT) {
-        logger.info(`[bot] found format is too large for compression (${format.filesize} > ${MAX_COMPRESSION_SCALE * DISCORD_LIMIT})`);
+    const ffprobe = await FFProbe(format.url);
+    let ffmpegProcess: FFmpegProcessor;
 
-        throw new Error(`No format found under ${DISCORD_LIMIT / 1024 / 1024}MB`);
+    try {
+        ffmpegProcess = new FFmpegProcessor([
+            new SplitOptions(extractor.getId(), format.filesize, DISCORD_LIMIT, ffprobe),
+            new UltraFastOptions(),
+        ]);
+    } catch {
+        ffmpegProcess = new FFmpegProcessor([
+            new PipeOptions(),
+            new CompressOptions(format.filesize, DISCORD_LIMIT, ffprobe),
+            new UltraFastOptions(),
+        ]);
     }
 
-    const ffprobe = await FFProbe(format.url);
+    const files = await ffmpegProcess.getAttachmentBuilder([{ url: format.url }]);
 
-    const ffmpegProcess = new FFmpegProcessor([
-        new PipeOptions(),
-        new CompressOptions(format.filesize, DISCORD_LIMIT, ffprobe),
-        new UltraFastOptions(),
-    ]);
-
-    const file = await ffmpegProcess.getAttachmentBuilder([{ url: format.url }]);
-    file.setName(`${extractor.getId()}.${audioOnly ? 'mp3' : 'mp4'}`);
-    file.setSpoiler(spoiler);
+    for (const file of files) {
+        file.setName(`${extractor.getId()}.${audioOnly ? 'mp3' : 'mp4'}`);
+        file.setSpoiler(spoiler);
+    }
 
     logger.info('[bot] sending converted video');
 
+    while (files.length > 10) {
+        await interaction.followUp({
+            ephemeral: false,
+            files: files.splice(0, 10)
+        });
+    }
+
     await interaction.followUp({
         ephemeral: false,
-        files: [file]
+        files
     });
 
+    ffmpegProcess.cleanUp();
     logger.info('[bot] sent converted video');
 }
 
@@ -133,15 +147,18 @@ async function downloadSlideshowAsVideo(
         new SlideshowOptions(urls.length, extractor, withAudio)
     ]);
 
-    const slideshowVideo = await ffmpegProcessor.getAttachmentBuilder(urls);
-    slideshowVideo.setName(`${extractor.getId()}.mp4`);
-    slideshowVideo.setSpoiler(spoiler);
+    const slideshowVideos = await ffmpegProcessor.getAttachmentBuilder(urls);
+
+    for (let slideshowVideo of slideshowVideos) {
+        slideshowVideo.setName(`${extractor.getId()}.mp4`);
+        slideshowVideo.setSpoiler(spoiler);
+    }
 
     logger.info('[bot] sending slideshow as video');
 
     await interaction.followUp({
         ephemeral: false,
-        files: [slideshowVideo]
+        files: slideshowVideos
     });
 
     logger.info('[bot] sent slideshow as video');

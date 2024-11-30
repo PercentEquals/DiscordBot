@@ -10,7 +10,7 @@ import logger from './logger';
 
 logger.info(`[bot] starting bot...`);
 
-setupFFmpeg();
+await setupFFmpeg();
 
 const intents = [
     GatewayIntentBits.DirectMessages,
@@ -36,4 +36,4 @@ ready(client);
 interactionCreate(client);
 messageCreate(client);
 
-client.login(process.env.TOKEN as string);
+await client.login(process.env.TOKEN as string);
