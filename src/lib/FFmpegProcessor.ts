@@ -11,6 +11,7 @@ import { AttachmentBuilder } from "discord.js";
 import { getExtensionFromUrl } from "../common/extensionFinder";
 import { downloadFile } from "../common/fileUtils";
 import PipeOptions from "./ffmpeg/PipeOptions";
+import { FFMPEG_TIMEOUT } from "../constants/ffmpegtimeout";
 
 export type InputUrl = {
     url: string,
@@ -22,7 +23,8 @@ export default class FFmpegProcessor {
     private uuid = crypto.randomBytes(16).toString("hex");
     private options: IOptions[] = [];
     private startTime = process.hrtime()[0];
-
+    
+    private killDeffer: NodeJS.Timeout | null = null;
     private cache: string[] = [];
 
     constructor(
@@ -34,6 +36,8 @@ export default class FFmpegProcessor {
     }
 
     public cleanUp() {
+        this.killDeffer && clearTimeout(this.killDeffer);
+        
         this.cache.forEach(file => {
             if (fs.existsSync(file)) {
                 fs.unlinkSync(file);
@@ -70,7 +74,7 @@ export default class FFmpegProcessor {
     private onStderr(stderrLine: string) {
         logger.debug(`[ffmpeg] ${stderrLine}`);
     }
-
+    
     public async buildFFmpegProcess(urls: InputUrl[]) {
         logger.info(`[ffmpeg] processing url`);
 
@@ -108,7 +112,7 @@ export default class FFmpegProcessor {
         ffmpegProcess.on('stderr', (stderrLine) => this.onStderr(stderrLine));
         return ffmpegProcess;
     }
-
+    
     public async getAttachmentBuilder(urls: InputUrl[]): Promise<AttachmentBuilder[]> {
         return new Promise(async (resolve, reject) => {
             try {
@@ -127,13 +131,21 @@ export default class FFmpegProcessor {
                     logger.info(`[ffmpeg] ${commandLine}`);
                 });
 
+                this.killDeffer = setTimeout(() => {
+                    logger.warn(`[ffmpeg] Killing hanging process...`);
+
+                    try {
+                        ffmpegProcess?.kill?.("");
+                    } catch {}
+                }, FFMPEG_TIMEOUT);
+                
                 if (this.isPipeAble) {
                     resolve([new AttachmentBuilder(ffmpegProcess.pipe())]);
                 } else {
                     ffmpegProcess.run();
                 }
             } catch (e) {
-                // reject(e);
+                console.warn(`[ffmpeg] ${e}`);
             }
         });
     }

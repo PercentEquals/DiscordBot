@@ -1,0 +1,1 @@
+﻿export const FFMPEG_TIMEOUT = 2 * 60 * 1000;
