@@ -5,8 +5,9 @@
   "main": "src/index.ts",
   "type": "module",
   "scripts": {
+    "dev": "bun --watch run src/index.ts",
     "start": "bun src/index.ts",
-    "linux-production": "RC=1; while [ $RC -ne 0 ]; do npm run start; RC=$?; done"
+    "linux-production": "RC=1; while [ $RC -ne 0 ]; do bun start; RC=$?; done"
   },
   "author": "PercentEquals",
   "license": "MIT",
@@ -19,6 +20,7 @@
     "ffmpeg-static": "^5.2.0",
     "file-type": "^18.7.0",
     "fluent-ffmpeg": "^2.1.3",
+    "happy-dom": "^17.4.4",
     "libsodium-wrappers": "^0.7.15",
     "patch-package": "^8.0.0",
     "pino": "^8.21.0",
@@ -31,6 +33,9 @@
   "devDependencies": {
     "@types/async": "^3.2.24",
     "@types/fluent-ffmpeg": "^2.1.27",
-    "@types/node": "^20.17.25"
-  }
+    "bun-types": "^1.2.5"
+  },
+  "trustedDependencies": [
+    "youtube-dl-exec"
+  ]
 }

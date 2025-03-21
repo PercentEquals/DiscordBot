@@ -2,7 +2,7 @@ import logger from "../logger";
 
 import async from "async";
 
-import YoutubeDL from "./YoutubeDLProcessor";
+import YoutubeDL from "./yt-dlp/YoutubeDLProcess";
 
 import IExtractor from "./extractors/IExtractor";
 import TiktokThirdPartyExtractor from "./extractors/TiktokThirdPartyExtractor";
@@ -59,14 +59,6 @@ export default class LinkExtractor {
 
     public async extractUrl(url: string, retryCount = 0): Promise<IExtractor> {
         try {
-            const updateInfo = await YoutubeDL("", {
-                update: true,
-                //@ts-ignore - it should work...
-                updateTo: "nightly"
-            });
-
-            logger.info(`[yt-dlp] ${updateInfo}`);
-
             if (await performance(this.tiktokDataExtractor, this.tiktokDataExtractor.extractUrl, url)) {
                 return this.tiktokDataExtractor;
             }
@@ -74,6 +66,13 @@ export default class LinkExtractor {
             let workingExtractor = await this.TestExtractors(this.p0extractors, url);
 
             if (!workingExtractor) {
+                const updateInfo = await YoutubeDL("", {
+                    update: true,
+                    updateTo: "nightly"
+                });
+
+                logger.info(`[yt-dlp] ${updateInfo}`);
+
                 workingExtractor = await this.TestExtractors(this.p1extractors, url);
             }
 
@@ -90,11 +89,6 @@ export default class LinkExtractor {
             return workingExtractor;
         } catch (e) {
             logger.warn(e);
-
-            if (retryCount < MAX_RETRY_COUNT) {
-                return await this.retry(url, retryCount);
-            }
-
             throw new Error("No data for provided url found!");
         }
     }

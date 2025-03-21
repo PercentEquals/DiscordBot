@@ -2,7 +2,6 @@ import { ApplicationCommandType, AttachmentBuilder, Client, CommandInteraction, 
 import { Command } from "../command";
 
 import { DISCORD_LIMIT } from "../constants/discordlimit";
-import { MAX_COMPRESSION_SCALE } from "src/constants/maxcompressionscale";
 import { TIKTOK_COMMENTS_COUNT, TIKTOK_COMMENTS_MAX_COUNT, TIKTOK_COMMENTS_OFFSET } from "../constants/tiktokcommentscount";
 
 import { TikTokSigner } from "types/tiktokSigner";
@@ -17,8 +16,6 @@ import { reportError } from "../common/errorHelpers";
 import getConfig from "../setup/configSetup";
 import logger from "../logger";
 
-//@ts-ignore - tiktok-signature types not available (https://github.com/carcabot/tiktok-signature)
-import Signer from "tiktok-signature";
 
 import FFmpegProcessor, { InputUrl } from "../lib/FFmpegProcessor";
 import UltraFastOptions from "../lib/ffmpeg/UltraFastOptions";
@@ -31,6 +28,7 @@ import FFProbe from "src/lib/FFprobeProcessor";
 import SplitOptions from "../lib/ffmpeg/SplitOptions";
 import FileOptions from "../lib/ffmpeg/FileOptions";
 import fs from "fs";
+import { TiktokSigner } from "src/lib/tiktok-signer/TiktokSigner";
 
 async function downloadAndSplitVideo(
     interaction: CommandInteraction,
@@ -259,68 +257,7 @@ async function getCommentsFromTiktok(
         throw new Error('Comments only option is available for tiktok links only.');
     }
 
-    const id = validateUrl(await extractUrl(url));
-    const USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.0.0 Safari/537.36 Edg/105.0.1343.53";
-    const MSTOKEN = "G1lr_8nRB3udnK_fFzgBD7sxvc0PK6Osokd1IJMaVPVcoB4mwSW-D6MQjTdoJ2o20PLt_MWNgtsAr095wVSShdmn_XVFS34bURvakVglDyWAHncoV_jVJCRdiJRdbJBi_E_KD_G8vpFF9-aOaJrk";
-
-    const queryParams = {
-        aweme_id: id,
-        cursor: TIKTOK_COMMENTS_OFFSET,
-        count: TIKTOK_COMMENTS_COUNT,
-        msToken: MSTOKEN,
-        aid: '1988',
-        app_language: 'ja-JP',
-        app_name: 'tiktok_web',
-        battery_info: 1,
-        browser_language: 'en-US',
-        browser_name: 'Mozilla',
-        browser_online: true,
-        browser_platform: 'Win32',
-        browser_version: '5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36 Edg/110.0.1587.63',
-        channel: 'tiktok_web',
-        cookie_enabled: true,
-        current_region: 'JP',
-        device_id: '7165118680723998214',
-        device_platform: 'web_pc',
-        from_page: 'video',
-        os: 'windows',
-        priority_region: 'US',
-        referer: '',
-        region: 'US',
-        screen_height: 1440,
-        screen_width: 2560,
-        webcast_language: 'en',
-    } as any;
-
-    if (range.length > 1) {
-        queryParams.cursor = Math.min(...range);
-        queryParams.count = Math.max(...range) - queryParams.cursor;
-
-        if (queryParams.count >= TIKTOK_COMMENTS_MAX_COUNT) {
-            queryParams.count = TIKTOK_COMMENTS_MAX_COUNT;
-        }
-    }
-
-    const commentsApi = new URL('https://www.tiktok.com/api/comment/list/?' + (new URLSearchParams(queryParams)).toString());
-
-    const signer = new Signer(null, USER_AGENT);
-    await signer.init();
-    const signature = await signer.sign(commentsApi.toString()) as TikTokSigner.signature;
-    const navigator = await signer.navigator() as TikTokSigner.navigator;
-    await signer.close();
-
-    const request = await fetch(
-        signature.signed_url,
-        {
-            headers: {
-                'user-agent': navigator.user_agent,
-                'referer': url
-            }
-        }
-    );
-
-    const commentsData: TiktokCommentsApi = await request.json() as any;
-
+    const commentsData = await (new TiktokSigner()).getComments(url, range);
     const commentsResponse = commentsData.comments.map((comment) => {
         // Filter out @ mentions
         if (comment.text.startsWith('@')) {

@@ -1,14 +1,11 @@
 import { validateUrl } from "../../common/validateUrl";
 
-import YoutubeDL, { ApiData } from "../YoutubeDLProcessor";
-
-import IExtractor, { BestFormat } from "./IExtractor";
+import YoutubeDL, { ApiData } from "../yt-dlp/YoutubeDLProcess";
 
 import { DISCORD_LIMIT } from "../../constants/discordlimit";
 import { getHumanReadableDuration } from "../../common/audioUtils";
 import { Format } from "youtube-dl-exec";
 import FileBasedExtractor from "./FileBasedExtractor";
-import fs from "fs";
 
 export default class GenericExtractor extends FileBasedExtractor {
     private url: string = "";
@@ -29,13 +26,10 @@ export default class GenericExtractor extends FileBasedExtractor {
             getFormat: true,
             noWarnings: true,
             skipDownload: true
-        });
+        })
 
-        //@ts-ignore - youtube-dl-exec videoData contains useless first line
         videoData = videoData.split('\n').slice(1).join('\n');
-        videoData = JSON.parse(videoData as any) as ApiData;
-
-        this.apiData = videoData;
+        this.apiData = JSON.parse(videoData as any) as ApiData;
         return true;
     }
 

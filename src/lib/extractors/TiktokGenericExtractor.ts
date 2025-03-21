@@ -1,7 +1,6 @@
 import fs from "fs";
 
-import YoutubeDL from "../YoutubeDLProcessor";
-import { Flags } from "youtube-dl-exec";
+import YoutubeDL from "../yt-dlp/YoutubeDLProcess";
 
 import { validateUrl } from "src/common/validateUrl";
 
@@ -20,7 +19,7 @@ export default class TiktokGenericExtractor extends FileBasedExtractor {
             await YoutubeDL(url, {
                 output: `cache/${this.getId()}`,
                 useExtractors: "TikTok"
-            } as Flags);
+            });
 
             if (!fs.existsSync(`cache/${this.getId()}`)) {
                 return false;
