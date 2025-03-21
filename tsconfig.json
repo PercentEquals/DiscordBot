@@ -15,9 +15,7 @@
         "resolveJsonModule": true,
         "forceConsistentCasingInFileNames": true,
         "removeComments": true,
-        "typeRoots": [
-            "node_modules/@types"
-        ],
+        "types": ["bun-types"],
         "sourceMap": false,
         "baseUrl": "./"
     },
@@ -31,8 +29,4 @@
         "node_modules",
         "dist"
     ],
-    "ts-node": {
-        "esm": true,
-        "experimentalSpecifierResolution": "node"
-    }
 }
