@@ -2,6 +2,7 @@ import { Flags, Payload } from "youtube-dl-exec";
 
 import getConfig, { isValidPath } from "../../setup/configSetup";
 import { COOKIES_FROM_BROWSER } from "src/constants/cookiesfrombrowser";
+import { getNodeModulesPath } from "src/common/fileUtils";
 
 export type ApiData = Payload;
 
@@ -25,7 +26,7 @@ class YoutubeDLProcess {
     }
 
     public static async YoutubeDL(url: string, flags: YoutubeFlags) {
-        const args = ["./node_modules/youtube-dl-exec/bin/yt-dlp", url, ...this.jsonToArgs(flags)].filter((arg) => arg !== "")
+        const args = [getNodeModulesPath("youtube-dl-exec/bin/yt-dlp"), url, ...this.jsonToArgs(flags)].filter((arg) => arg !== "")
         const proc = Bun.spawn(args);
         return await new Response(proc.stdout).text();
     }

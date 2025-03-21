@@ -2,6 +2,8 @@ import { Readable } from "stream";
 import { finished } from "stream/promises";
 
 import fs from "fs";
+import { fileURLToPath } from "bun";
+import path from "path";
 
 async function downloadFileStream(url: string, options?: RequestInit) {
     if (!url) {
@@ -35,4 +37,11 @@ export async function downloadFile(url: string, path: string, options?: RequestI
         stream.close();
         throw e;
     }
+}
+
+export function getNodeModulesPath(file: string) {
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = path.dirname(__filename);
+
+    return path.resolve(__dirname, '../../node_modules/', file);
 }

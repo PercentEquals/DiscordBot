@@ -3,14 +3,12 @@ import Utils from "tiktok-signature/utils.js";
 
 // Based on: https://github.com/carcabot/tiktok-signature/issues/219
 import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import { Browser } from 'happy-dom';
 
 import { TIKTOK_COMMENTS_COUNT, TIKTOK_COMMENTS_MAX_COUNT, TIKTOK_COMMENTS_OFFSET } from "src/constants/tiktokcommentscount";
 import { extractUrl, validateUrl } from "src/common/validateUrl";
 import { TiktokCommentsApi } from "types/tiktokCommentsApi";
-import logger from "src/logger";
+import { getNodeModulesPath } from "src/common/fileUtils";
 
 export class TiktokSigner {
     private userAgent: string = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.109 Safari/537.36";
@@ -23,25 +21,16 @@ export class TiktokSigner {
             return;
         }
 
-        const __filename = fileURLToPath(import.meta.url);
-        const __dirname = path.dirname(__filename);
-        const signer_script = fs.readFileSync(__dirname + "/../../../node_modules/tiktok-signature/javascript/signer.js", "utf8");
-        const x_bogus_script = fs.readFileSync(__dirname + "/../../../node_modules/tiktok-signature/javascript/xBogus.js", "utf8");
+        const signer_script = fs.readFileSync(getNodeModulesPath("tiktok-signature/javascript/signer.js"), "utf8");
+        const x_bogus_script = fs.readFileSync(getNodeModulesPath("tiktok-signature/javascript/xBogus.js"), "utf8");
         const browser = new Browser();
         const page = browser.newPage();
-
-        logger.error(signer_script);
-
-        page.console.error(signer_script);
 
         page.evaluate(signer_script);
         page.evaluate(x_bogus_script);
 
         this.sig = page.evaluate(`generateSignature("${url}")`);
         this.bogus = page.evaluate(`generateBogus("${url}", "${this.userAgent}")`);
-
-        logger.error("Signature: " + this.sig);
-        logger.error("Bogus: " + this.bogus);
 
         browser.close();
     }
