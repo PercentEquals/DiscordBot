@@ -21,6 +21,8 @@ export class TiktokSigner {
             return;
         }
 
+        // Does not work on current version of happy-dom, seems like there is some problem with it + bun
+
         const signer_script = fs.readFileSync(getNodeModulesPath("tiktok-signature/javascript/signer.js"), "utf8");
         const x_bogus_script = fs.readFileSync(getNodeModulesPath("tiktok-signature/javascript/xBogus.js"), "utf8");
         const browser = new Browser();
@@ -35,15 +37,15 @@ export class TiktokSigner {
         browser.close();
     }
 
-    private sign(url: string) {
-        this.ensureSignature(url);
+    private sign(url: string, withSignature = true) {
+        withSignature && this.ensureSignature(url);
         return url + "&verifyFp=" + Utils.generateVerifyFp() + "&_signature=" + this.sig + "&X-Bogus=" + this.bogus;
     }
 
     public async getComments(url: string, range: number[]): Promise<TiktokCommentsApi> {
         const id = validateUrl(await extractUrl(url));
 
-        const queryParams = {
+        const queryParams: Record<string, any> = {
             aweme_id: id,
             cursor: TIKTOK_COMMENTS_OFFSET,
             count: TIKTOK_COMMENTS_COUNT,
@@ -70,7 +72,7 @@ export class TiktokSigner {
             screen_height: 1440,
             screen_width: 2560,
             webcast_language: 'en',
-        } as any;
+        };
 
         if (range.length > 1) {
             queryParams.cursor = Math.min(...range);
@@ -83,7 +85,7 @@ export class TiktokSigner {
 
         const commentsApi = new URL('https://www.tiktok.com/api/comment/list/?' + (new URLSearchParams(queryParams)).toString());
         const response =  await fetch(
-            this.sign(commentsApi.toString()),
+            this.sign(commentsApi.toString(), false),
             {
                 headers: {
                     'user-agent': this.userAgent,
