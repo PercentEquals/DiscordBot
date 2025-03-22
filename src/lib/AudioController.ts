@@ -1,4 +1,4 @@
-import {CommandInteraction, InternalDiscordGatewayAdapterCreator} from "discord.js";
+import {CommandInteraction} from "discord.js";
 import {
     AudioPlayer,
     AudioPlayerState,
@@ -6,6 +6,7 @@ import {
     createAudioPlayer,
     createAudioResource,
     demuxProbe,
+    DiscordGatewayAdapterCreator,
     getVoiceConnection,
     joinVoiceChannel,
     NoSubscriberBehavior,
@@ -45,7 +46,7 @@ export default class AudioController {
     private isCurrentlyPlaying = false;
     private playStartTime = process.hrtime()[0];
 
-    private leaveTimeout: NodeJS.Timeout | undefined = undefined;
+    private leaveTimeout: Timer | undefined = undefined;
 
     private replyEdited = false;
 
@@ -68,7 +69,7 @@ export default class AudioController {
         //@ts-ignore - voice is correct
         const channelId = interaction.member?.voice?.channelId as string;
         const guildId = interaction.guildId as string;
-        const voiceAdapterCreator = interaction.guild?.voiceAdapterCreator as InternalDiscordGatewayAdapterCreator;
+        const voiceAdapterCreator = interaction.guild?.voiceAdapterCreator as DiscordGatewayAdapterCreator;
 
         if (this.connection) {
             return;

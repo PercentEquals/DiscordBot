@@ -34,13 +34,6 @@ export default class FFmpegProcessor {
         initialOptions?.forEach?.(option => {
             this.addOption(option);
         });
-
-        let isCorrect = this.options.length !== 0;
-        isCorrect = isCorrect && this.options.find(option => option instanceof FileOptions || option instanceof PipeOptions) != null;
-
-        if (!isCorrect) {
-            throw new Error("Invalid options provided!");
-        }
     }
 
     public cleanUp() {
