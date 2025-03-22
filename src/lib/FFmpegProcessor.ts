@@ -12,6 +12,7 @@ import { getExtensionFromUrl } from "../common/extensionFinder";
 import { downloadFile } from "../common/fileUtils";
 import PipeOptions from "./ffmpeg/PipeOptions";
 import { FFMPEG_TIMEOUT } from "../constants/ffmpegtimeout";
+import FileOptions from "./ffmpeg/FileOptions";
 
 export type InputUrl = {
     url: string,
@@ -24,7 +25,7 @@ export default class FFmpegProcessor {
     private options: IOptions[] = [];
     private startTime = process.hrtime()[0];
     
-    private killDeffer: NodeJS.Timeout | null = null;
+    private killDeffer: Timer | null = null;
     private cache: string[] = [];
 
     constructor(
@@ -33,6 +34,13 @@ export default class FFmpegProcessor {
         initialOptions?.forEach?.(option => {
             this.addOption(option);
         });
+
+        let isCorrect = this.options.length !== 0;
+        isCorrect = isCorrect && this.options.find(option => option instanceof FileOptions || option instanceof PipeOptions) != null;
+
+        if (!isCorrect) {
+            throw new Error("Invalid options provided!");
+        }
     }
 
     public cleanUp() {
@@ -53,22 +61,21 @@ export default class FFmpegProcessor {
         }
     }
 
-    private onError(error: Error, resolve: any, reject: any) {
+    private onError(error: Error, _: any, reject: any) {
         this.cleanUp();
         reject(error);
     }
 
-    private onEnd(resolve: any, reject: any) {
-        this.cleanUp();
+    private onEnd(resolve: any) {
         logger.info(`[ffmpeg] finished processing url: ${Math.ceil(process.hrtime()[0] - this.startTime)}s`);
 
         if (this.isPipeAble) {
             return;
         }
 
-        const outputFiles = this.options.find(option => option.getFiles)?.getFiles?.() ?? [];
-        this.cache.push(...outputFiles);
-        resolve(outputFiles.map((file) => new AttachmentBuilder(file)));
+        const file = this.options.find(option => option instanceof FileOptions)?.getFile() ?? "";
+        this.cache.push(file);
+        resolve(new AttachmentBuilder(file));
     }
 
     private onStderr(stderrLine: string) {
@@ -113,16 +120,16 @@ export default class FFmpegProcessor {
         return ffmpegProcess;
     }
     
-    public async getAttachmentBuilder(urls: InputUrl[]): Promise<AttachmentBuilder[]> {
+    public async getAttachmentBuilder(urls: InputUrl[]): Promise<AttachmentBuilder> {
         return new Promise(async (resolve, reject) => {
             try {
-                const ffmpegProcess = await this.buildFFmpegProcess(urls);
+                const ffmpegProcess = await this.buildFFmpegProcess(urls); 
 
                 if (ffmpegProcess == null) {
                     return reject("Could not process with ffmpeg!");
                 }
 
-                ffmpegProcess.on('end', () => this.onEnd(resolve, reject));
+                ffmpegProcess.on('end', () => this.onEnd(resolve));
                 ffmpegProcess.on('error', (error) => this.onError(error, resolve, reject));
                 ffmpegProcess.on('progress', function(progress) {
                     logger.info(`[ffmpeg] Processing: ` + progress.percent + `% done`);
@@ -140,7 +147,7 @@ export default class FFmpegProcessor {
                 }, FFMPEG_TIMEOUT);
                 
                 if (this.isPipeAble) {
-                    resolve([new AttachmentBuilder(ffmpegProcess.pipe())]);
+                    resolve(new AttachmentBuilder(ffmpegProcess.pipe()));
                 } else {
                     ffmpegProcess.run();
                 }

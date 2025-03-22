@@ -22,19 +22,18 @@ export class TiktokSigner {
         }
 
         // Does not work on current version of happy-dom, seems like there is some problem with it + bun
+        // const signer_script = fs.readFileSync(getNodeModulesPath("tiktok-signature/javascript/signer.js"), "utf8");
+        // const x_bogus_script = fs.readFileSync(getNodeModulesPath("tiktok-signature/javascript/xBogus.js"), "utf8");
+        // const browser = new Browser();
+        // const page = browser.newPage();
 
-        const signer_script = fs.readFileSync(getNodeModulesPath("tiktok-signature/javascript/signer.js"), "utf8");
-        const x_bogus_script = fs.readFileSync(getNodeModulesPath("tiktok-signature/javascript/xBogus.js"), "utf8");
-        const browser = new Browser();
-        const page = browser.newPage();
+        // page.evaluate(signer_script);
+        // page.evaluate(x_bogus_script);
 
-        page.evaluate(signer_script);
-        page.evaluate(x_bogus_script);
+        // this.sig = page.evaluate(`generateSignature("${url}")`);
+        // this.bogus = page.evaluate(`generateBogus("${url}", "${this.userAgent}")`);
 
-        this.sig = page.evaluate(`generateSignature("${url}")`);
-        this.bogus = page.evaluate(`generateBogus("${url}", "${this.userAgent}")`);
-
-        browser.close();
+        // browser.close();
     }
 
     private sign(url: string, withSignature = true) {

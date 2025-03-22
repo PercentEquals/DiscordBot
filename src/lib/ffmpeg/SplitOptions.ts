@@ -6,59 +6,55 @@ import {MAX_SPLIT_FILES} from "../../constants/maxsplitfiles";
 import logger from "../../logger";
 
 export default class SplitOptions implements IOptions {
-    private splitDurations: number[] = [];
-    private files: string[] = [];
-
     constructor(
-        private id: string,
-        filesize: number,
-        targetFilesize: number,
-        ffprobe: FfprobeData | null
-    ) {
-        if (!ffprobe || !ffprobe.format.duration) {
-            throw new Error("Invalid or malformed file!");
-        }
-
-        const marginFactor = 2.5;
-        const totalDuration = ffprobe.format.duration;
-        const scaleFactor = filesize / targetFilesize;
-        const splitDuration = Math.ceil(totalDuration / scaleFactor / marginFactor);
-
-        if (splitDuration >= 1) {
-            let start = 0;
-            while (start < totalDuration) {
-                this.splitDurations.push(Math.min(splitDuration, totalDuration - start));
-                start += splitDuration;
-            }
-        }
-
-        if (this.splitDurations.length > MAX_SPLIT_FILES || this.splitDurations.length < 0) {
-            logger.info(`[bot] found format is too large for splitting (${this.splitDurations.length} > ${MAX_SPLIT_FILES})`);
-
-            throw new Error(`No format found under ${DISCORD_LIMIT / 1024 / 1024}MB`);
-        }
-    }
+        private startTime: number,
+        private duration: number,
+    ) {}
 
     addInput(process: FfmpegCommand): void {
 
     }
 
     addOutput(process: FfmpegCommand): void {
-        for (let i = 0; i < this.splitDurations.length; i++) {
-            this.files.push(`cache/${this.id}_${i + 1}.mp4`);
+        process.addOptions([
+            `-ss ${this.startTime}`,
+            `-t ${this.duration}`
+        ]);
 
-            const startTime = this.splitDurations.slice(0, i).reduce((a, b) => a + b, 0);
-            const duration = this.splitDurations[i];
-            process
-                .output(this.files[i])
-                .addOptions([
-                    `-ss ${startTime}`,
-                    `-t ${duration}`
-                ]);
+        process.addOptions([
+            "-c copy",
+        ]);
+    }
+}
+
+export function createSplitOptions(filesize: number, targetFilesize: number, ffprobe: FfprobeData | null): SplitOptions[] {
+    if (!ffprobe || !ffprobe.format.duration) {
+        throw new Error("Invalid or malformed file!");
+    }
+
+    const splitDurations: number[] = [];
+
+    const marginFactor = 2.5;
+    const totalDuration = ffprobe.format.duration;
+    const scaleFactor = filesize / targetFilesize;
+    const splitDuration = Math.ceil(totalDuration / scaleFactor / marginFactor);
+
+    if (splitDuration >= 1) {
+        let start = 0;
+        while (start < totalDuration) {
+            splitDurations.push(Math.min(splitDuration, totalDuration - start));
+            start += splitDuration;
         }
     }
 
-    getFiles(): string[] {
-        return this.files;
+    if (splitDurations.length > MAX_SPLIT_FILES || splitDurations.length < 0) {
+        logger.info(`[bot] found format is too large for splitting (${splitDurations.length} > ${MAX_SPLIT_FILES})`);
+
+        throw new Error(`No format found under ${DISCORD_LIMIT / 1024 / 1024}MB`);
     }
+
+    return splitDurations.map((duration, i) => {
+        const startTime = splitDurations.slice(0, i).reduce((a, b) => a + b, 0);
+        return new SplitOptions(startTime, duration);
+    });
 }

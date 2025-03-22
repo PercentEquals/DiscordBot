@@ -2,10 +2,6 @@ import { ApplicationCommandType, AttachmentBuilder, Client, CommandInteraction, 
 import { Command } from "../command";
 
 import { DISCORD_LIMIT } from "../constants/discordlimit";
-import { TIKTOK_COMMENTS_COUNT, TIKTOK_COMMENTS_MAX_COUNT, TIKTOK_COMMENTS_OFFSET } from "../constants/tiktokcommentscount";
-
-import { TikTokSigner } from "types/tiktokSigner";
-import { TiktokCommentsApi } from "types/tiktokCommentsApi";
 
 import { extractUrl, validateUrl } from "../common/validateUrl";
 import { getRange } from "../common/getRange";
@@ -16,7 +12,6 @@ import { reportError } from "../common/errorHelpers";
 import getConfig from "../setup/configSetup";
 import logger from "../logger";
 
-
 import FFmpegProcessor, { InputUrl } from "../lib/FFmpegProcessor";
 import UltraFastOptions from "../lib/ffmpeg/UltraFastOptions";
 import CompressOptions from "../lib/ffmpeg/CompressOptions";
@@ -25,7 +20,7 @@ import PipeOptions from "../lib/ffmpeg/PipeOptions";
 import LinkExtractor from "../lib/LinkExtractor";
 import IExtractor from "../lib/extractors/IExtractor";
 import FFProbe from "src/lib/FFprobeProcessor";
-import SplitOptions from "../lib/ffmpeg/SplitOptions";
+import { createSplitOptions } from "../lib/ffmpeg/SplitOptions";
 import FileOptions from "../lib/ffmpeg/FileOptions";
 import fs from "fs";
 import { TiktokSigner } from "src/lib/tiktok-signer/TiktokSigner";
@@ -42,27 +37,28 @@ async function downloadAndSplitVideo(
         throw new Error(`No format found under ${DISCORD_LIMIT / 1024 / 1024}MB`);
     }
 
-    logger.info(`[bot] found format is too large - attempting file splitting (${format.filesize})`);
-
     const ffprobe = await FFProbe(format.url);
-    const ffmpegProcess = new FFmpegProcessor([
-        new SplitOptions(extractor.getId(), format.filesize, DISCORD_LIMIT, ffprobe),
-        new UltraFastOptions(),
-    ]);
+    const splits = createSplitOptions(format.filesize, DISCORD_LIMIT, ffprobe);
 
-    const files = await ffmpegProcess.getAttachmentBuilder([{ url: format.url }]);
-
-    for (const file of files) {
-        file.setName(`${extractor.getId()}.${audioOnly ? 'mp3' : 'mp4'}`);
-        file.setSpoiler(spoiler);
-    }
-
-    logger.info('[bot] sending split videos');
+    logger.info(`[bot] found format is too large - attempting file splitting (${format.filesize}, ${splits.length})`);
 
     let splitSizes = 0;
     let filesToSend: AttachmentBuilder[] = [];
+    let processes: FFmpegProcessor[] = [];
 
-    for (const file of files) {
+    for (let i = 0; i < splits.length; i++) {
+        const ffmpegProcess = new FFmpegProcessor([
+            new FileOptions(extractor.getId() + '_' + i),
+            splits[i],
+            new UltraFastOptions(),
+        ]);
+    
+        const file = await ffmpegProcess.getAttachmentBuilder([{ url: format.url }]);
+        file.setName(`${extractor.getId()}.${audioOnly ? 'mp3' : 'mp4'}`);
+        file.setSpoiler(spoiler);
+
+        logger.info('[bot] sending split video');
+
         splitSizes += fs.lstatSync(file.attachment as string).size;
 
         if (splitSizes >= DISCORD_LIMIT * 2) {
@@ -75,6 +71,7 @@ async function downloadAndSplitVideo(
         }
 
         filesToSend.push(file);
+        processes.push(ffmpegProcess);
     }
 
     if (filesToSend.length > 0) {
@@ -84,8 +81,8 @@ async function downloadAndSplitVideo(
         });
     }
 
-    ffmpegProcess.cleanUp();
-    logger.info('[bot] sent split video');
+    processes.forEach((process) => process.cleanUp());
+    logger.info('[bot] sent split videos');
 }
 
 async function downloadAndConvertVideo(
@@ -109,7 +106,7 @@ async function downloadAndConvertVideo(
         new UltraFastOptions(),
     ]);
 
-    const file = (await ffmpegProcess.getAttachmentBuilder([{ url: format.url }]))[0];
+    const file = await ffmpegProcess.getAttachmentBuilder([{ url: format.url }]);
     file.setName(`${extractor.getId()}.${audioOnly ? 'mp3' : 'mp4'}`);
     file.setSpoiler(spoiler);
 
@@ -135,7 +132,8 @@ async function downloadVideo(
     if (!bestFormat || bestFormat.filesize > DISCORD_LIMIT) {
         try {
             return await downloadAndSplitVideo(interaction, extractor, spoiler, audioOnly);
-        } catch {
+        } catch (e) {
+            logger.warn(`[bot] failed to split video: ${e}`);
             return await downloadAndConvertVideo(interaction, extractor, spoiler, audioOnly);
         }
     }
@@ -190,7 +188,7 @@ async function downloadSlideshowAsVideo(
         new SlideshowOptions(urls.length, extractor, withAudio)
     ]);
 
-    const slideshowVideo = (await ffmpegProcessor.getAttachmentBuilder(urls))[0];
+    const slideshowVideo = await ffmpegProcessor.getAttachmentBuilder(urls);
     slideshowVideo.setName(`${extractor.getId()}.mp4`);
     slideshowVideo.setSpoiler(spoiler);
 

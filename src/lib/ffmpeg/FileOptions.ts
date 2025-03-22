@@ -15,7 +15,7 @@ export default class FileOptions implements IOptions {
         process.output(`cache/${this.id}_ffmpeg.mp4`);
     }
 
-    getFiles(): string[] {
-        return [`cache/${this.id}_ffmpeg.mp4`];
+    getFile() {
+        return `cache/${this.id}_ffmpeg.mp4`;
     }
 }
