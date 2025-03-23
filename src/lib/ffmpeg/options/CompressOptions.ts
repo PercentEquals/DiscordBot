@@ -1,8 +1,8 @@
 import { FfmpegCommand, FfprobeData } from "fluent-ffmpeg";
 import IOptions from "./IOptions";
-import {DISCORD_LIMIT} from "../../constants/discordlimit";
-import logger from "../../logger";
-import {MAX_COMPRESSION_SCALE} from "../../constants/maxcompressionscale";
+import {DISCORD_LIMIT} from "src/constants/discordlimit";
+import logger from "src/logger";
+import {MAX_COMPRESSION_SCALE} from "src/constants/maxcompressionscale";
 
 export default class CompressOptions implements IOptions {
     private options: string[] = [];

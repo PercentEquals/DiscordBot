@@ -4,7 +4,7 @@ import { Command } from "../command";
 import { extractUrl, validateUrl } from "../common/validateUrl";
 import { getVolume, getStartTimeInMs } from "../common/audioUtils";
 import { reportError } from "../common/errorHelpers";
-import AudioPlayerMain from "../lib/AudioPlayer";
+import AudioPlayerMain from "../lib/audio/AudioPlayer";
 
 export const Play: Command = {
     name: "play",

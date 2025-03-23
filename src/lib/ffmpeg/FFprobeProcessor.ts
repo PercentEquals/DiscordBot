@@ -1,5 +1,5 @@
 import ffmpeg, { FfprobeData } from "fluent-ffmpeg";
-import logger from "../logger";
+import logger from "../../logger";
 
 export default async function FFProbe(url: string): Promise<FfprobeData | null> {
     try {

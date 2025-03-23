@@ -1,18 +1,18 @@
 import ffmpeg from "fluent-ffmpeg";
 
 import fs from "fs";
-import crypto from "crypto";
 
-import logger from "../logger";
-import IOptions from "./ffmpeg/IOptions";
+import logger from "src/logger";
+import IOptions from "./options/IOptions";
 
 import { AttachmentBuilder } from "discord.js";
 
-import { getExtensionFromUrl } from "../common/extensionFinder";
-import { downloadFile } from "../common/fileUtils";
-import PipeOptions from "./ffmpeg/PipeOptions";
-import { FFMPEG_TIMEOUT } from "../constants/ffmpegtimeout";
-import FileOptions from "./ffmpeg/FileOptions";
+import { getExtensionFromUrl } from "src/common/extensionFinder";
+import { downloadFile } from "src/common/fileUtils";
+import PipeOptions from "./options/PipeOptions";
+import { FFMPEG_TIMEOUT } from "src/constants/ffmpegtimeout";
+import FileOptions from "./options/FileOptions";
+import { GUID } from "src/lib/utils/Guid";
 
 export type InputUrl = {
     url: string,
@@ -21,7 +21,7 @@ export type InputUrl = {
 
 export default class FFmpegProcessor {
     private isPipeAble = false;
-    private uuid = crypto.randomBytes(16).toString("hex");
+    private uuid = GUID();
     private options: IOptions[] = [];
     private startTime = process.hrtime()[0];
     

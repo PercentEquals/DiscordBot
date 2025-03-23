@@ -1,9 +1,9 @@
-import { validateUrl } from "../../common/validateUrl";
+import { validateUrl } from "src/common/validateUrl";
 
-import YoutubeDL, { ApiData } from "../yt-dlp/YoutubeDLProcess";
+import YoutubeDL, { ApiData } from "src/lib/yt-dlp/YoutubeDLProcess";
 
-import { DISCORD_LIMIT } from "../../constants/discordlimit";
-import { getHumanReadableDuration } from "../../common/audioUtils";
+import { DISCORD_LIMIT } from "src/constants/discordlimit";
+import { getHumanReadableDuration } from "src/common/audioUtils";
 import { Format } from "youtube-dl-exec";
 import FileBasedExtractor from "./FileBasedExtractor";
 
@@ -28,7 +28,7 @@ export default class GenericExtractor extends FileBasedExtractor {
             skipDownload: true
         })
 
-        videoData = videoData.split('\n').slice(1).join('\n');
+        videoData = (videoData as any).split('\n').slice(1).join('\n');
         this.apiData = JSON.parse(videoData as any) as ApiData;
         return true;
     }

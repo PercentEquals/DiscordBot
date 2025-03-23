@@ -1,8 +1,8 @@
 import * as cheerio from 'cheerio';
 import fs from "fs";
 
-import { downloadFile } from "../../common/fileUtils";
-import { getHumanReadableDuration } from "../../common/audioUtils";
+import { downloadFile } from "src/common/fileUtils";
+import { getHumanReadableDuration } from "src/common/audioUtils";
 import FileBasedExtractor from "./FileBasedExtractor";
 
 export default class TiktokRehydrationExtractor extends FileBasedExtractor {

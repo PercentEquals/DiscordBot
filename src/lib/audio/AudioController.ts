@@ -13,18 +13,18 @@ import {
     VoiceConnection
 } from "@discordjs/voice";
 
-import logger from "../logger";
+import logger from "src/logger";
 
 import {FfmpegCommand} from "fluent-ffmpeg";
 import {PassThrough} from "stream";
-import {getStartTimeInMs, getVolume} from "../common/audioUtils";
+import {getStartTimeInMs, getVolume} from "../../common/audioUtils";
 
 import {VOICE_LEAVE_TIMEOUT} from "src/constants/voiceleavetimeout";
 
-import FFmpegProcessor from "./FFmpegProcessor";
-import AudioStreamOptions from "./ffmpeg/AudioStreamOptions";
-import IExtractor, {BestFormat} from "./extractors/IExtractor";
-import LinkExtractor from "./LinkExtractor";
+import FFmpegProcessor from "../ffmpeg/FFmpegProcessor";
+import AudioStreamOptions from "../ffmpeg/options/AudioStreamOptions";
+import IExtractor, {BestFormat} from "src/lib/extractors/providers/IExtractor";
+import LinkExtractor from "../extractors/LinkExtractor";
 
 export default class AudioController {
     private connection: VoiceConnection | null = null;

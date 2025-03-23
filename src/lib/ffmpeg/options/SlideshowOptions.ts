@@ -1,7 +1,7 @@
 import { FfmpegCommand } from "fluent-ffmpeg";
 
 import IOptions from "./IOptions";
-import IExtractor from "../extractors/IExtractor";
+import IExtractor from "src/lib/extractors/providers/IExtractor";
 
 // https://stackoverflow.com/questions/12938581/ffmpeg-mux-video-and-audio-from-another-video-mapping-issue
 export default class SlideshowOptions implements IOptions {

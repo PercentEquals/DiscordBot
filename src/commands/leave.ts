@@ -3,7 +3,7 @@ import { ApplicationCommandType, Client, CommandInteraction } from "discord.js";
 import { reportError } from "../common/errorHelpers";
 
 import { Command } from "../command";
-import AudioPlayerMain from "../lib/AudioPlayer";
+import AudioPlayerMain from "../lib/audio/AudioPlayer";
 
 export const Leave: Command = {
     name: "leave",

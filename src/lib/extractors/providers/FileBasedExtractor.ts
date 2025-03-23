@@ -1,13 +1,13 @@
-import crypto from "crypto";
 import fs from "fs";
 
-import IExtractor, { BestFormat } from "./IExtractor";
+import IExtractor from "./IExtractor";
 import { getHumanReadableDuration } from "src/common/audioUtils";
 import { DISCORD_LIMIT } from "src/constants/discordlimit";
 import logger from "src/logger";
+import { GUID } from "src/lib/utils/Guid";
 
 export default abstract class FileBasedExtractor implements IExtractor {
-    protected uuid = crypto.randomBytes(16).toString("hex");
+    protected uuid = GUID();
     protected id = "";
 
     protected dataExtractor: IExtractor | null = null;

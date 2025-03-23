@@ -1,21 +1,21 @@
-import logger from "../logger";
+import logger from "../../logger";
 
 import async from "async";
 
-import YoutubeDL from "./yt-dlp/YoutubeDLProcess";
+import YoutubeDL from "../yt-dlp/YoutubeDLProcess";
 
-import IExtractor from "./extractors/IExtractor";
-import TiktokThirdPartyExtractor from "./extractors/TiktokThirdPartyExtractor";
-import TiktokGenericExtractor from "./extractors/TiktokGenericExtractor";
-import TiktokRehydrationExtractor from "./extractors/TiktokRehydrationExtractor";
-import GenericExtractor from "./extractors/GenericExtractor";
-import TiktokDirectExtractor from "./extractors/TiktokDirectExtractor";
+import IExtractor from "./providers/IExtractor";
+import TiktokThirdPartyExtractor from "./providers/TiktokThirdPartyExtractor";
+import TiktokGenericExtractor from "./providers/TiktokGenericExtractor";
+import TiktokRehydrationExtractor from "./providers/TiktokRehydrationExtractor";
+import GenericExtractor from "./providers/GenericExtractor";
+import TiktokDirectExtractor from "./providers/TiktokDirectExtractor";
 
-import TikProvider from "./extractors/thirdPartyProviders/TikProvider";
+import TikProvider from "./providers/thirdParty/TikProvider";
 
-import performance from "./utils/Performance";
+import performance from "../utils/Performance";
 import { MAX_RETRY_COUNT, RETRY_WAIT_TIME } from "src/constants/maxretrycount";
-import sleep from "./utils/Sleep";
+import sleep from "../utils/Sleep";
 
 export default class LinkExtractor {
     private tiktokDataExtractor: IExtractor = new TiktokRehydrationExtractor();

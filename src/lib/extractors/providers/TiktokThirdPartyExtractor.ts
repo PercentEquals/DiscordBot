@@ -1,11 +1,11 @@
 import fs from "fs";
 
-import { validateUrl } from "../../common/validateUrl";
+import { validateUrl } from "src/common/validateUrl";
 
-import { downloadFile } from "../../common/fileUtils";
+import { downloadFile } from "src/common/fileUtils";
 
 import FileBasedExtractor from "./FileBasedExtractor";
-import FFProbe from "../FFprobeProcessor";
+import FFProbe from "src/lib/ffmpeg/FFprobeProcessor";
 
 export default class TiktokThirdPartyExtractor extends FileBasedExtractor {
     constructor(

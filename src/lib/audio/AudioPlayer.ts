@@ -1,7 +1,7 @@
 import { CommandInteraction } from "discord.js";
 
 import AudioController from "./AudioController";
-import IExtractor from "./extractors/IExtractor";
+import IExtractor from "src/lib/extractors/providers/IExtractor";
 
 class AudioPlayer {
     private audioControllerPerChannel: {

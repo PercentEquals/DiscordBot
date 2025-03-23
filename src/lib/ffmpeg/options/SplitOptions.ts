@@ -1,9 +1,9 @@
 ﻿import { FfmpegCommand, FfprobeData } from "fluent-ffmpeg";
 import IOptions from "./IOptions";
 
-import {DISCORD_LIMIT} from "../../constants/discordlimit";
-import {MAX_SPLIT_FILES} from "../../constants/maxsplitfiles";
-import logger from "../../logger";
+import {DISCORD_LIMIT} from "src/constants/discordlimit";
+import {MAX_SPLIT_FILES} from "src/constants/maxsplitfiles";
+import logger from "src/logger";
 
 export default class SplitOptions implements IOptions {
     constructor(
@@ -24,6 +24,10 @@ export default class SplitOptions implements IOptions {
         process.addOptions([
             "-c copy",
         ]);
+    }
+
+    getIndex() {
+        return this.startTime;
     }
 }
 

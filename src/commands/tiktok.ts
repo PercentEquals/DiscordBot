@@ -1,27 +1,27 @@
 import { ApplicationCommandType, AttachmentBuilder, Client, CommandInteraction, SlashCommandBooleanOption, SlashCommandStringOption } from "discord.js";
-import { Command } from "../command";
+import { Command } from "src/command";
 
-import { DISCORD_LIMIT } from "../constants/discordlimit";
+import { DISCORD_LIMIT } from "src/constants/discordlimit";
 
-import { extractUrl, validateUrl } from "../common/validateUrl";
-import { getRange } from "../common/getRange";
-import { getExtensionFromUrl } from "../common/extensionFinder";
+import { extractUrl, validateUrl } from "src/common/validateUrl";
+import { getRange } from "src/common/getRange";
+import { getExtensionFromUrl } from "src/common/extensionFinder";
 
-import { reportError } from "../common/errorHelpers";
+import { reportError } from "src/common/errorHelpers";
 
-import getConfig from "../setup/configSetup";
-import logger from "../logger";
+import getConfig from "src/setup/configSetup";
+import logger from "src/logger";
 
-import FFmpegProcessor, { InputUrl } from "../lib/FFmpegProcessor";
-import UltraFastOptions from "../lib/ffmpeg/UltraFastOptions";
-import CompressOptions from "../lib/ffmpeg/CompressOptions";
-import SlideshowOptions from "../lib/ffmpeg/SlideshowOptions";
-import PipeOptions from "../lib/ffmpeg/PipeOptions";
-import LinkExtractor from "../lib/LinkExtractor";
-import IExtractor from "../lib/extractors/IExtractor";
-import FFProbe from "src/lib/FFprobeProcessor";
-import { createSplitOptions } from "../lib/ffmpeg/SplitOptions";
-import FileOptions from "../lib/ffmpeg/FileOptions";
+import FFmpegProcessor, { InputUrl } from "src/lib/ffmpeg/FFmpegProcessor";
+import UltraFastOptions from "src/lib/ffmpeg/options/UltraFastOptions";
+import CompressOptions from "src/lib/ffmpeg/options/CompressOptions";
+import SlideshowOptions from "src/lib/ffmpeg/options/SlideshowOptions";
+import PipeOptions from "src/lib/ffmpeg/options/PipeOptions";
+import LinkExtractor from "src/lib/extractors/LinkExtractor";
+import IExtractor from "src/lib/extractors/providers/IExtractor";
+import FFProbe from "src/lib/ffmpeg/FFprobeProcessor";
+import { createSplitOptions } from "src/lib/ffmpeg/options/SplitOptions";
+import FileOptions from "src/lib/ffmpeg/options/FileOptions";
 import fs from "fs";
 import { TiktokSigner } from "src/lib/tiktok-signer/TiktokSigner";
 

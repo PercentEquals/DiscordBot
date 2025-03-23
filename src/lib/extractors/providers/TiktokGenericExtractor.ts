@@ -1,6 +1,6 @@
 import fs from "fs";
 
-import YoutubeDL from "../yt-dlp/YoutubeDLProcess";
+import YoutubeDL from "../../yt-dlp/YoutubeDLProcess";
 
 import { validateUrl } from "src/common/validateUrl";
 
