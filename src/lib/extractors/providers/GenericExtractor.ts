@@ -54,6 +54,10 @@ export default class GenericExtractor extends FileBasedExtractor {
             );
         } else if (urlObj.hostname.includes("discord")) {
             formats = [this.apiData?.formats[0] as Format];
+        } else if (urlObj.hostname.includes("instagram")) {
+            formats = formatsUnderLimit?.filter(
+                (format) => (format.video_ext && format.video_ext.includes('mp4'))
+            );
         }
 
         let bestFormat = formats?.sort((a, b) => (a.filesize as number) - (b.filesize as number))?.[0];

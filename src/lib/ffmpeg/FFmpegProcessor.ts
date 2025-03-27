@@ -145,7 +145,7 @@ export default class FFmpegProcessor {
                     ffmpegProcess.run();
                 }
             } catch (e) {
-                console.warn(`[ffmpeg] ${e}`);
+                logger.warn(`[ffmpeg] ${e}`);
             }
         });
     }
