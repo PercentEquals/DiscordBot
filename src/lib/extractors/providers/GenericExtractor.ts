@@ -1,4 +1,5 @@
 import { validateUrl } from "src/common/validateUrl";
+import fs from "fs";
 
 import YoutubeDL, { ApiData } from "src/lib/yt-dlp/YoutubeDLProcess";
 
@@ -10,6 +11,17 @@ import FileBasedExtractor from "./FileBasedExtractor";
 export default class GenericExtractor extends FileBasedExtractor {
     private url: string = "";
     private apiData: ApiData | null = null;
+
+    constructor(
+        private formatFinders = [
+            VideoFormatFinder,
+            TwitterFormatFinder,
+            DiscordFormatFinder,
+            InstagramFormatFinder,
+        ]
+    ) {
+        super();
+    }
 
     public async extractUrl(url: string): Promise<boolean> {
         const urlObj = new URL(url);
@@ -34,30 +46,24 @@ export default class GenericExtractor extends FileBasedExtractor {
     }
 
     public override getBestFormat(skipSizeCheck?: boolean) {
-        let formatsUnderLimit = this.apiData?.formats.filter(
+        let formats = this.apiData?.formats.filter(
             (format) => (format.filesize as number) < DISCORD_LIMIT || (format.filesize_approx as number) < DISCORD_LIMIT
         );
 
         if (skipSizeCheck) {
-            formatsUnderLimit = this.apiData?.formats;
+            formats = this.apiData?.formats;
         }
 
-        let formats = formatsUnderLimit?.filter(
-            (format) => format.acodec && format.vcodec && format.acodec.includes('mp4a') && format.vcodec.includes('avc')
-        );
+        //fs.writeFileSync(`cache/${this.getId()}.json`, JSON.stringify(this.apiData, null, 2));
+        const urlObj = new URL(this.url); 
 
-        const urlObj = new URL(this.url);
+        for (const formatFinder of this.formatFinders) {
+            const foundFormats = formatFinder.findBestFormat(urlObj.hostname, formats);
 
-        if (urlObj.hostname.includes("twitter") || urlObj.hostname == "x.com") {
-            formats = formatsUnderLimit?.filter(
-                (format) => (format.video_ext && format.video_ext.includes('mp4'))
-            );
-        } else if (urlObj.hostname.includes("discord")) {
-            formats = [this.apiData?.formats[0] as Format];
-        } else if (urlObj.hostname.includes("instagram")) {
-            formats = formatsUnderLimit?.filter(
-                (format) => (format.video_ext && format.video_ext.includes('mp4'))
-            );
+            if (foundFormats && foundFormats.length > 0) {
+                formats = foundFormats;
+                break;
+            }
         }
 
         let bestFormat = formats?.sort((a, b) => (a.filesize as number) - (b.filesize as number))?.[0];
@@ -82,5 +88,47 @@ export default class GenericExtractor extends FileBasedExtractor {
 
     public override getReplyString(): string {
         return `${this.apiData?.title.substring(0, 100)} - ${this.apiData?.uploader ?? "unknown"} | ${getHumanReadableDuration(this.getDuration())}`;
+    }
+}
+
+class TwitterFormatFinder {
+    public static findBestFormat(hostname: string, formats: Format[] | undefined): Format[] | null {
+        if (formats && (hostname.includes("twitter") || hostname == "x.com")) {
+            return formats.filter(
+                (format) => (format.video_ext && format.video_ext.includes('mp4'))
+            );
+        }
+
+        return null;
+    }
+}
+
+class DiscordFormatFinder {
+    public static findBestFormat(hostname: string, formats: Format[] | undefined): Format[] | null {
+        if (formats && hostname.includes("discord")) {
+            return [formats[0]]
+        }
+
+        return null;
+    }
+}
+
+class InstagramFormatFinder {
+    public static findBestFormat(hostname: string, formats: Format[] | undefined): Format[] | null {
+        if (formats && hostname.includes("instagram")) {
+            return formats.filter(
+                (format) => (format.video_ext && format.video_ext.includes('mp4'))
+            );
+        }
+
+        return null;
+    }
+}
+
+class VideoFormatFinder {
+    public static findBestFormat(hostname: string, formats: Format[] | undefined): Format[] | null {
+        return formats?.filter(
+            (format) => format.acodec && format.vcodec && format.acodec.includes('mp4a') && format.vcodec.includes('avc')
+        ) ?? null;
     }
 }
