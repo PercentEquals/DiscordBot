@@ -2,7 +2,6 @@ import { getHumanReadableDuration } from "src/common/audioUtils";
 import IExtractor, { BestFormat } from "./IExtractor";
 
 let cache: Record<string, {
-    url: string;
     isSlideshow: boolean;
     slideshowData: string[];
     bestFormat: BestFormat | null;
@@ -52,7 +51,6 @@ export default class CacheExtractor implements IExtractor {
 
     provideDataExtractor?(extractor: IExtractor | null): void {
         cache[this.url] = {
-            url: this.url,
             isSlideshow: extractor?.isSlideshow() ?? false,
             slideshowData: extractor?.getSlideshowData() ?? [],
             bestFormat: extractor?.getBestFormat() ?? null,

@@ -16,7 +16,7 @@ class AudioPlayerClass {
         startTimeInMs: number = 0, 
         volume: number = 100, 
         loop: boolean = false, 
-        force?: boolean,
+        force: boolean = false
     ) {
         //@ts-ignore
         const channel = interaction.member?.voice?.channel as VoiceBasedChannel;
@@ -40,7 +40,13 @@ class AudioPlayerClass {
             content: `Queued: ${extractor.getReplyString()}`
         })
 
-        await this.queue.addTask(new AudioTask(this.player, extractor.getReplyString(), bestFormat.url, startTimeInMs, volume));
+        await this.queue.addTask(new AudioTask(
+            this.player,
+            extractor.getReplyString(),
+            bestFormat.url,
+            startTimeInMs,
+            volume,
+        ), loop, force);
     }
 
     public async restartAudio(interaction: CommandInteraction, volume: string | null, startTime: string | null) {
@@ -48,7 +54,22 @@ class AudioPlayerClass {
     }
 
     public async skipAudio(interaction: CommandInteraction) {
+        if (!this.queue.isRunning) {
+            await interaction.followUp({
+                content: "No audio in queue!",
+            });
+            return;
+        }
 
+        const task = this.queue.getCurrentTask();
+
+        if (task) {
+            task.Stop();
+        }
+
+        await interaction.followUp({
+            content: "Skipped current audio!",
+        });
     }
 
 }

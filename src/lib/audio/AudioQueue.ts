@@ -14,24 +14,50 @@ export default class AudioQueue {
         return this._size !== 0;
     }
 
+    getCurrentTask() {
+        return this._currentTask;
+    }
+
+    async loopCurrentTask(loop: boolean) {
+        if (!this._currentTask || !loop) {
+            return;
+        }
+
+        await this._currentTask.PlayTask();
+        await this.loopCurrentTask(loop);
+    }
+
     addTask = (() => {
         let pending = Promise.resolve()
     
-        const run = async (task: AudioTask) => {
+        const run = async (task: AudioTask, loop: boolean, force: boolean) => {
             try {
-                await pending;
+                if (!force) {
+                    await pending;
+                }
             } finally {
                 this._currentTask = task;
+
+                await this.loopCurrentTask(loop);
+
                 return Promise.resolve(task.PlayTask()).finally(() => {
                     this._size--;
+                    this._currentTask = null;
                 })
             }
         }
 
-        return async (task: AudioTask) => {
+        return async (task: AudioTask, loop: boolean, force: boolean) => {
             this._size++;
             await task.PrepareTask();
-            return (pending = run(task));
+
+            // TODO: Make force work
+            // if (force && this._currentTask) {
+            //     await this._currentTask.Stop();
+            //     return await run(task, loop, force);
+            // }
+
+            return (pending = run(task, loop, force))
         }
     })()
 }
