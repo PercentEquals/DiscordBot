@@ -3,7 +3,7 @@ import { ApplicationCommandType, Client, CommandInteraction } from "discord.js";
 import { reportError } from "../common/errorHelpers";
 
 import { Command } from "../command";
-import AudioPlayerMain from "../lib/audio/AudioPlayer";
+import AudioPlayer from "../lib/audio/AudioPlayer";
 
 export const Leave: Command = {
     name: "leave",
@@ -12,7 +12,7 @@ export const Leave: Command = {
     options: [],
     run: async (client: Client, interaction: CommandInteraction) => {
         try {
-            await AudioPlayerMain.leave(interaction);            
+            await AudioPlayer.leave(interaction);            
 
             await interaction.followUp({
                 ephemeral: false,

@@ -3,7 +3,7 @@ import { ApplicationCommandType, Client, CommandInteraction, SlashCommandStringO
 import { reportError } from "../common/errorHelpers";
 
 import { Command } from "../command";
-import AudioPlayerMain from "../lib/audio/AudioPlayer";
+import AudioPlayer from "../lib/audio/AudioPlayer";
 
 export const Seek: Command = {
     name: "seek",
@@ -17,7 +17,7 @@ export const Seek: Command = {
             //@ts-ignore
             const time: string = interaction.options.getString('time', true);
 
-            if (await AudioPlayerMain.restartAudio(interaction, null, time)) {
+            if (await AudioPlayer.restartAudio(interaction, null, time)) {
                 await interaction.followUp({
                     ephemeral: false,
                     content: `:white_check_mark: Seek to ${time} done!`

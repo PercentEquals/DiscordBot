@@ -4,7 +4,7 @@ import { Command } from "../command";
 import { extractUrl, validateUrl } from "../common/validateUrl";
 import { getVolume, getStartTimeInMs } from "../common/audioUtils";
 import { reportError } from "../common/errorHelpers";
-import AudioPlayerMain from "../lib/audio/AudioPlayer";
+import AudioPlayer from "../lib/audio/AudioPlayer";
 
 export const Play: Command = {
     name: "play",
@@ -32,7 +32,7 @@ export const Play: Command = {
 
             validateUrl(new URL(url));
 
-            await AudioPlayerMain.playAudio(interaction, url, getStartTimeInMs(startTime), getVolume(volume), loop, force);
+            await AudioPlayer.playAudio(interaction, url, getStartTimeInMs(startTime), getVolume(volume), loop, force);
         } catch (e) {
             await reportError(interaction, e);
         }

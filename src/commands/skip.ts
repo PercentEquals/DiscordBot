@@ -3,7 +3,7 @@ import { ApplicationCommandType, Client, CommandInteraction } from "discord.js";
 import { reportError } from "../common/errorHelpers";
 
 import { Command } from "../command";
-import AudioPlayerMain from "../lib/audio/AudioPlayer";
+import AudioPlayer from "../lib/audio/AudioPlayer";
 
 export const Skip: Command = {
     name: "skip",
@@ -12,7 +12,7 @@ export const Skip: Command = {
     options: [],
     run: async (client: Client, interaction: CommandInteraction) => {
         try {
-            if (await AudioPlayerMain.skipAudio(interaction)) {
+            if (await AudioPlayer.skipAudio(interaction)) {
                 await interaction.followUp({
                     ephemeral: false,
                     content: `:white_check_mark: Skipped currently played audio!`

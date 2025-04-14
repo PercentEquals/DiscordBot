@@ -3,7 +3,7 @@ import { ApplicationCommandType, Client, CommandInteraction, SlashCommandStringO
 import { reportError } from "../common/errorHelpers";
 
 import { Command } from "../command";
-import AudioPlayerMain from "../lib/audio/AudioPlayer";
+import AudioPlayer from "../lib/audio/AudioPlayer";
 
 export const Volume: Command = {
     name: "volume",
@@ -17,7 +17,7 @@ export const Volume: Command = {
             //@ts-ignore
             const volume: string = interaction.options.getString('volume', true);
 
-            if (await AudioPlayerMain.restartAudio(interaction, volume, null)) {
+            if (await AudioPlayer.restartAudio(interaction, volume, null)) {
                 await interaction.followUp({
                     ephemeral: false,
                     content: `:white_check_mark: Changing volume to ${volume} done!`
