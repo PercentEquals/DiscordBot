@@ -16,11 +16,15 @@ import TikProvider from "./providers/thirdParty/TikProvider";
 import performance from "../utils/Performance";
 import { MAX_RETRY_COUNT, RETRY_WAIT_TIME } from "src/constants/maxretrycount";
 import sleep from "../utils/Sleep";
+import CacheExtractor from "./providers/CacheExtractor";
+import FileBasedExtractor from "./providers/FileBasedExtractor";
 
 export default class LinkExtractor {
     private tiktokDataExtractor: IExtractor = new TiktokRehydrationExtractor();
+    private cacheExtractor: IExtractor = new CacheExtractor();
 
     private p0extractors: IExtractor[] = [
+        this.cacheExtractor,
         new TiktokDirectExtractor(),
         new TiktokThirdPartyExtractor(TikProvider),
     ];
@@ -85,6 +89,10 @@ export default class LinkExtractor {
             }
 
             logger.info(`[bot] Using ${workingExtractor.constructor.name}`);
+
+            if (!(workingExtractor instanceof FileBasedExtractor)) {
+                this.cacheExtractor.provideDataExtractor?.(workingExtractor);
+            }
             
             return workingExtractor;
         } catch (e) {

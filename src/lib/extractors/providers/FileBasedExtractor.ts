@@ -19,7 +19,7 @@ export default abstract class FileBasedExtractor implements IExtractor {
     }
 
     public getSlideshowData(): string[] {
-        throw new Error("Method not supported.");
+        return [];
     }
 
     public getId(): string {
