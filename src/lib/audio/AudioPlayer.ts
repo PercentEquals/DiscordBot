@@ -21,6 +21,10 @@ class AudioPlayerClass {
         //@ts-ignore
         const channel = interaction.member?.voice?.channel as VoiceBasedChannel;
 
+        if (!channel) {
+            throw new Error('You must be in a voice channel to play audio!');
+        }
+
         const connection = joinVoiceChannel({
             channelId: channel.id,
             guildId: channel.guild.id,
@@ -41,16 +45,48 @@ class AudioPlayerClass {
         })
 
         await this.queue.addTask(new AudioTask(
+            interaction,
             this.player,
-            extractor.getReplyString(),
-            bestFormat.url,
+            extractor,
             startTimeInMs,
             volume,
-        ), loop, force);
+            loop,
+            force
+        ));
     }
 
-    public async restartAudio(interaction: CommandInteraction, volume: string | null, startTime: string | null) {
+    public async setVolume(interaction: CommandInteraction, volume: number, volumeString: string) {
+        const task = this.queue.getCurrentTask();
 
+        if (!task) {
+            await interaction.followUp({
+                content: "No audio currently playing!",
+            });
+            return;
+        }
+
+        task.SetVolume(volume);
+
+        await interaction.followUp({
+            content: `Set volume to ${volumeString}%`,
+        });
+    }
+
+    public async seek(interaction: CommandInteraction, startTime: number, startTimeString: string) {
+        const task = this.queue.getCurrentTask();
+
+        if (!task) {
+            await interaction.followUp({
+                content: "No audio currently playing!",
+            });
+            return;
+        }
+
+        task.Seek(startTime);
+
+        await interaction.followUp({
+            content: `Set start time to ${startTimeString}`,
+        });
     }
 
     public async skipAudio(interaction: CommandInteraction) {

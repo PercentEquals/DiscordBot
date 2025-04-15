@@ -3,28 +3,36 @@ import FFmpegProcessor from "../ffmpeg/FFmpegProcessor";
 import AudioStreamOptions from "../ffmpeg/options/AudioStreamOptions";
 import logger from "src/logger";
 import { FfmpegCommand } from "fluent-ffmpeg";
-import { end } from "cheerio/dist/commonjs/api/traversing";
+import { CommandInteraction } from "discord.js";
+import IExtractor from "../extractors/providers/IExtractor";
 
 export default class AudioTask {
-    private ffmpegProcessClone: FfmpegCommand | null = null;
+    private ffmpegProcess: FfmpegCommand | null = null;
     private resource: AudioResource<null> | null = null;
+    private listener: boolean = false;
+
+    private playStartTime: number = 0;
 
     constructor(
+        private interaction: CommandInteraction,
         private player: AudioPlayer,
-        private title: string,
-        private url: string,
+        private extractor: IExtractor,
         private startTimeInMs: number,
         private volume: number,
+        public loop: boolean = false,
+        public force: boolean = false,
     ) {
-
     }
 
     public async PrepareTask() {
         const ffmpegStream = await this.getAudioStream();
-        //const { stream, type } = await demuxProbe(ffmpegStream.pipe() as any);
         this.resource = createAudioResource(ffmpegStream.pipe() as any, { inputType: StreamType.Arbitrary });
 
-        logger.info(`[ffmpeg] audio stream for ${this.title} is ready`);
+        logger.info(`[ffmpeg] audio stream for ${this.extractor.getReplyString()} is ready`);
+
+        this.interaction.editReply({
+            content: `Playing ${this.extractor.getReplyString()}`,
+        });
     }
 
     public async PlayTask() {
@@ -38,8 +46,31 @@ export default class AudioTask {
             return;
         }
 
-        this.player.off(AudioPlayerStatus.Idle, this.onFinish);
+        if (this.loop) {
+            return this.PlayTask();
+        }
+
+        this.interaction.editReply({
+            content: `Finished playing ${this.extractor.getReplyString()}`,
+        });
+
+        this.extractor?.dispose?.(true);
         resolve();
+    }
+
+    private onError(reject: PromiseReject, error: Error) {
+        if (error.message.includes('Output stream error: Premature close')) {
+            logger.warn(`[ffmpeg] ignored error in audio stream for ${this.extractor.getReplyString()}: ${error.message}`);
+            return; // ignore this error, it is caused by the ffmpeg process being killed
+        }
+
+        logger.error(`[ffmpeg] error in audio stream for ${this.extractor.getReplyString()}: ${error.message}`);
+
+        this.interaction.editReply({
+            content: `Error occured while playing ${this.extractor.getReplyString()}: ${error.message}`,
+        });
+
+        reject(error);
     }
 
     private async Play(resolve: PromiseResolve<void>, reject: PromiseReject) {
@@ -52,32 +83,85 @@ export default class AudioTask {
             await this.PrepareTask();
         }
 
-        this.player.on(AudioPlayerStatus.Idle, (from) => this.onFinish(resolve, from));
+        if (!this.listener) {
+            this.player.on(AudioPlayerStatus.Idle, (from) => this.onFinish(resolve, from));
+            this.player.on('error', (error) => this.onError(reject, error));
+            this.ffmpegProcess!.on('error', (error) => this.onError(reject, error));
+            this.listener = true;
+        }
+
+        this.playStartTime = process.hrtime()[0];
         this.player.play(this.resource);
 
-        logger.info(`[ffmpeg] playing audio stream for ${this.title}`);
+        logger.info(`[ffmpeg] playing audio stream for ${this.extractor.getReplyString()}`);
     }
 
     public async Stop() {
         this.player.stop(true);
     }
 
-    private async getAudioStream() {
-        if (this.ffmpegProcessClone) {
-            logger.info(`[ffmpeg] reusing downloaded audio stream for ${this.title}`);
-            return this.ffmpegProcessClone.clone();
+    public async Pause() {
+        this.player.pause(true);
+    }
+
+    public async SetVolume(volume: number) {
+        if (!this.ffmpegProcess) {
+            throw new Error('Audio stream is not ready');
         }
 
-        logger.info(`[ffmpeg] downloading audio stream for ${this.title}`);
+        this.volume = volume;
+        const timeDiff = (process.hrtime()[0] - this.playStartTime) * 1000.0;
+        this.startTimeInMs = this.startTimeInMs + timeDiff; // add the time that has passed since the start of the stream
+
+        this.Restart();
+    }
+
+    public async Seek(seekTime: number) {
+        if (!this.ffmpegProcess) {
+            throw new Error('Audio stream is not ready');
+        }
+        
+        this.startTimeInMs = seekTime; 
+        this.Restart();
+    }
+
+    public async Restart() {
+        this.ffmpegProcess = null;
+        await this.PrepareTask();
+        this.playStartTime = process.hrtime()[0];
+        this.player.play(this.resource!);
+    }
+
+    public async PlayNewAudio(audioTask: AudioTask) {
+        this.interaction.editReply({
+            content: `Finished playing ${this.extractor.getReplyString()}`,
+        });
+
+        this.extractor?.dispose?.(true);
+
+        this.interaction = audioTask.interaction;
+        this.extractor = audioTask.extractor;
+        this.startTimeInMs = audioTask.startTimeInMs;
+        this.volume = audioTask.volume;
+        this.loop = audioTask.loop;
+        this.force = false;
+
+        this.Restart();
+    }
+
+    private async getAudioStream() {
+        logger.info(`[ffmpeg] downloading audio stream for ${this.extractor.getReplyString()}`);
+
+        const url = this.extractor.getBestFormat(true)?.url!;
     
         const ffmpegProcessor = new FFmpegProcessor([
             new AudioStreamOptions(this.startTimeInMs, this.volume)
         ]);
 
-        this.ffmpegProcessClone = await ffmpegProcessor.buildFFmpegProcess([
-            { url: this.url, type: 'audioStream' }
+        this.ffmpegProcess = await ffmpegProcessor.buildFFmpegProcess([
+            { url, type: 'audioStream' }
         ]);
 
-        return this.ffmpegProcessClone.clone();
+        return this.ffmpegProcess;
     }
 }

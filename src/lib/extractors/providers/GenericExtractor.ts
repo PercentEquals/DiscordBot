@@ -6,9 +6,10 @@ import YoutubeDL, { ApiData } from "src/lib/yt-dlp/YoutubeDLProcess";
 import { DISCORD_LIMIT } from "src/constants/discordlimit";
 import { getHumanReadableDuration } from "src/common/audioUtils";
 import { Format } from "youtube-dl-exec";
-import FileBasedExtractor from "./FileBasedExtractor";
+import IExtractor from "./IExtractor";
 
-export default class GenericExtractor extends FileBasedExtractor {
+export default class GenericExtractor implements IExtractor {
+    private id: string = "";
     private url: string = "";
     private apiData: ApiData | null = null;
 
@@ -19,8 +20,22 @@ export default class GenericExtractor extends FileBasedExtractor {
             DiscordFormatFinder,
             InstagramFormatFinder,
         ]
-    ) {
-        super();
+    ) {}
+
+    isSlideshow(): boolean {
+        return false;
+    }
+
+    getSlideshowData(): string[] {
+        return [];
+    }
+
+    getId(): string {
+        return this.id;
+    }
+
+    public provideDataExtractor(extractor: IExtractor | null): void {
+        return;
     }
 
     public async extractUrl(url: string): Promise<boolean> {
@@ -45,7 +60,7 @@ export default class GenericExtractor extends FileBasedExtractor {
         return true;
     }
 
-    public override getBestFormat(skipSizeCheck?: boolean) {
+    public getBestFormat(skipSizeCheck?: boolean) {
         let formats = this.apiData?.formats.filter(
             (format) => (format.filesize as number) < DISCORD_LIMIT || (format.filesize_approx as number) < DISCORD_LIMIT
         );
@@ -82,11 +97,11 @@ export default class GenericExtractor extends FileBasedExtractor {
         }
     }
 
-    public override getDuration(): number {
+    public getDuration(): number {
         return this.apiData?.duration ?? 0;
     }
 
-    public override getReplyString(): string {
+    public getReplyString(): string {
         return `${this.apiData?.title.substring(0, 100)} - ${this.apiData?.uploader ?? "unknown"} | ${getHumanReadableDuration(this.getDuration())}`;
     }
 }

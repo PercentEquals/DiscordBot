@@ -12,12 +12,7 @@ export const Skip: Command = {
     options: [],
     run: async (client: Client, interaction: CommandInteraction) => {
         try {
-            if (await AudioPlayer.skipAudio(interaction)) {
-                await interaction.followUp({
-                    ephemeral: false,
-                    content: `:white_check_mark: Skipped currently played audio!`
-                });
-            }
+            await AudioPlayer.skipAudio(interaction);
         } catch (e) {
             await reportError(interaction, e);
         }

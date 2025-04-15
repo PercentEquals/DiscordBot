@@ -24,7 +24,6 @@ export default class LinkExtractor {
     private cacheExtractor: IExtractor = new CacheExtractor();
 
     private p0extractors: IExtractor[] = [
-        this.cacheExtractor,
         new TiktokDirectExtractor(),
         new TiktokThirdPartyExtractor(TikProvider),
     ];
@@ -63,6 +62,11 @@ export default class LinkExtractor {
 
     public async extractUrl(url: string, retryCount = 0): Promise<IExtractor> {
         try {
+            if (await this.cacheExtractor.extractUrl(url)) {
+                logger.info(`[bot] Using ${this.cacheExtractor.constructor.name}`);
+                return this.cacheExtractor;
+            }
+
             if (await performance(this.tiktokDataExtractor, this.tiktokDataExtractor.extractUrl, url)) {
                 return this.tiktokDataExtractor;
             }

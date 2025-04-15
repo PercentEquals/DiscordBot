@@ -4,6 +4,7 @@ import { reportError } from "../common/errorHelpers";
 
 import { Command } from "../command";
 import AudioPlayer from "../lib/audio/AudioPlayer";
+import { getVolume } from "src/common/audioUtils";
 
 export const Volume: Command = {
     name: "volume",
@@ -16,13 +17,7 @@ export const Volume: Command = {
         try {
             //@ts-ignore
             const volume: string = interaction.options.getString('volume', true);
-
-            if (await AudioPlayer.restartAudio(interaction, volume, null)) {
-                await interaction.followUp({
-                    ephemeral: false,
-                    content: `:white_check_mark: Changing volume to ${volume} done!`
-                });
-            }
+            await AudioPlayer.setVolume(interaction, getVolume(volume), volume);
         } catch (e) {
             await reportError(interaction, e);
         }

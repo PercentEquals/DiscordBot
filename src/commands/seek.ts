@@ -4,6 +4,7 @@ import { reportError } from "../common/errorHelpers";
 
 import { Command } from "../command";
 import AudioPlayer from "../lib/audio/AudioPlayer";
+import { getStartTimeInMs } from "src/common/audioUtils";
 
 export const Seek: Command = {
     name: "seek",
@@ -16,13 +17,7 @@ export const Seek: Command = {
         try {
             //@ts-ignore
             const time: string = interaction.options.getString('time', true);
-
-            if (await AudioPlayer.restartAudio(interaction, null, time)) {
-                await interaction.followUp({
-                    ephemeral: false,
-                    content: `:white_check_mark: Seek to ${time} done!`
-                });
-            }
+            await AudioPlayer.seek(interaction, getStartTimeInMs(time), time);
         } catch (e) {
             await reportError(interaction, e);
         }

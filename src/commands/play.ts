@@ -1,4 +1,4 @@
-import { ApplicationCommandType, Client, CommandInteraction, SlashCommandBooleanOption, SlashCommandStringOption } from "discord.js";
+import { ApplicationCommandType, Client, CommandInteraction, SlashCommandBooleanOption, SlashCommandNumberOption, SlashCommandStringOption } from "discord.js";
 
 import { Command } from "../command";
 import { extractUrl, validateUrl } from "../common/validateUrl";
