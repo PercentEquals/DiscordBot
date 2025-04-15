@@ -31,7 +31,7 @@ export default class AudioTask {
         logger.info(`[ffmpeg] audio stream for ${this.extractor.getReplyString()} is ready`);
 
         this.interaction.editReply({
-            content: `Playing ${this.extractor.getReplyString()}`,
+            content: `${this.loop ? ':repeat:' : ':musical_note:'} Playing ${this.extractor.getReplyString()}`,
         });
     }
 
@@ -51,7 +51,7 @@ export default class AudioTask {
         }
 
         this.interaction.editReply({
-            content: `Finished playing ${this.extractor.getReplyString()}`,
+            content: `:white_check_mark: Finished playing ${this.extractor.getReplyString()}`,
         });
 
         this.extractor?.dispose?.(true);
@@ -67,7 +67,7 @@ export default class AudioTask {
         logger.error(`[ffmpeg] error in audio stream for ${this.extractor.getReplyString()}: ${error.message}`);
 
         this.interaction.editReply({
-            content: `Error occured while playing ${this.extractor.getReplyString()}: ${error.message}`,
+            content: `:octagonal_sign: Error occured while playing ${this.extractor.getReplyString()}: ${error.message}`,
         });
 
         reject(error);
@@ -134,7 +134,7 @@ export default class AudioTask {
 
     public async PlayNewAudio(audioTask: AudioTask) {
         this.interaction.editReply({
-            content: `Finished playing ${this.extractor.getReplyString()}`,
+            content: `:white_check_mark: Finished playing ${this.extractor.getReplyString()}`,
         });
 
         this.extractor?.dispose?.(true);

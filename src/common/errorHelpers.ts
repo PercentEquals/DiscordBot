@@ -44,7 +44,7 @@ export async function reportError(interaction: CommandInteraction, e: any, useFa
     if (getConfig().botOptions.verboseErrorReply) {
         interaction.followUp({
             ephemeral: false,
-            content: ":x: An error occurred" + (fallbackLink ? ` (using ${fallbackLink} as fallback)` : "") + ": ```" + e + "```"
+            content: ":octagonal_sign: An error occurred" + (fallbackLink ? ` (using ${fallbackLink} as fallback)` : "") + ": ```" + e + "```"
         });
     } else if (fallbackLink.length !== 0) {
         interaction.followUp({
@@ -56,7 +56,7 @@ export async function reportError(interaction: CommandInteraction, e: any, useFa
     } else {
         interaction.followUp({
             ephemeral: false,
-            content: ":x: An error occurred" + (fallbackLink ? ` (using ${fallbackLink} as fallback)` : "") + ": ```" + e + "```"
+            content: ":octagonal_sign: An error occurred" + (fallbackLink ? ` (using ${fallbackLink} as fallback)` : "") + ": ```" + e + "```"
         });
     }
 }

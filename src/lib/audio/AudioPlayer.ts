@@ -41,7 +41,7 @@ class AudioPlayerClass {
         }
 
         await interaction.followUp({
-            content: `Queued: ${extractor.getReplyString()}`
+            content: `:information_source: Queued: ${extractor.getReplyString()}`
         })
 
         await this.queue.addTask(new AudioTask(
@@ -59,16 +59,24 @@ class AudioPlayerClass {
         const task = this.queue.getCurrentTask();
 
         if (!task) {
-            await interaction.followUp({
-                content: "No audio currently playing!",
-            });
-            return;
+            throw new Error('No audio currently playing!');
         }
 
         task.SetVolume(volume);
 
+        let volumeIcon = ":loud_sound:";
+
+        if (volume <= 0) {
+            volumeIcon = ":mute:";
+        } else if (volume < 50) {
+            volumeIcon = ":sound:";
+        } else {
+            volumeIcon = ":loud_sound:";
+        }
+
+
         await interaction.followUp({
-            content: `Set volume to ${volumeString}%`,
+            content: `${volumeIcon} Set volume of currently played audio to ${volumeString}%`,
         });
     }
 
@@ -76,25 +84,19 @@ class AudioPlayerClass {
         const task = this.queue.getCurrentTask();
 
         if (!task) {
-            await interaction.followUp({
-                content: "No audio currently playing!",
-            });
-            return;
+            throw new Error('No audio currently playing!');
         }
 
         task.Seek(startTime);
 
         await interaction.followUp({
-            content: `Set start time to ${startTimeString}`,
+            content: `:clock6: Seeked currently playerd audio to ${startTimeString}`,
         });
     }
 
     public async skipAudio(interaction: CommandInteraction) {
         if (!this.queue.isRunning) {
-            await interaction.followUp({
-                content: "No audio in queue!",
-            });
-            return;
+            throw new Error('No audio currently playing!');
         }
 
         const task = this.queue.getCurrentTask();
@@ -104,7 +106,7 @@ class AudioPlayerClass {
         }
 
         await interaction.followUp({
-            content: "Skipped current audio!",
+            content: ":track_next: Skipped current audio!",
         });
     }
 

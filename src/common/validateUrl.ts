@@ -50,6 +50,8 @@ export async function extractUrl(text: string) {
             }
         }
 
+        urlObj.searchParams.delete('list')
+
         return urlObj.toString() ?? url;
     } catch (e) {
         return url;

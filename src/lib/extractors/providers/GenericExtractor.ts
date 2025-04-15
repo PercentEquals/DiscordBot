@@ -7,9 +7,10 @@ import { DISCORD_LIMIT } from "src/constants/discordlimit";
 import { getHumanReadableDuration } from "src/common/audioUtils";
 import { Format } from "youtube-dl-exec";
 import IExtractor from "./IExtractor";
+import { randomUUID } from "crypto";
 
 export default class GenericExtractor implements IExtractor {
-    private id: string = "";
+    private id: string = randomUUID();
     private url: string = "";
     private apiData: ApiData | null = null;
 
@@ -41,7 +42,7 @@ export default class GenericExtractor implements IExtractor {
     public async extractUrl(url: string): Promise<boolean> {
         const urlObj = new URL(url);
 
-        this.id = validateUrl(urlObj);
+        validateUrl(urlObj);
         this.url = url;
 
         if (urlObj.hostname.includes('tiktok')) {
