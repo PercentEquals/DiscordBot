@@ -7,10 +7,10 @@ import { DISCORD_LIMIT } from "src/constants/discordlimit";
 import { getHumanReadableDuration } from "src/common/audioUtils";
 import { Format } from "youtube-dl-exec";
 import IExtractor from "./IExtractor";
-import { randomUUID } from "crypto";
+import { GUID } from "src/lib/utils/Guid";
 
 export default class GenericExtractor implements IExtractor {
-    private id: string = randomUUID();
+    private id: string = GUID();
     private url: string = "";
     private apiData: ApiData | null = null;
 

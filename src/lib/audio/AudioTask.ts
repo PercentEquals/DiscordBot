@@ -10,6 +10,7 @@ export default class AudioTask {
     private ffmpegProcess: FfmpegCommand | null = null;
     private resource: AudioResource<null> | null = null;
     private listener: boolean = false;
+    private disposed: boolean = false;
 
     private playStartTime: number = 0;
 
@@ -29,13 +30,21 @@ export default class AudioTask {
         this.resource = createAudioResource(ffmpegStream.pipe() as any, { inputType: StreamType.Arbitrary });
 
         logger.info(`[ffmpeg] audio stream for ${this.extractor.getReplyString()} is ready`);
+    }
+
+    public async PlayTask() {
+        if (this.disposed) {
+            this.interaction.editReply({
+                content: `:white_check_mark: Skipped playing ${this.extractor.getReplyString()}`,
+            });
+
+            return Promise.resolve();
+        }
 
         this.interaction.editReply({
             content: `${this.loop ? ':repeat:' : ':musical_note:'} Playing ${this.extractor.getReplyString()}`,
         });
-    }
 
-    public async PlayTask() {
         return new Promise<void>((resolve, reject) => {
             this.Play(resolve, reject);
         });
@@ -94,6 +103,12 @@ export default class AudioTask {
         this.player.play(this.resource);
 
         logger.info(`[ffmpeg] playing audio stream for ${this.extractor.getReplyString()}`);
+    }
+
+    public Finish() {
+        this.ffmpegProcess?.kill('SIGINT');
+        this.ffmpegProcess = null;
+        this.player.emit(AudioPlayerStatus.Idle, this.player.state);
     }
 
     public async Stop() {
@@ -163,5 +178,9 @@ export default class AudioTask {
         ]);
 
         return this.ffmpegProcess;
+    }
+
+    dispose() {
+        this.disposed = true;
     }
 }

@@ -4,6 +4,7 @@ import AudioTask from "./AudioTask";
 
 export default class AudioQueue {
     private _size: number = 0;
+    private _disposed: boolean = false;
     private _currentTask: AudioTask | null = null;
 
     get size() {
@@ -18,12 +19,23 @@ export default class AudioQueue {
         return this._currentTask;
     }
 
+    dispose() {
+        this._disposed = true;
+        this._size = 0;
+        this._currentTask?.Finish();
+        this._currentTask = null;
+    }
+
     addTask = (() => {
         let pending = Promise.resolve()
     
         const run = async (task: AudioTask) => {
             try {
                 await pending;
+
+                if (this._disposed) {
+                    task.dispose();
+                }
             } finally {
                 this._currentTask = task;
                 return task.PlayTask().finally(() => {
