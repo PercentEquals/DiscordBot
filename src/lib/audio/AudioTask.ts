@@ -113,6 +113,7 @@ export default class AudioTask {
             content: `:white_check_mark: Finished playing ${this.extractor.getReplyString()}`,
         });
 
+        this.dispose();
         this.extractor?.dispose?.(true);
         this.message.reactions.removeAll();
         resolve();
@@ -163,6 +164,7 @@ export default class AudioTask {
     }
 
     public Stop() {
+        this.UnPause();
         this.player.stop(true);
     }
 
