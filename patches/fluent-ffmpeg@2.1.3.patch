@@ -7,7 +7,7 @@ index 36d980ad0cbf60cf55d2b2664460cad7b475584b..dd77932cfb2eef134a62d8aea676f562
                  emitEnd(new Error('Output stream closed'));
                  ffmpegProc.kill();
 -              }, 20);
-+              }, 400);
++              }, 5000);
              });
  
              outputStream.target.on('error', function(err) {
