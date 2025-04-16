@@ -3,18 +3,22 @@ import FFmpegProcessor from "../ffmpeg/FFmpegProcessor";
 import AudioStreamOptions from "../ffmpeg/options/AudioStreamOptions";
 import logger from "src/logger";
 import { FfmpegCommand } from "fluent-ffmpeg";
-import { CommandInteraction } from "discord.js";
+import { CommandInteraction, Message, MessageReaction, ReactionCollector, User } from "discord.js";
 import IExtractor from "../extractors/providers/IExtractor";
 
 export default class AudioTask {
     private ffmpegProcess: FfmpegCommand | null = null;
     private resource: AudioResource<null> | null = null;
+    private collector: ReactionCollector | null = null;
+
     private listener: boolean = false;
     private disposed: boolean = false;
 
     private playStartTime: number = 0;
 
     constructor(
+        private message: Message,
+        private botId: string,
         private interaction: CommandInteraction,
         private player: AudioPlayer,
         private extractor: IExtractor,
@@ -23,6 +27,52 @@ export default class AudioTask {
         public loop: boolean = false,
         public force: boolean = false,
     ) {
+        this.attachPlayerListeners();
+    }
+
+    private async attachPlayerListeners() {
+        this.collector = this.message.createReactionCollector({
+            filter: (reaction: MessageReaction, user: User) => {
+                return user.id !== this.botId && !user.bot;
+            }
+        });
+
+        this.collector.on('collect', async (reaction) => {
+            switch (reaction.emoji.name) {
+                case '🔁': case '🔂':
+                    this.loop = !this.loop;
+                    break;
+                case '⏸️':
+                    this.Pause();
+                    break;
+                case '▶️':
+                    this.UnPause();
+                    break;
+                case '⏹️':
+                    this.Stop();
+                    break;
+                case '⤴️':
+                    this.force = true;
+                    await this.Restart();
+            }
+
+            await this.CreateMenu();
+        });
+
+        this.CreateMenu();
+    }
+
+    private async CreateMenu() {
+        await this.message.reactions.removeAll();
+
+        if (this.disposed) {
+            return;
+        }
+
+        await this.message.react(this.loop ? '🔂' : '🔁');
+        await this.message.react(this.player.state.status === AudioPlayerStatus.Playing ? '⏸️' : '▶️');
+        await this.message.react('⏹️');
+        //await this.message.react('⤴️');
     }
 
     public async PrepareTask() {
@@ -64,6 +114,7 @@ export default class AudioTask {
         });
 
         this.extractor?.dispose?.(true);
+        this.message.reactions.removeAll();
         resolve();
     }
 
@@ -111,12 +162,24 @@ export default class AudioTask {
         this.player.emit(AudioPlayerStatus.Idle, this.player.state);
     }
 
-    public async Stop() {
+    public Stop() {
         this.player.stop(true);
     }
 
-    public async Pause() {
+    public Pause() {
+        this.interaction.editReply({
+            content: `:pause_button: Paused ${this.extractor.getReplyString()}`,
+        });
+
         this.player.pause(true);
+    }
+
+    public UnPause() {
+        this.interaction.editReply({
+            content: `:musical_note: Playing ${this.extractor.getReplyString()}`,
+        });
+
+        this.player.unpause();
     }
 
     public async SetVolume(volume: number) {
@@ -182,5 +245,6 @@ export default class AudioTask {
 
     dispose() {
         this.disposed = true;
+        this.collector?.stop();
     }
 }

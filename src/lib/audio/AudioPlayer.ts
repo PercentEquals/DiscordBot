@@ -1,4 +1,4 @@
-import { CommandInteraction, VoiceBasedChannel } from "discord.js";
+import { Client, CommandInteraction, Message, MessageReaction, User, VoiceBasedChannel } from "discord.js";
 
 import { createAudioPlayer, getVoiceConnection, joinVoiceChannel } from "@discordjs/voice";
 import { createDiscordJSAdapter } from "./AudioAdapter";
@@ -11,12 +11,13 @@ class AudioPlayerClass {
     private queues: Record<string, AudioQueue> = {};
 
     public async playAudio(
+        client: Client,
         interaction: CommandInteraction, 
         url: string, 
         startTimeInMs: number = 0, 
         volume: number = 100, 
         loop: boolean = false, 
-        force: boolean = false
+        force: boolean = false,
     ) {
         //@ts-ignore
         const channel = interaction.member?.voice?.channel as VoiceBasedChannel;
@@ -44,11 +45,13 @@ class AudioPlayerClass {
             throw new Error('No audio format found!');
         }
 
-        await interaction.followUp({
+        const message = await interaction.followUp({
             content: `:information_source: Queued: ${extractor.getReplyString()}`
-        })
+        });
 
-        await this.queues[channel.guild.id].addTask(new AudioTask(
+        const task = new AudioTask(
+            message,
+            client.user!.id,
             interaction,
             this.player,
             extractor,
@@ -56,7 +59,9 @@ class AudioPlayerClass {
             volume,
             loop,
             force
-        ));
+        );
+
+        this.queues[channel.guild.id].addTask(task);
     }
 
     public async setVolume(interaction: CommandInteraction, volume: number, volumeString: string) {
@@ -143,8 +148,10 @@ class AudioPlayerClass {
             throw new Error('You must be in a voice channel to leave!');
         }
 
-        this.queues[channel].dispose();
-        delete this.queues[channel];
+        if (this.queues[channel]) {
+            this.queues[channel].dispose();
+            delete this.queues[channel];
+        }
 
         getVoiceConnection(channel)?.disconnect?.();
     }

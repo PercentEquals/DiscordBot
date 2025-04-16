@@ -81,6 +81,7 @@ const handleMessageCommand = async (client: Client, interaction: CommandInteract
 
         logger.info('[bot] automatic link found - running command: ' + slashCommand.name);
 
+        //@ts-ignore
         await message.channel.sendTyping();
         await slashCommand.run(client, interaction);
 
