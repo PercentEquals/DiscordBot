@@ -26,53 +26,43 @@ export default class AudioTask {
         private volume: number,
         public loop: boolean = false,
         public force: boolean = false,
-    ) {
-        this.attachPlayerListeners();
-    }
+    ) {}
 
     private async attachPlayerListeners() {
+        if (!!this.collector) {
+            return;
+        }
+
         this.collector = this.message.createReactionCollector({
             filter: (reaction: MessageReaction, user: User) => {
                 return user.id !== this.botId && !user.bot;
-            }
+            },
         });
 
         this.collector.on('collect', async (reaction) => {
+            await reaction.message.fetch(true);
+
             switch (reaction.emoji.name) {
-                case '🔁': case '🔂':
+                case '⏯️':
+                    this.player.state.status !== AudioPlayerStatus.Playing ? this.UnPause() : this.Pause();
+                    break;
+                case '🔁':
                     this.loop = !this.loop;
-                    break;
-                case '⏸️':
-                    this.Pause();
-                    break;
-                case '▶️':
-                    this.UnPause();
+                    this.interaction.editReply({
+                        content: `${this.loop ? ':repeat:' : ':musical_note:'} Playing ${this.extractor.getReplyString()}`,
+                    });
                     break;
                 case '⏹️':
                     this.Stop();
                     break;
-                case '⤴️':
-                    this.force = true;
-                    await this.Restart();
             }
 
-            await this.CreateMenu();
+            reaction.users.remove(reaction.users.cache.last()!);
         });
 
-        this.CreateMenu();
-    }
-
-    private async CreateMenu() {
-        await this.message.reactions.removeAll();
-
-        if (this.disposed) {
-            return;
-        }
-
-        await this.message.react(this.loop ? '🔂' : '🔁');
-        await this.message.react(this.player.state.status === AudioPlayerStatus.Playing ? '⏸️' : '▶️');
+        await this.message.react('⏯️');
+        await this.message.react('🔁');
         await this.message.react('⏹️');
-        //await this.message.react('⤴️');
     }
 
     public async PrepareTask() {
@@ -100,7 +90,7 @@ export default class AudioTask {
         });
     }
 
-    private onFinish = (resolve: PromiseResolve<void>, from: AudioPlayerState) => {
+    private onFinish = async (resolve: PromiseResolve<void>, from: AudioPlayerState) => {
         if (from.status !== AudioPlayerStatus.Playing) {
             return;
         }
@@ -115,7 +105,8 @@ export default class AudioTask {
 
         this.dispose();
         this.extractor?.dispose?.(true);
-        this.message.reactions.removeAll();
+        await this.message.fetch(true);
+        await this.message.reactions.removeAll();
         resolve();
     }
 
@@ -139,6 +130,8 @@ export default class AudioTask {
             reject(new Error('Audio resource is not ready'));
             return;
         }
+
+        this.attachPlayerListeners();
 
         if (this.resource.ended) {
             await this.PrepareTask();

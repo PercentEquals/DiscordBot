@@ -53,11 +53,13 @@ export default class GenericExtractor implements IExtractor {
             dumpSingleJson: true,
             getFormat: true,
             noWarnings: true,
-            skipDownload: true
+            skipDownload: true,
+            noPlaylist: true,
         })
 
         videoData = (videoData as any).split('\n').slice(1).join('\n');
         this.apiData = JSON.parse(videoData as any) as ApiData;
+
         return true;
     }
 

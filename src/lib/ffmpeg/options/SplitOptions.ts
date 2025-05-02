@@ -21,6 +21,7 @@ export default class SplitOptions implements IOptions {
             `-t ${this.duration}`
         ]);
 
+        // https://superuser.com/questions/1167958/video-cut-with-missing-frames-in-ffmpeg/1168028#1168028
         process.addOptions([
             "-c copy",
         ]);
