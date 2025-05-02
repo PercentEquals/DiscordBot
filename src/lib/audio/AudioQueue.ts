@@ -22,6 +22,7 @@ export default class AudioQueue {
     dispose() {
         this._disposed = true;
         this._size = 0;
+        this._currentTask?.dispose();
         this._currentTask?.Finish();
         this._currentTask = null;
     }

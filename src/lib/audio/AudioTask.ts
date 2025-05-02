@@ -6,6 +6,14 @@ import { FfmpegCommand } from "fluent-ffmpeg";
 import { CommandInteraction, Message, MessageReaction, ReactionCollector, User } from "discord.js";
 import IExtractor from "../extractors/providers/IExtractor";
 
+enum AutioTaskState {
+    Error = 'error',
+    Playing = 'playing',
+    Paused = 'paused',
+    Finished = 'finished',
+    Skipped = 'skipped',
+}
+
 export default class AudioTask {
     private ffmpegProcess: FfmpegCommand | null = null;
     private resource: AudioResource<null> | null = null;
@@ -48,11 +56,10 @@ export default class AudioTask {
                     break;
                 case '🔁':
                     this.loop = !this.loop;
-                    this.interaction.editReply({
-                        content: `${this.loop ? ':repeat:' : ':musical_note:'} Playing ${this.extractor.getReplyString()}`,
-                    });
+                    this.updateMessage(this.player.state.status !== AudioPlayerStatus.Playing ? AutioTaskState.Paused : AutioTaskState.Playing);
                     break;
                 case '⏹️':
+                    this.loop = false;
                     this.Stop();
                     break;
             }
@@ -74,16 +81,11 @@ export default class AudioTask {
 
     public async PlayTask() {
         if (this.disposed) {
-            this.interaction.editReply({
-                content: `:white_check_mark: Skipped playing ${this.extractor.getReplyString()}`,
-            });
-
+            this.updateMessage(AutioTaskState.Skipped);
             return Promise.resolve();
         }
 
-        this.interaction.editReply({
-            content: `${this.loop ? ':repeat:' : ':musical_note:'} Playing ${this.extractor.getReplyString()}`,
-        });
+        this.updateMessage(AutioTaskState.Playing);
 
         return new Promise<void>((resolve, reject) => {
             this.Play(resolve, reject);
@@ -99,13 +101,14 @@ export default class AudioTask {
             return this.PlayTask();
         }
 
-        this.interaction.editReply({
+        await this.message.fetch(true);
+
+        this.message.edit({
             content: `:white_check_mark: Finished playing ${this.extractor.getReplyString()}`,
         });
 
         this.dispose();
         this.extractor?.dispose?.(true);
-        await this.message.fetch(true);
         await this.message.reactions.removeAll();
         resolve();
     }
@@ -118,9 +121,7 @@ export default class AudioTask {
 
         logger.error(`[ffmpeg] error in audio stream for ${this.extractor.getReplyString()}: ${error.message}`);
 
-        this.interaction.editReply({
-            content: `:octagonal_sign: Error occured while playing ${this.extractor.getReplyString()}: ${error.message}`,
-        });
+        this.updateMessage(AutioTaskState.Error, error.message);
 
         reject(error);
     }
@@ -162,18 +163,12 @@ export default class AudioTask {
     }
 
     public Pause() {
-        this.interaction.editReply({
-            content: `:pause_button: Paused ${this.extractor.getReplyString()}`,
-        });
-
+        this.updateMessage(AutioTaskState.Paused);
         this.player.pause(true);
     }
 
     public UnPause() {
-        this.interaction.editReply({
-            content: `:musical_note: Playing ${this.extractor.getReplyString()}`,
-        });
-
+        this.updateMessage(AutioTaskState.Playing);
         this.player.unpause();
     }
 
@@ -206,10 +201,7 @@ export default class AudioTask {
     }
 
     public async PlayNewAudio(audioTask: AudioTask) {
-        this.interaction.editReply({
-            content: `:white_check_mark: Finished playing ${this.extractor.getReplyString()}`,
-        });
-
+        this.updateMessage(AutioTaskState.Finished);
         this.extractor?.dispose?.(true);
 
         this.interaction = audioTask.interaction;
@@ -238,8 +230,45 @@ export default class AudioTask {
         return this.ffmpegProcess;
     }
 
+    private updateMessage(audioTaskState: AutioTaskState, content: string = '') {
+        if (this.disposed) {
+            return;
+        }
+
+        switch (audioTaskState) {
+            case AutioTaskState.Playing:
+                this.interaction.editReply({
+                    content: `${this.loop ? ':repeat:' : ':musical_note:'} Playing ${this.extractor.getReplyString()}`,
+                });
+                break;
+            case AutioTaskState.Paused:
+                this.interaction.editReply({
+                    content: `:pause_button: Paused ${this.extractor.getReplyString()}`,
+                });
+                break;
+            case AutioTaskState.Finished:
+                this.interaction.editReply({
+                    content: `:white_check_mark: Finished playing ${this.extractor.getReplyString()}`,
+                });
+                break;
+            case AutioTaskState.Skipped:
+                this.interaction.editReply({
+                    content: `:white_check_mark: Skipped playing ${this.extractor.getReplyString()}`,
+                });
+                break;
+            case AutioTaskState.Error:
+                this.interaction.editReply({
+                    content: `:octagonal_sign: Error occured while playing ${this.extractor.getReplyString()}: ${content}`,
+                });
+                break;
+            default:
+                return;
+        }
+    }
+
     dispose() {
         this.disposed = true;
+        this.loop = false;
         this.collector?.stop();
     }
 }

@@ -1,4 +1,4 @@
-import { Client, CommandInteraction, Message, MessageReaction, User, VoiceBasedChannel } from "discord.js";
+import { Client, CommandInteraction, Events, VoiceBasedChannel, VoiceState } from "discord.js";
 
 import { createAudioPlayer, getVoiceConnection, joinVoiceChannel } from "@discordjs/voice";
 import { createDiscordJSAdapter } from "./AudioAdapter";
@@ -32,8 +32,16 @@ class AudioPlayerClass {
             adapterCreator: createDiscordJSAdapter(channel),
         });
         
+        const onVoiceStateUpdate = (oldState: VoiceState, newState: VoiceState) => {
+            if (this.leaveIfEmpty(oldState.channel)) {
+                client.off(Events.VoiceStateUpdate, onVoiceStateUpdate);
+            }
+        }
+
         if (!this.queues[channel.guild.id]) {
             this.queues[channel.guild.id] = new AudioQueue();
+
+            client.on(Events.VoiceStateUpdate, onVoiceStateUpdate);
         }
 
         connection.subscribe(this.player);
@@ -62,6 +70,22 @@ class AudioPlayerClass {
         );
 
         this.queues[channel.guild.id].addTask(task);
+    }
+
+    private leaveIfEmpty(channel: VoiceBasedChannel | null) {
+        if (!channel || !channel.id) {
+            return false;
+        }
+
+        if (channel.members.size - 1 <= 0) {
+            this.queues[channel.guild.id].dispose();
+            delete this.queues[channel.guild.id];
+            getVoiceConnection(channel.guild.id)?.disconnect?.();
+
+            return true;
+        }
+
+        return false;
     }
 
     public async setVolume(interaction: CommandInteraction, volume: number, volumeString: string) {
