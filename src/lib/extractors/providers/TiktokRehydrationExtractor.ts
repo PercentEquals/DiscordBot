@@ -77,10 +77,10 @@ export default class TiktokRehydrationExtractor extends FileBasedExtractor {
     }
 
     public getDuration(): number {
-        let duration = this.apiData?.itemInfo.itemStruct.music.duration;
+        let duration = this.apiData?.itemInfo?.itemStruct?.music?.duration;
 
         if (!duration) {
-            duration = this.apiData?.itemInfo.itemStruct.video.duration;
+            duration = this.apiData?.itemInfo?.itemStruct?.video?.duration;
         }
 
         return duration ?? 0;
