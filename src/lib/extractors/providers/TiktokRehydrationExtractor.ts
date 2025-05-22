@@ -53,11 +53,7 @@ export default class TiktokRehydrationExtractor extends FileBasedExtractor {
                 }
             );
 
-            if (!fs.existsSync(`cache/${this.getId()}`)) {
-                return false;
-            }
-
-            return true;
+            return fs.existsSync(`cache/${this.getId()}`);
         } catch (e) {
             this.dispose();
             throw e;
@@ -91,7 +87,7 @@ export default class TiktokRehydrationExtractor extends FileBasedExtractor {
     }
 
     public getReplyString(): string {
-        return `${this.apiData?.shareMeta.title.substring(0, 100)} - ${this.apiData?.itemInfo.itemStruct.author.nickname.substring(0, 25)} | ${getHumanReadableDuration(this.getDuration())}`;
+        return `${this.apiData?.shareMeta?.title?.substring(0, 100)} - ${this.apiData?.itemInfo?.itemStruct?.author?.nickname?.substring(0, 25)} | ${getHumanReadableDuration(this.getDuration())}`;
     }
 
     public getData() {
