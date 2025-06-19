@@ -76,12 +76,12 @@ export default class GenericExtractor implements IExtractor {
         const urlObj = new URL(this.url); 
 
         for (const formatFinder of this.formatFinders) {
-            const foundFormats = formatFinder.findBestFormat(urlObj.hostname, formats);
-
-            if (foundFormats && foundFormats.length > 0) {
-                formats = foundFormats;
-                break;
+            if (!formatFinder.checkUrl(urlObj.hostname)) {
+                continue;
             }
+
+            formats = formatFinder.findBestFormat(formats ?? []);
+            break;
         }
 
         let bestFormat = formats?.sort((a, b) => (a.filesize as number) - (b.filesize as number))?.[0];
@@ -110,43 +110,51 @@ export default class GenericExtractor implements IExtractor {
 }
 
 class TwitterFormatFinder {
-    public static findBestFormat(hostname: string, formats: Format[] | undefined): Format[] | null {
-        if (formats && (hostname.includes("twitter") || hostname == "x.com")) {
-            return formats.filter(
-                (format) => (format.video_ext && format.video_ext.includes('mp4'))
-            );
-        }
+    public static checkUrl(hostname: string): boolean {
+        return hostname.includes("twitter") || hostname === "x.com";
+    }
 
-        return null;
+    public static findBestFormat(formats: Format[]): Format[] {
+        return formats.filter(
+            (format) => (format.video_ext && format.video_ext.includes('mp4'))
+        );
     }
 }
 
 class DiscordFormatFinder {
-    public static findBestFormat(hostname: string, formats: Format[] | undefined): Format[] | null {
-        if (formats && hostname.includes("discord")) {
-            return [formats[0]]
-        }
+    public static checkUrl(hostname: string): boolean {
+        return hostname.includes("discord")
+    }
 
-        return null;
+    public static findBestFormat(formats: Format[]): Format[] {
+        return [formats[0]]
     }
 }
 
 class InstagramFormatFinder {
-    public static findBestFormat(hostname: string, formats: Format[] | undefined): Format[] | null {
-        if (formats && hostname.includes("instagram")) {
-            return formats.filter(
-                (format) => (format.video_ext && format.video_ext.includes('mp4'))
-            );
-        }
+    public static checkUrl(hostname: string): boolean {
+        return hostname.includes("instagram");
+    }
 
-        return null;
+    public static findBestFormat(formats: Format[]): Format[] {
+        return formats.filter(
+            (format) => (format.video_ext && format.video_ext.includes('mp4'))
+        );
     }
 }
 
 class VideoFormatFinder {
-    public static findBestFormat(hostname: string, formats: Format[] | undefined): Format[] | null {
-        return formats?.filter(
-            (format) => format.acodec && format.vcodec && format.acodec.includes('mp4a') && format.vcodec.includes('avc')
-        ) ?? null;
+    public static checkUrl(hostname: string): boolean {
+        return true;
+    }
+
+    public static findBestFormat(formats: Format[]): Format[] {
+        return formats.filter(
+            (format) =>
+                (format.acodec !== "none" && format.vcodec !== "none") ||
+                (format.video_ext !== "none" && format.audio_ext !== "none")
+        ).filter(
+            (format) => format.format_note !== "storyboard"
+        );
     }
 }

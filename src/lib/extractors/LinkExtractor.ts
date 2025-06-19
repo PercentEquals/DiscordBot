@@ -33,31 +33,41 @@ export default class LinkExtractor {
         new GenericExtractor()
     ];
 
-    private TestExtractors(extractors: IExtractor[], url: string): Promise<IExtractor | null> {
-        return new Promise(async (resolve) => {
-            let abortToken = false;
+    private async ExtractorTask(extractor: IExtractor, url: string) {
+        logger.info(`[bot] Trying ${extractor.constructor.name} - ${extractor.getId()}`);
 
-            await async.each(extractors, async (extractor) => {
-                try {
-                    logger.info(`[bot] Trying ${extractor.constructor.name} - ${extractor.getId()}`);
+        try {
+            extractor.provideDataExtractor?.(this.tiktokDataExtractor);
+            if(!(await performance(extractor, extractor.extractUrl, url))) {
+                return null;
+            }
+        } catch (err: any) {
+            logger.warn(`[bot] ${extractor.constructor.name} failed with ${err.toString().replace(/\s+/g, ' ').trim()}`);
+            return null;
+        }
 
-                    extractor.provideDataExtractor?.(this.tiktokDataExtractor);
-    
-                    if (await performance(extractor, extractor.extractUrl, url)) {
-                        if (abortToken) {
-                            return extractor.dispose?.(false);
-                        }
+        return extractor;
+    }
 
-                        abortToken = true;
-                        resolve(extractor);
-                    }
-                } catch (e: any) {
-                    logger.warn(`[bot] ${extractor.constructor.name} failed with ${e.toString().replace(/\s+/g, ' ').trim()}`);
-                }
-            })
+    private async TestExtractors(extractors: IExtractor[], url: string): Promise<IExtractor | null> {
+        const abortController = new AbortController();
+        let validExtractor: IExtractor | null = null;
 
-            resolve(null);
-        })
+        await async.each(extractors, async (extractor) => {
+            validExtractor = await this.ExtractorTask(extractor, url);
+
+            if (abortController.signal.aborted) {
+                extractor.dispose?.(false);
+                return null;
+            }
+
+            if (validExtractor) {
+                abortController.abort();
+                return false; // Stop further processing if a valid extractor is found
+            }
+        });
+
+        return validExtractor;
     }
 
     public async extractUrl(url: string, retryCount = 0): Promise<IExtractor> {
