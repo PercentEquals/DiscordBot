@@ -1,9 +1,10 @@
-import * as cheerio from 'cheerio';
 import fs from "fs";
 
 import { downloadFile } from "src/common/fileUtils";
 import { getHumanReadableDuration } from "src/common/audioUtils";
 import FileBasedExtractor from "./FileBasedExtractor";
+
+import { parse } from 'node-html-parser';
 
 export default class TiktokRehydrationExtractor extends FileBasedExtractor {
     private apiData: TiktokRehydrationApi | null = null;
@@ -31,11 +32,12 @@ export default class TiktokRehydrationExtractor extends FileBasedExtractor {
             this.cookies += response.headers.get("set-cookie")?.match(/msToken=[^;]*; /);
 
             const body = await response.text();
-            const $ = cheerio.load(body);
-            const $script = $('#__UNIVERSAL_DATA_FOR_REHYDRATION__');
-            this.apiData = JSON.parse($script.html() as string).__DEFAULT_SCOPE__["webapp.video-detail"];
+            const dom = parse(body);
+            const script = dom.querySelector('#__UNIVERSAL_DATA_FOR_REHYDRATION__');
 
-            const canonicalHref = JSON.parse($script.html() as string).__DEFAULT_SCOPE__["seo.abtest"].canonical;
+            this.apiData = JSON.parse(script?.innerHTML!).__DEFAULT_SCOPE__["webapp.video-detail"];
+
+            const canonicalHref = JSON.parse(script?.innerHTML!).__DEFAULT_SCOPE__["seo.abtest"].canonical;
             const audioUrl = this.apiData?.itemInfo?.itemStruct?.music?.playUrl;
 
             if (!this.isSlideshow()) {

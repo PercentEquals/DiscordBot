@@ -5,13 +5,10 @@ import async from "async";
 import YoutubeDL from "../yt-dlp/YoutubeDLProcess";
 
 import IExtractor from "./providers/IExtractor";
-import TiktokThirdPartyExtractor from "./providers/TiktokThirdPartyExtractor";
 import TiktokGenericExtractor from "./providers/TiktokGenericExtractor";
 import TiktokRehydrationExtractor from "./providers/TiktokRehydrationExtractor";
 import GenericExtractor from "./providers/GenericExtractor";
 import TiktokDirectExtractor from "./providers/TiktokDirectExtractor";
-
-import TikProvider from "./providers/thirdParty/TikProvider";
 
 import performance from "../utils/Performance";
 import { MAX_RETRY_COUNT, RETRY_WAIT_TIME } from "src/constants/maxretrycount";
@@ -25,7 +22,6 @@ export default class LinkExtractor {
 
     private p0extractors: IExtractor[] = [
         new TiktokDirectExtractor(),
-        new TiktokThirdPartyExtractor(TikProvider),
     ];
 
     private p1extractors: IExtractor[] = [
