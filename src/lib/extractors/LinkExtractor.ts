@@ -54,17 +54,22 @@ export default class LinkExtractor {
         let validExtractor: IExtractor | null = null;
 
         await async.each(extractors, async (extractor) => {
-            validExtractor = await this.ExtractorTask(extractor, url);
+            const testedExtractor = await this.ExtractorTask(extractor, url);
 
             if (abortController.signal.aborted) {
                 extractor.dispose?.(false);
                 return null;
             }
 
+            if (testedExtractor) {
+                validExtractor = testedExtractor;
+            }
+
             if (validExtractor) {
                 abortController.abort();
-                return false; // Stop further processing if a valid extractor is found
             }
+
+            return null;
         });
 
         return validExtractor;

@@ -16,10 +16,11 @@ export default class GenericExtractor implements IExtractor {
 
     constructor(
         private formatFinders = [
-            VideoFormatFinder,
+            TikTokFormatFinder,
             TwitterFormatFinder,
             DiscordFormatFinder,
             InstagramFormatFinder,
+            VideoFormatFinder,
         ]
     ) {}
 
@@ -134,6 +135,18 @@ class DiscordFormatFinder {
 class InstagramFormatFinder {
     public static checkUrl(hostname: string): boolean {
         return hostname.includes("instagram");
+    }
+
+    public static findBestFormat(formats: Format[]): Format[] {
+        return formats.filter(
+            (format) => (format.video_ext && format.video_ext.includes('mp4'))
+        );
+    }
+}
+
+class TikTokFormatFinder {
+    public static checkUrl(hostname: string): boolean {
+        return hostname.includes("tiktok");
     }
 
     public static findBestFormat(formats: Format[]): Format[] {

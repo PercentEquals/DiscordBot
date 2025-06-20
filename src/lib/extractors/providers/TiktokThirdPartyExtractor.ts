@@ -27,16 +27,12 @@ export default class TiktokThirdPartyExtractor extends FileBasedExtractor {
                 await this.thirdPartyUrlProvider(url),
                 `cache/${this.getId()}`
             )
-            
+
             if (!fs.existsSync(`cache/${this.getId()}`)) {
                 return false;
             }
 
-            if(!await FFProbe(`cache/${this.getId()}`)) {
-                return false;
-            }
-
-            return true;
+            return await FFProbe(`cache/${this.getId()}`) !== null;
         } catch (e) {
             this.dispose();
             throw e;
