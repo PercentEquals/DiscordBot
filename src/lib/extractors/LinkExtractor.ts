@@ -104,10 +104,7 @@ export default class LinkExtractor {
             }
 
             logger.info(`[bot] Using ${workingExtractor.constructor.name}`);
-
-            if (!(workingExtractor instanceof FileBasedExtractor)) {
-                this.cacheExtractor.provideDataExtractor?.(workingExtractor);
-            }
+            this.cacheExtractor.provideDataExtractor?.(workingExtractor);
             
             return workingExtractor;
         } catch (e) {

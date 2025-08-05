@@ -27,7 +27,7 @@
     "playwright": "1.49",
     "tiktok-signature": "^1.9.2",
     "typescript": "^5.8.2",
-    "youtube-dl-exec": "^2.5.8"
+    "youtube-dl-exec": "^3.0.22"
   },
   "devDependencies": {
     "@types/async": "^3.2.24",

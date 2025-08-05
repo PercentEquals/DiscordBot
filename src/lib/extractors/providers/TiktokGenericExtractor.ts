@@ -5,6 +5,7 @@ import YoutubeDL from "../../yt-dlp/YoutubeDLProcess";
 import { validateUrl } from "src/common/validateUrl";
 
 import FileBasedExtractor from "./FileBasedExtractor";
+import logger from "src/logger";
 
 export default class TiktokGenericExtractor extends FileBasedExtractor {
     public async extractUrl(url: string): Promise<boolean> {
@@ -16,10 +17,10 @@ export default class TiktokGenericExtractor extends FileBasedExtractor {
                 return false;
             }
 
-            await YoutubeDL(url, {
+            logger.info(await YoutubeDL(url, {
                 output: `cache/${this.getId()}`,
                 useExtractors: "TikTok"
-            });
+            }));
 
             if (!fs.existsSync(`cache/${this.getId()}`)) {
                 return false;

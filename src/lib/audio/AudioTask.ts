@@ -6,7 +6,7 @@ import { FfmpegCommand } from "fluent-ffmpeg";
 import { CommandInteraction, Message, MessageReaction, ReactionCollector, User } from "discord.js";
 import IExtractor from "../extractors/providers/IExtractor";
 
-enum AutioTaskState {
+enum AudioTaskState {
     Error = 'error',
     Playing = 'playing',
     Paused = 'paused',
@@ -56,7 +56,7 @@ export default class AudioTask {
                     break;
                 case '🔁':
                     this.loop = !this.loop;
-                    this.updateMessage(this.player.state.status !== AudioPlayerStatus.Playing ? AutioTaskState.Paused : AutioTaskState.Playing);
+                    this.updateMessage(this.player.state.status !== AudioPlayerStatus.Playing ? AudioTaskState.Paused : AudioTaskState.Playing);
                     break;
                 case '⏹️':
                     this.loop = false;
@@ -81,11 +81,11 @@ export default class AudioTask {
 
     public async PlayTask() {
         if (this.disposed) {
-            this.updateMessage(AutioTaskState.Skipped);
+            this.updateMessage(AudioTaskState.Skipped);
             return Promise.resolve();
         }
 
-        this.updateMessage(AutioTaskState.Playing);
+        this.updateMessage(AudioTaskState.Playing);
 
         return new Promise<void>((resolve, reject) => {
             this.Play(resolve, reject);
@@ -121,7 +121,7 @@ export default class AudioTask {
 
         logger.error(`[ffmpeg] error in audio stream for ${this.extractor.getReplyString()}: ${error.message}`);
 
-        this.updateMessage(AutioTaskState.Error, error.message);
+        this.updateMessage(AudioTaskState.Error, error.message);
 
         reject(error);
     }
@@ -163,12 +163,12 @@ export default class AudioTask {
     }
 
     public Pause() {
-        this.updateMessage(AutioTaskState.Paused);
+        this.updateMessage(AudioTaskState.Paused);
         this.player.pause(true);
     }
 
     public UnPause() {
-        this.updateMessage(AutioTaskState.Playing);
+        this.updateMessage(AudioTaskState.Playing);
         this.player.unpause();
     }
 
@@ -201,7 +201,7 @@ export default class AudioTask {
     }
 
     public async PlayNewAudio(audioTask: AudioTask) {
-        this.updateMessage(AutioTaskState.Finished);
+        this.updateMessage(AudioTaskState.Finished);
         this.extractor?.dispose?.(true);
 
         this.interaction = audioTask.interaction;
@@ -230,33 +230,33 @@ export default class AudioTask {
         return this.ffmpegProcess;
     }
 
-    private updateMessage(audioTaskState: AutioTaskState, content: string = '') {
+    private updateMessage(audioTaskState: AudioTaskState, content: string = '') {
         if (this.disposed) {
             return;
         }
 
         switch (audioTaskState) {
-            case AutioTaskState.Playing:
+            case AudioTaskState.Playing:
                 this.interaction.editReply({
                     content: `${this.loop ? ':repeat:' : ':musical_note:'} Playing ${this.extractor.getReplyString()}`,
                 });
                 break;
-            case AutioTaskState.Paused:
+            case AudioTaskState.Paused:
                 this.interaction.editReply({
                     content: `:pause_button: Paused ${this.extractor.getReplyString()}`,
                 });
                 break;
-            case AutioTaskState.Finished:
+            case AudioTaskState.Finished:
                 this.interaction.editReply({
                     content: `:white_check_mark: Finished playing ${this.extractor.getReplyString()}`,
                 });
                 break;
-            case AutioTaskState.Skipped:
+            case AudioTaskState.Skipped:
                 this.interaction.editReply({
                     content: `:white_check_mark: Skipped playing ${this.extractor.getReplyString()}`,
                 });
                 break;
-            case AutioTaskState.Error:
+            case AudioTaskState.Error:
                 this.interaction.editReply({
                     content: `:octagonal_sign: Error occured while playing ${this.extractor.getReplyString()}: ${content}`,
                 });

@@ -50,6 +50,10 @@ export default class CacheExtractor implements IExtractor {
     }
 
     provideDataExtractor?(extractor: IExtractor | null): void {
+        if (extractor instanceof FileBasedExtractor) {
+            return;
+        }
+
         cache[this.url] = {
             isSlideshow: extractor?.isSlideshow() ?? false,
             slideshowData: extractor?.getSlideshowData() ?? [],

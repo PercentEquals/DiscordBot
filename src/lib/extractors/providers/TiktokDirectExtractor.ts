@@ -39,6 +39,7 @@ export default class TiktokDirectExtractor extends FileBasedExtractor {
                         "Accept-Language": "en-US,en;q=0.5",
                         "Sec-Fetch-Mode": "navigate",
                         "Accept-Encoding": "gzip, deflate, br",
+                        "Referer": url,
                         "Cookie": data.cookies
                     },
                     credentials: "include",

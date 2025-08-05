@@ -29,7 +29,6 @@ export default class TiktokRehydrationExtractor extends FileBasedExtractor {
             this.cookies += response.headers.get("set-cookie")?.match(/ttwid=[^;]*; /);
             this.cookies += response.headers.get("set-cookie")?.match(/tt_csrf_token=[^;]*; /);
             this.cookies += response.headers.get("set-cookie")?.match(/tt_chain_token=[^;]*; /);
-            this.cookies += response.headers.get("set-cookie")?.match(/msToken=[^;]*; /);
 
             const body = await response.text();
             const dom = parse(body);
