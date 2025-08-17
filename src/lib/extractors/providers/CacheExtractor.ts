@@ -1,5 +1,6 @@
 import { getHumanReadableDuration } from "src/common/audioUtils";
 import IExtractor, { BestFormat } from "./IExtractor";
+import FileBasedExtractor from "./FileBasedExtractor";
 
 let cache: Record<string, {
     isSlideshow: boolean;
